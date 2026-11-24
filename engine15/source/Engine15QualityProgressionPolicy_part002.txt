@@ -1,22 +1,9 @@
+FILE: Engine15QualityProgressionPolicy.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 341-616
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 5
+LINES: 355-643
 --------------------------------------------------
-    fun computeAdaptiveExposureAnchorSeconds(
-        request: PlanRequest,
-        family: IndependentQualityFamily,
-        activities: List<ActivityRecord> = emptyList(),
-        plans: List<PlanSnapshot> = emptyList(),
-        detections: List<Engine15DetectedWorkout> = emptyList(),
-        now: Instant = Instant.now()
-    ): Int {
-        val cutoff = now.minusSeconds(56L * 86_400)
-        val recentActivities = activities.filter { it.startedAt in cutoff..now }
-        val zones = Engine15PaceZoneEstimator.estimate(request, activities = recentActivities)
-        val effectiveWeeklyKm = maxOf(
-            request.weeklyKm,
-            automaticRunningBaseline(recentActivities, now = now, plans = plans)?.weeklyKm ?: 0.0
         ).coerceIn(12.0, 120.0)
         val sessionsPerWeek = request.qualityCount.coerceIn(1, 2)
 
@@ -107,7 +94,7 @@ LINES: 341-616
             }
 
         // When an athlete has ZERO recent quality efforts detected (e.g., purely easy-mileage base),
-        // don't drop straight into max-ceiling 40-min quality in Week 1 ΓÇö introduce at controlled fitness dose.
+        // don't drop straight into max-ceiling 40-min quality in Week 1 — introduce at controlled fitness dose.
         val unverifiedCapSec = when (family) {
             IndependentQualityFamily.TEMPO,
             IndependentQualityFamily.THRESHOLD,
@@ -279,3 +266,30 @@ LINES: 341-616
                 Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
                 Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
                 Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID,
+                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+            )
+            request.goal == "Half marathon" -> if (request.experience == 1) listOf(
+                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+            ) else listOf(
+                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID,
+                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+            )
+            request.goal == "Marathon" -> if (request.experience == 1) listOf(
+                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+            ) else listOf(
+                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+            )
+            request.goal == "Aerobic foundation" -> listOf(

@@ -1,7 +1,8 @@
+FILE: Engine15TimeOnlyRunWalkBuilder.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-338
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-354
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -215,7 +216,7 @@ internal object Engine15TimeOnlyRunWalkBuilder {
                     kind = kind,
                     quality = false,
                     steps = segments.mapIndexed { idx, step ->
-                        "${idx + 1}. ${formatDurationLabel(step.seconds!!)} ${step.purpose.lowercase().replace('_', ' ')} ΓÇö ${step.effort}"
+                        "${idx + 1}. ${formatDurationLabel(step.seconds!!)} ${step.purpose.lowercase().replace('_', ' ')} — ${step.effort}"
                     },
                     reason = reason,
                     runningPrescription = RunningPrescription(
@@ -341,3 +342,19 @@ internal object Engine15TimeOnlyRunWalkBuilder {
                     effort = if (isRecovery) "Gentle easy jog ($r/${template.reps}); take walk breaks anytime"
                     else "Easy conversational jog ($r/${template.reps})",
                     seconds = (template.jogMin * 60).coerceIn(30, 3600),
+                    stepIntent = if (isRecovery) RunningStepIntent.RECOVERY else RunningStepIntent.AEROBIC_EASY
+                )
+                if (r < template.reps && template.walkMin > 0) {
+                    out += RunningStepV2(
+                        purpose = "RECOVERY",
+                        effort = "Relaxed recovery walk",
+                        seconds = (template.walkMin * 60).coerceIn(30, 1800),
+                        stepIntent = RunningStepIntent.RECOVERY
+                    )
+                }
+            }
+        }
+        out += RunningStepV2(
+            purpose = "COOL_DOWN",
+            effort = "Easy walk cool-down",
+            seconds = (template.cooldownMin * 60).coerceIn(60, 1800),

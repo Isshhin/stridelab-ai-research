@@ -1,0 +1,75 @@
+FILE: TracksideParityTraining.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideParityTraining.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 411-479
+--------------------------------------------------
+                    else Text(disciplineLabel(session.discipline).take(1), color = accent,
+                        style = MaterialTheme.typography.titleLarge)
+                }
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(session.effectiveTitle, fontSize = 16.sp,
+                        color = TracksidePalette.text, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(detail, fontSize = 11.sp, color = TracksidePalette.textMuted,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                Text("Open ›", fontSize = 12.sp, color = TracksidePalette.text)
+            }
+            if (session.kind == "rest" || session.kind == "time only") {
+                Text(session.reason, style = MaterialTheme.typography.bodySmall, color = TracksidePalette.textMuted)
+            } else if (isRun) {
+                val stages = session.steps.take(3).filter { it.isNotBlank() }
+                Row(
+                    Modifier.fillMaxWidth().height(25.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    if (stages.isEmpty()) {
+                        Box(Modifier.weight(1f).fillMaxHeight()
+                            .background(accent.copy(alpha = .85f), RoundedCornerShape(5.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Text("Planned run", fontSize = 10.sp, color = Color.White)
+                        }
+                    } else {
+                        stages.forEachIndexed { i, stage ->
+                            Box(Modifier.weight(if (i == 1) 4f else 1f).fillMaxHeight()
+                                .background(accent.copy(alpha = if (i == 1) 0.9f else 0.35f),
+                                    RoundedCornerShape(5.dp)), contentAlignment = Alignment.Center) {
+                                Text(formatStageForCard(stage), modifier = Modifier.padding(horizontal = 8.dp), fontSize = 9.5.sp,
+                                    color = TracksidePalette.text,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+                Text("Prescribed workout · tap for full steps",
+                    fontSize = 10.sp, color = TracksidePalette.textMuted)
+            } else {
+                session.effectiveExercises.take(4).forEach { exercise ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(exercise.name, modifier = Modifier.weight(1f),
+                            fontSize = 12.sp, color = TracksidePalette.text,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(exercise.sets.toString() + " × " +
+                            (exercise.reps?.toString() ?: exercise.seconds?.let { it.toString() + "s" } ?: "—"),
+                            fontSize = 12.sp, color = accent)
+                    }
+                }
+            }
+            if (hasDraft) Text("Saved workout draft · progress not submitted",
+                fontSize = 11.sp, color = TracksidePalette.red)
+            if (session.suggestion != null && !session.suggestion.accepted)
+                Text("Recovery suggestion requires your review",
+                    fontSize = 11.sp, color = TracksidePalette.red)
+        }
+    }
+}
+
+private val STAGE_METERS_REGEX = Regex("""\b(\d{4,6})\s*m\b""")
+
+internal fun formatStageForCard(raw: String): String =
+    STAGE_METERS_REGEX.replace(raw) { match ->
+        val meters = match.groupValues[1].toIntOrNull()
+        if (meters != null && meters >= 1000) runningStepDisplayKmLabel(meters) else match.value
+    }

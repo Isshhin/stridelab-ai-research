@@ -1,18 +1,9 @@
+FILE: Engine15IndependentPlanGeneratorTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 301-559
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 3
+LINES: 311-584
 --------------------------------------------------
-            RunningSegment("RECOVERY",400,"User supplied easy recovery"),
-            RunningSegment("WORK",800,"User supplied fast target"),
-            RunningSegment("RECOVERY",400,"User supplied easy recovery"),
-            RunningSegment("WORK",800,"User supplied fast target"),
-            RunningSegment("COOL_DOWN",4500,"User supplied easy effort")
-        ))
-        val input=request(1).copy(runDays=3,weeks=1,days=setOf(1,2,3,4,5,6),
-            weeklyKm=40.0,targetWeeklyKm=40.0,longestKm=30.0,longDay=6,
-            weeklySlots=mapOf("run" to listOf(6,2,4)),qualityDays=setOf(2),
-            qualityCount=1,userDirectedPlanning=true,userDefinedQualityWorkouts=mapOf("w1-run1" to workout))
         val result=Engine15IndependentPlanGenerator.preview(input,owner,"structured",now)
         assertTrue("Expected structured user-defined session, got $result",result is Engine15IndependentPlanDecision.Candidate)
         val plan=(result as Engine15IndependentPlanDecision.Candidate).plan
@@ -262,3 +253,28 @@ LINES: 301-559
 
         val longLock = Engine15IndependentPlanGenerator.preview(
             input.copy(lockedSessionDays = mapOf("prior-w1-run0" to "2026-11-21")), owner, "locked-long", now
+        ) as Engine15IndependentPlanDecision.Candidate
+        assertEquals(LocalDate.parse("2026-11-21"), longLock.plan.sessions.single {
+            it.kind == "long" && it.date < input.start.plusWeeks(1)
+        }.date)
+    }
+
+    @Test fun explicitRunningWeekdayAssignmentsArePreservedInEveryWeek() {
+        val assigned = listOf(6, 1, 2, 3, 5, 7)
+        val input = request().copy(weeklySlots = mapOf("run" to assigned))
+        val result = Engine15IndependentPlanGenerator.preview(input, owner, "assigned", now)
+        assertTrue("Expected candidate, got $result", result is Engine15IndependentPlanDecision.Candidate)
+        val sessions = (result as Engine15IndependentPlanDecision.Candidate).plan.sessions
+        for (week in 1..input.weeks) {
+            for (runIndex in assigned.indices) {
+                val session = sessions.single { it.id == "assigned-w$week-run$runIndex" }
+                assertEquals(assigned[runIndex], session.date.dayOfWeek.value)
+            }
+        }
+    }
+
+    @Test fun appGenerationReturnsReviewableManagedDraftAndAutoReconcilesQualityInOneTap() {
+        val plan = Engine15IndependentPlanGenerator.generateWithHistory(request(), owner, emptyList(), "app-draft", now)
+        assertEquals(ENGINE15_INDEPENDENT_RUNNING_POLICY, plan.policyId)
+        assertEquals("draft", plan.status)
+        assertTrue(Engine1Engines.canManage(plan))

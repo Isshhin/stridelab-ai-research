@@ -1,68 +1,9 @@
+FILE: Engine15IndependentPlanGenerator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 6
-LINES: 1320-1508
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 6 / 6
+LINES: 1380-1508
 --------------------------------------------------
-            val days = (0..6).map { request.start.plusDays(it.toLong()).dayOfWeek.value }.filter { it in request.days }
-            for (mask in 1 until (1 shl days.size)) {
-                if (Integer.bitCount(mask) != request.disciplineSessionCount(discipline)) continue
-                val pattern = days.filterIndexed { index, _ -> mask and (1 shl index) != 0 }
-                val scheduled = request.copy(weeklySlots = mapOf(discipline to pattern))
-                val rows = try { compose(scheduled) } catch (_: PlanConstraint) { continue }
-                if (fits(rows, strict = true)) return scheduled to rows
-                if (fallback == null && fits(rows, strict = false)) fallback = scheduled to rows
-            }
-        }
-        fallback?.let { return it }
-        throw PlanConstraint("The selected workouts cannot fit around active plans. Choose more available days or revise the fixed days.")
-    }
-
-    fun conflict(a: PlannedSession, b: PlannedSession): Boolean =
-        a.date == b.date || hardSpacingConflict(a, b)
-
-    fun hardSpacingConflict(a: PlannedSession, b: PlannedSession): Boolean {
-        val gap = kotlin.math.abs(ChronoUnit.DAYS.between(a.date, b.date))
-        fun hard(session: PlannedSession) = session.quality ||
-            if (Engine15DisciplineProgression.isStructured(session)) session.lower
-            else session.discipline == "cal" || session.discipline in setOf("str", "cond") && session.lower
-        fun longRun(session: PlannedSession) = session.discipline == "run" && session.kind == "long"
-        return hard(a) && hard(b) && gap < 2 ||
-            longRun(a) && hard(b) && gap < 2 || longRun(b) && hard(a) && gap < 2
-    }
-
-    fun validateSaved(
-        plan: PlanSnapshot,
-        qualityEvidence: List<IndependentQualitySegmentEvidence> = emptyList(),
-        combinedRunDatesById: Map<String, LocalDate>? = null,
-        combinedExternalHardDates: Set<LocalDate> = emptySet(),
-        combinedMaxMinutesById: Map<String, Int> = emptyMap()
-    ) {
-        if (plan.policyId == ENGINE15_INDEPENDENT_COMBINED_POLICY) {
-            Engine15StaticMultiDisciplinePlanner.validateSaved(plan)
-            return
-        }
-        if (plan.policyId == ENGINE15_INDEPENDENT_CONDITIONING_POLICY) {
-            if (plan.engineVersion != version)
-                throw PlanConstraint("The independent conditioning plan has an unsupported engine identity.")
-            Engine15ConditioningWorkoutComposer.validateSaved(plan)
-            return
-        }
-        if (plan.policyId == ENGINE15_INDEPENDENT_CALISTHENICS_POLICY) {
-            if (plan.engineVersion != version)
-                throw PlanConstraint("The independent calisthenics plan has an unsupported engine identity.")
-            Engine15CalisthenicsWorkoutComposer.validateSaved(plan)
-            return
-        }
-        if (plan.policyId == ENGINE15_INDEPENDENT_STRENGTH_POLICY) {
-            if (plan.engineVersion != version)
-                throw PlanConstraint("The independent strength plan has an unsupported engine identity.")
-            Engine15StrengthWorkoutComposer.validateSaved(plan)
-            return
-        }
-        if (plan.engineVersion != version || plan.policyId != policyId)
-            throw PlanConstraint("The independent running plan has an unsupported engine identity.")
-        if (plan.experimentalQualityPolicy != null && plan.experimentalQualityPolicy != QUALITY_POLICY)
-            throw PlanConstraint("This plan uses an unsupported experimental quality policy.")
         if (plan.experimentalQualityExposureSeconds != null && plan.experimentalQualityExposureSeconds !in 1..14400)
             throw PlanConstraint("This plan uses an invalid experimental quality exposure anchor.")
         val baselines = plan.sessions.map { it.baselineSession() }

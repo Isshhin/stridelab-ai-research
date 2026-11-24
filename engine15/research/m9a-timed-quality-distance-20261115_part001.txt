@@ -1,9 +1,10 @@
+FILE: m9a-timed-quality-distance-20261115.md
 SOURCE: research/engine15/experiments/m9a-timed-quality-distance-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-64
 --------------------------------------------------
-# Engine 1.5 M9a ΓÇö Timed quality mileage reconciliation
+# Engine 1.5 M9a — Timed quality mileage reconciliation
 
 Date: 2026-11-15. Research-only; stacked on draft PR #85 (M8b). No Android production changes.
 
@@ -21,7 +22,7 @@ M9a addresses only the **arithmetic accounting** gap. It does *not* solve authen
 3. An **M5a timed threshold/tempo quality preview** on the same week/day and with the original allocated distance budget.
 4. One separately supplied positive **distance in meters for each chronological workout segment** (including warm-up, each work repetition, each between-work recovery, and cool-down), plus a caller assertion of external review.
 
-The new pure Kotlin component expands \`IndependentWorkoutComposition\` and \`IndependentIntervalGroup\`, correctly includes only \`NΓêÆ1\` recovery intervals for \`N\` work repetitions, checks purpose and THRESHOLD/TEMPO target consistency, checks that all segments are timed and that their durations match the original preview, then checks that the **sum of explicitly supplied segment distances equals the original M6a day's kilometers**.
+The new pure Kotlin component expands \`IndependentWorkoutComposition\` and \`IndependentIntervalGroup\`, correctly includes only \`N−1\` recovery intervals for \`N\` work repetitions, checks purpose and THRESHOLD/TEMPO target consistency, checks that all segments are timed and that their durations match the original preview, then checks that the **sum of explicitly supplied segment distances equals the original M6a day's kilometers**.
 
 If all arithmetic matches, the component returns a \`MathematicallyReconciled\` preview that **retains the original full-week mileage**. The time-based quality sequence is a **hypothetical replacement** for one existing EASY session, never an additional run.
 
@@ -35,7 +36,7 @@ A runnable workout remains blocked until trusted source evidence, dose/pace or e
 
 ## Test inventory (committed, not executed)
 
-New implementation \`IndependentTimedQualityDistanceReconciliation.kt\`; new \`IndependentTimedQualityDistanceReconciliationTest.kt\` with **13 focused JUnit tests**. Covers: 3 ├ù 4 min threshold and exactly two recoveries; unchanged M6a week and original day totals; tempo warm/work/cool duration; missing, invalid and contradictory distances; missing review; different distance budget; long/recovery day guards; unselected quality date; mismatched family target; mixed-unit preview denied by the existing M5a constructor; and deterministic no-mutation output.
+New implementation \`IndependentTimedQualityDistanceReconciliation.kt\`; new \`IndependentTimedQualityDistanceReconciliationTest.kt\` with **13 focused JUnit tests**. Covers: 3 × 4 min threshold and exactly two recoveries; unchanged M6a week and original day totals; tempo warm/work/cool duration; missing, invalid and contradictory distances; missing review; different distance budget; long/recovery day guards; unselected quality date; mismatched family target; mixed-unit preview denied by the existing M5a constructor; and deterministic no-mutation output.
 
 **M9a tests have not run.** Stacked M8a/M8b tests are also newly committed and have not yet been reported passing. An earlier owner-reported successful M6/M7 test and debug-build run was in an already-existing worktree; verify its HEAD before tying that result to an exact commit.
 

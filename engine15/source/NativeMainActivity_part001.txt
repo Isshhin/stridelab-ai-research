@@ -1,0 +1,337 @@
+FILE: NativeMainActivity.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 4
+LINES: 1-331
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import android.content.Intent
+import android.os.Bundle
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.*
+import androidx.navigation.NavHostController
+
+class NativeMainActivity: ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Remove the platform navigation-bar tint beneath the floating dock.
+        // The gesture handle remains system-controlled and accessible.
+        // Android 14 and below still use this setter for the dock background;
+        // Android 15+ manages edge-to-edge system bar surfaces instead.
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = android.graphics.Color.BLACK
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        setContent { StrideTheme { NativeStrideApp() } }
+    }
+}
+
+@Composable internal fun StrideTheme(content: @Composable () -> Unit) {
+    // Match the current StrideLab Android app. Use the system sans-serif (Roboto on
+    // Android) until the final licensed type assets are bundled and checked.
+    val displayFont = FontFamily.SansSerif
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = TracksidePalette.lime, onPrimary = Color.Black,
+            background = TracksidePalette.backgroundBottom,
+            surface = TracksidePalette.surface,
+            surfaceVariant = TracksidePalette.surfaceVariant,
+            onSurface = TracksidePalette.text,
+            onBackground = TracksidePalette.text,
+            onSurfaceVariant = TracksidePalette.textMuted,
+            secondary = TracksidePalette.strength,
+            secondaryContainer = Color(0xFF202324),
+            onSecondaryContainer = TracksidePalette.text,
+            tertiary = TracksidePalette.calisthenics,
+            outline = TracksidePalette.outline,
+            outlineVariant = Color(0xFF303438),
+            surfaceContainer = TracksidePalette.surface,
+            surfaceContainerHigh = TracksidePalette.surfaceRaised
+        ),
+        typography = Typography(
+            headlineLarge = TextStyle(fontFamily = displayFont, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+            headlineMedium = TextStyle(fontFamily = displayFont, fontSize = 30.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp),
+            headlineSmall = TextStyle(fontFamily = displayFont, fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold),
+            titleLarge = TextStyle(fontFamily = displayFont, fontSize = 21.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold),
+            labelMedium = TextStyle(fontFamily = displayFont, fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+        ),
+        shapes = Shapes(medium = RoundedCornerShape(14.dp), large = RoundedCornerShape(20.dp)),
+        content = content
+    )
+}
+
+@Composable internal fun NativeStrideApp(model: TrainingViewModel = viewModel()) {
+    val state by model.state.collectAsStateWithLifecycle(context=kotlinx.coroutines.Dispatchers.Main.immediate)
+    val online by model.online.collectAsStateWithLifecycle(context=kotlinx.coroutines.Dispatchers.Main.immediate)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(model, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) model.onAppResumed()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val actions = remember(model) { NativeActions(model::signOut, model::signIn, model::loadDetail, model.planActions(), syncGarmin=model::syncGarmin, loadGarminGps=model::loadGarminGps,
+        backupGarminCloud=model::backupGarminCloud, restoreGarminCloud=model::restoreGarminCloud,
+        signUp=model::signUp, requestPasswordReset=model::requestPasswordReset,
+        loadCachedDetail=model::loadCachedDetail,
+        renameActivity=model::renameActivity,
+        exportLocalArchive=model::exportLocalActivityArchive,
+        restoreLocalArchive=model::restoreLocalActivityArchive, freeform=model.freeform) }
+    val thumbnailLoader = remember(model) { model::loadActivityThumbnail }
+    ActivityThumbnailProvider(thumbnailLoader, state.account, state.loginGeneration, model.thumbnailCache) {
+        NativeStrideContent(state, online, actions)
+    }
+}
+
+/** Presentation boundary allows isolated screenshots without a real session or fake production data. */
+// Two retired-source callback slots are inert, kept temporarily so older
+// Android UI fixtures compile. No production provider or control uses them.
+internal data class NativeActions(val signOut: () -> Unit, val signIn: (String, String) -> Unit, val loadDetail: (String) -> Unit = {}, val planning:PlanActions = PlanActions(),
+    val syncGarmin: (suspend (GarminPersonalSource) -> GarminConnectionStatus)? = null,
+    val loadGarminGps: ((String,GarminPersonalSource)->Unit)?=null,
+    val signUp: (String, String, String) -> Unit = { _, _, _ -> },
+    val requestPasswordReset: (String) -> Unit = {},
+    val backupGarminCloud: (suspend () -> Int)? = null,
+    val restoreGarminCloud: (suspend () -> Int)? = null,
+    val loadCachedDetail: (suspend (String) -> Boolean)? = null,
+    val renameActivity: (suspend (String, String) -> Boolean)? = null,
+    val exportLocalArchive: (suspend (LocalActivityArchiveScope) -> java.io.File)? = null,
+    val restoreLocalArchive: (suspend (LocalActivityArchiveScope,java.io.File) -> LocalActivityArchiveCounts)? = null,
+    val freeform: FreeformAccess? = null)
+
+/** Primary tab roots switch cleanly with zero flash; detail/editor screens animate smoothly. */
+private val mainTabRoutes = setOf("home", "training", "activities", "settings")
+private fun isTabRootSwitch(from: String?, to: String?) = to in mainTabRoutes
+
+/** Save each tab's root state, never its transient detail/auth destination. */
+private fun NavHostController.openTabRoot(path: String) {
+    if (currentDestination?.route == path) return
+    while(currentDestination?.route in setOf("activity/{id}", "auth", "auth/signup", "auth/reset", "more/garmin", "more/data", "more/offline-maps", "more/preferences", "more/about", "more/activity-backup", "builder/{discipline}", "workout/{planId}/{sessionId}", "manage/{planId}/{date}")) {
+        if(!popBackStack()) break
+    }
+    navigate(path) {
+        popUpTo(graph.startDestinationId) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+    // Also normalize stacks restored from an older build that saved a child destination.
+    if(currentDestination?.route != path) popBackStack(path, inclusive = false)
+}
+
+private fun NavHostController.openWorkout(planId: String, sessionId: String) {
+    navigate("workout/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}") {
+        launchSingleTop = true
+    }
+}
+
+private fun NavHostController.openActivity(id: String) {
+    // A detail belongs to the destination that opened it. Do not first
+    // navigate through Activity: Back from Today's session sheet must return
+    // to Today with its selected date and scroll state intact.
+    navigate("activity/${android.net.Uri.encode(id)}") {
+        launchSingleTop = true
+    }
+}
+
+@Composable internal fun NativeStrideContent(
+    state: TrainingState,
+    online: Boolean,
+    actions: NativeActions,
+    nav: NavHostController = rememberNavController()
+) {
+    val entry by nav.currentBackStackEntryAsState()
+    val route = entry?.destination?.route
+    val freeformOwner = state.freeformOwner
+    val freeformAccess = actions.freeform
+    var freeformBoard by remember(freeformOwner, state.loginGeneration) { mutableStateOf<FreeformBoard?>(null) }
+    var freeformReadError by remember(freeformOwner, state.loginGeneration) { mutableStateOf<String?>(null) }
+    var freeformReload by remember(freeformOwner, state.loginGeneration) { mutableStateOf(0) }
+    var customCalendarFocus by remember(freeformOwner, state.loginGeneration) { mutableStateOf<LocalDate?>(null) }
+    LaunchedEffect(freeformOwner, state.loginGeneration, freeformAccess, freeformReload) {
+        if (freeformOwner != null && freeformAccess != null) {
+            freeformReadError = null
+            freeformAttempt { freeformAccess.read(freeformOwner) }.onSuccess { freeformBoard = it }
+                .onFailure { freeformReadError = it.freeformMessage("Could not load saved workouts. Try again.") }
+        }
+    }
+    val openFreeform: (() -> Unit)? = if (freeformOwner != null && freeformAccess != null) {
+        { nav.navigate("freeform/add") { launchSingleTop = true } }
+    } else null
+    val openCustomWorkout: (CustomOccurrenceKey) -> Unit = { key ->
+        nav.navigate("freeform/custom/${android.net.Uri.encode(key.seriesId)}/${key.anchor}") { launchSingleTop = true }
+    }
+    fun openTrainingDate(date: LocalDate) {
+        customCalendarFocus = date
+        if (!nav.popBackStack("training", inclusive = false)) nav.openTabRoot("training")
+    }
+    fun plannerNote(discipline: ManualDiscipline, date: LocalDate, excluded: CustomOccurrenceKey? = null): String? {
+        val coached = state.plans.filter { it.owner == freeformOwner && it.status == "approved" }
+            .flatMap { it.sessions }
+        return customAdvisory(discipline, date, coached,
+            freeformBoard?.customBetween(date, date).orEmpty().filter { it.key != excluded })
+    }
+    val openFreeformHistory: (String, Boolean) -> Unit = { id, legacy ->
+        val kind = if (legacy) "legacy" else "freeform"
+        nav.navigate("freeform/history/$kind/${android.net.Uri.encode(id)}") { launchSingleTop = true }
+    }
+    // Immediate visual acknowledgement of a bottom-tab press. NavController
+    // still owns the back stack, restoration and child destination lifecycle;
+    // the dock's animation never gates which retained root is laid out.
+    var requestedTab by remember { mutableStateOf<String?>(null) }
+    var quickLogOpen by rememberSaveable { mutableStateOf(false) }
+    val quickLogScope = rememberCoroutineScope()
+    val settingsContext = LocalContext.current.applicationContext
+    var garminSheetOpen by remember { mutableStateOf(false) }
+    var garminBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(route, state.account) {
+        if (requestedTab == route || route !in mainTabRoutes) requestedTab = null
+    }
+    val visibleRoot = if (route == null || route in mainTabRoutes) {
+        requestedTab ?: route
+    } else route
+    val onDockTab: (String) -> Unit = { target ->
+        if (nav.currentDestination?.route == target) {
+            // Repeated taps do not start another destination transaction.
+            requestedTab = null
+        } else {
+            requestedTab = target
+            try {
+                nav.openTabRoot(target)
+            } catch (error: Exception) {
+                requestedTab = null
+                throw error
+            }
+        }
+    }
+    val garminOwner = state.localGarminOwner ?: state.account
+    val garminConnected by key(garminOwner) {
+        produceState(false, garminOwner, visibleRoot, garminSheetOpen, garminBusy) {
+            if (garminOwner != null && (visibleRoot == "settings" || garminSheetOpen)) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    GarminPersonalSource(garminOwner, GarminCredentialVault(settingsContext),
+                        GarminPersonalClient()).status().state == "connected"
+                }
+            }
+        }
+    }
+    val groupedActivities = remember(state.activities, state.groupedActivitySummaries) {
+        state.groupedActivitySummaries ?: ActivityDisplayConsolidation.groups(state.activities)
+    }
+    val visibleActivities = remember(groupedActivities) { groupedActivities.map { it.primary } }
+    val evidenceDate = LocalDate.now()
+    val evidence = if (route == "builder/{discipline}" || visibleRoot == "activities") {
+        key(freeformOwner, state.loginGeneration) {
+            val rows by produceState<List<WorkoutEvidence>?>(
+                null, state.plans, freeformBoard, groupedActivities, state.initializing, freeformReadError
+            ) {
+                if (!state.initializing && (freeformAccess == null || freeformOwner == null ||
+                    freeformBoard != null || freeformReadError != null)
+                ) {
+                    value = withContext(Dispatchers.Default) {
+                        projectWorkoutEvidence(freeformOwner, state.plans, freeformBoard, groupedActivities, ZoneId.systemDefault())
+                    }
+                }
+            }
+            rows
+        }
+    } else null
+    // A genuinely floating dock must not participate in Scaffold's bottomBar:
+    // the overlay is positioned above the system gesture area independently
+    // of the scrolling screen. Detail/builder flows continue to hide it.
+    val showFloatingDock = route != "missed/{planId}/{sessionId}" &&
+        route != "review-move/{planId}/{sessionId}/{date}" &&
+        route != "activity/{id}" && route != "builder/{discipline}" &&
+        route != "workout/{planId}/{sessionId}" && route != blueprintWorkoutRoute &&
+        route?.startsWith("auth") != true && route?.startsWith("more/") != true &&
+        route?.startsWith("freeform/") != true
+    CompositionLocalProvider(
+        LocalProfileAction provides { nav.openTabRoot("settings") },
+        LocalFloatingDockVisible provides showFloatingDock
+    ) {
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent
+    ) { padding ->
+        // Today and Training share a true AMOLED-black canvas, including
+        // the space behind and below the floating navigation dock.
+        val pageBackground = when {
+            route == "home" || route == null -> Brush.verticalGradient(
+                listOf(TodayAdaptivePalette.bg, TodayAdaptivePalette.bg)
+            )
+            route == "training" || route == "activities" || route == "settings" || route.startsWith("more/") -> {
+                Brush.verticalGradient(listOf(Color.Black, Color.Black))
+            }
+            else -> {
+                Brush.verticalGradient(
+                    listOf(TracksidePalette.backgroundTop, TracksidePalette.backgroundBottom)
+                )
+            }
+        }
+        Box(Modifier.fillMaxSize().background(pageBackground).padding(padding).imePadding()) {
+            Column(Modifier.fillMaxSize()) {
+            // Keep the signed-out primary screens composed independently of
+            // NavHost so their remembered state survives tab switches.
+            val reducedNavMotion = remember(settingsContext) { isSystemReducedMotion(settingsContext) }
+            Box(Modifier.weight(1f)) {
+            NavHost(
+                navController = nav,
+                startDestination = "home",
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = {

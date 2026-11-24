@@ -1,6 +1,7 @@
+FILE: next-week-review-20261115.md
 SOURCE: research/engine15/experiments/next-week-review-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
 LINES: 122-122
 --------------------------------------------------
 Owner validation of the initial multiweek branch found **one failing case**: `IndependentMultiweekResponseTest.unreconciledRecoveryHistoryDefersInsteadOfRestoringLoad`. The 17 new tests reported **17 completed, 1 failed**; the complete JVM suite reported **551 completed, 1 failed**, and no successful full debug build may be inferred from that invocation. Inspection of the source identified overlapping decision rules: a planned 40 km recovery week with 45 km observed triggered generic `UNREVIEWED_OVER_COMPLETION` (over 105%) before the intended `RECOVERY_OVER_TARGET_REVIEW`. Commit `ed258afae3387b024225ffe0c1cd6380bbc1375c` checks *review of recovery intent* then *recovery-specific over-target distance* before the generic *build-week only* over-completion rule, for all supplied observed recovery weeks. It also adds **3 specific regression tests** for small and large recovery overruns, previous-week recovery overruns, and generic excessive build mileage. Current total is **17 component + 3 trajectory tests = 20 newly introduced test methods** on this stacked branch; correction has **not yet been executed** locally. The owner can fast-forward their existing validation branch to the updated remote research branch, preserving unrelated dirty working-tree files, then rerun focused and full Gradle tests.

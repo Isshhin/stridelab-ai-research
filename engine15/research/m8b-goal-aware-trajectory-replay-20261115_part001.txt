@@ -1,9 +1,10 @@
+FILE: m8b-goal-aware-trajectory-replay-20261115.md
 SOURCE: research/engine15/experiments/m8b-goal-aware-trajectory-replay-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-70
 --------------------------------------------------
-# Engine 1.5 M8b ΓÇö Goal-aware historical trajectory replay
+# Engine 1.5 M8b — Goal-aware historical trajectory replay
 
 Date: 2026-11-15. Stacked on M8a draft PR #84, research-only.
 
@@ -15,12 +16,12 @@ M8a compares only the most recent synthetic response against one constrained bas
 
 \`IndependentGoalAwareTrajectoryReplay.replay\` consumes:
 - A versioned **goal identity**: \`TRAIN_YOUR_WAY_MILEAGE\` with one explicit target weekly distance, or \`RACE_PREPARATION\` with race event/distance.
-- The existing M79 \`IndependentMultiweekResponseInput\`: 3ΓÇô8 consecutive completed-week **caller assertions**, requested M4/M6 limits, and a planning Monday.
+- The existing M79 \`IndependentMultiweekResponseInput\`: 3–8 consecutive completed-week **caller assertions**, requested M4/M6 limits, and a planning Monday.
 - An M7b plan-linked evidence ledger.
 
 For Train Your Way, the target must appear independently and agree (within 0.00001 km) with the volume request; race fields are refused. Race requests are **deferred**, not redirected into the mileage planner: the race-specific periodization engine is not qualified yet.
 
-M8b feeds each prefix of **only weeks that had already elapsed at that checkpoint** into M8a. For N observed weeks, it returns NΓêÆ1 ordered checkpoints. Each displays the comparison or exact deferral rule, requested target, whether missing evidence was encountered and the synthetic next-week distance if one was available. A deferred intermediate checkpoint is **not silently omitted** and an earlier decision is not allowed to see a later recorded week.
+M8b feeds each prefix of **only weeks that had already elapsed at that checkpoint** into M8a. For N observed weeks, it returns N−1 ordered checkpoints. Each displays the comparison or exact deferral rule, requested target, whether missing evidence was encountered and the synthetic next-week distance if one was available. A deferred intermediate checkpoint is **not silently omitted** and an earlier decision is not allowed to see a later recorded week.
 
 Accepted shadow comparisons remain **unverified** and **non-executable** even if all claimed activity links appear complete. No replayed proposal is fed back as a real completed week; every checkpoint needs input history that was independently supplied. Production \`Engine15.generate\`, Android UI, plan persistence, imports, approved plans, and previous PR #78 UI changes remain untouched.
 

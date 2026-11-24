@@ -1,13 +1,14 @@
+FILE: engine15-q1-quality-executed-findings-20261116.md
 SOURCE: research/engine15-q1-quality-executed-findings-20261116.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-68
 --------------------------------------------------
-# Engine 1.5 Q1 ΓÇö executed synthetic baseline findings
+# Engine 1.5 Q1 — executed synthetic baseline findings
 
 **Status:** Executed on user's Windows Gradle checkout on 2026-11-16. Test command: `./gradlew.bat -PstrideEngine15Active=true :app:testDebugUnitTest --tests "io.stridelab.privatealpha.Engine15Q1QualityBaselineTest" --no-daemon --rerun-tasks`. User reported `BUILD SUCCESSFUL` with 25 tasks executed. Source: `engine15-q1-results.zip` containing the three Q1-generated exports. This summary is based on inspecting those uploaded exports. Results are synthetic, not athlete-effectiveness evidence.
 
-**Scope:** 11 profiles ├ù 8 weeks = 88 weekly records; 1,006 running step rows; all 11 generated without policy rejection; 91 quality-session instances.
+**Scope:** 11 profiles × 8 weeks = 88 weekly records; 1,006 running step rows; all 11 generated without policy rejection; 91 quality-session instances.
 
 ## Executed outputs
 
@@ -25,7 +26,7 @@ LINES: 1-68
 | Synthetic threshold logs with total workout minutes but missing qualityWorkKm | 54.0 | 60.0 | 48.0 | 4.00 / 3.96 / 4.00 | 0 / 0 | 7.23 km |
 | Recent quality frequency unknown | 54.0 | 60.0 | 48.0 | 2.00 / 1.98 / 2.00 | 0 / 0 | 6.43 km |
 
-**Do not interpret work kilometers as measured work minutes.** The current v1 schema records WORK distance in meters. The exported `work_minutes_at_planning_pace_PROXY` is just distance ├ù an administrative planning pace (6:00/km for these fixture profiles), not measured threshold duration or intensity. The 30/60-minute-labeled fixtures are explicitly **distance proxies**: two 6 km / two 12 km completed WORK-distance observations respectively, not independently verified minute-based capacity.
+**Do not interpret work kilometers as measured work minutes.** The current v1 schema records WORK distance in meters. The exported `work_minutes_at_planning_pace_PROXY` is just distance × an administrative planning pace (6:00/km for these fixture profiles), not measured threshold duration or intensity. The 30/60-minute-labeled fixtures are explicitly **distance proxies**: two 6 km / two 12 km completed WORK-distance observations respectively, not independently verified minute-based capacity.
 
 ### Direct evidence of oversized cool-down
 
@@ -39,9 +40,9 @@ The three-day 80 km-target case has a **10.23 km** cool-down in its week 3 quali
 
 ### Direct evidence of nonprogression
 
-For the no-admitted-threshold-history profiles, weeks 1ΓÇô3 and 5ΓÇô7 repeat nearly identical work distances. All profiles have **zero prescribed quality** in weeks 4 and 8.
+For the no-admitted-threshold-history profiles, weeks 1–3 and 5–7 repeat nearly identical work distances. All profiles have **zero prescribed quality** in weeks 4 and 8.
 
-For synthetic repeated 6 km-work history, weekly total WORK stays **9.12 km** in weeks 1ΓÇô3. Individual session work changes significantly: week 1 is 4.56 + 4.56 km; week 2 is 5.91 + 3.21 km; week 3 is 6.00 + 3.12 km.
+For synthetic repeated 6 km-work history, weekly total WORK stays **9.12 km** in weeks 1–3. Individual session work changes significantly: week 1 is 4.56 + 4.56 km; week 2 is 5.91 + 3.21 km; week 3 is 6.00 + 3.12 km.
 
 For synthetic repeated 12 km-work history, the week 2 work split is **8.61 + 4.83 km**, while week 3 is **6.00 + 6.00 km**. This reveals uneven dose allocation between the two sessions even though the synthetic history itself is identical.
 
@@ -49,7 +50,7 @@ For synthetic repeated 12 km-work history, the week 2 work split is **8.61 + 4.8
 
 - The **minutes-only** history case generates the same week-by-week work totals as the established 60 km profile without qualifying threshold history. Existing `qualityWorkKm` evidence is therefore material; total workout minutes alone do not establish completed WORK duration.
 - The fatigued 60 km profile generates no quality in week 1, with reduced weekly mileage (45.2 km vs 54.0 km for otherwise comparable established case), then returns to two quality workouts in week 2. Review whether this is a desirable *future policy*; no safety conclusion can be drawn from these synthetic fixtures.
-- The returning 40 km profile generates no quality until week 5, then one session with approximately 1.62ΓÇô1.64 km WORK in weeks 5ΓÇô7.
+- The returning 40 km profile generates no quality until week 5, then one session with approximately 1.62–1.64 km WORK in weeks 5–7.
 - Unknown reported quality frequency yields one quality session per normal week despite requesting two, consistent with the conservative unknown-history policy.
 
 ## Root causes: inspected source, NOT individually instrumented binding-constraint traces

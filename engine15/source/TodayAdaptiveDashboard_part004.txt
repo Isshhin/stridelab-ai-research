@@ -1,0 +1,284 @@
+FILE: TodayAdaptiveDashboard.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 4
+LINES: 1312-1589
+--------------------------------------------------
+        }
+    }
+}
+
+@Composable
+private fun TodayDisciplineGlyphBadge(
+    discipline: TodayDiscipline?,
+    accent: Color
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .background(accent.copy(alpha = 0.16f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(18.dp)) {
+            val w = size.width
+            val h = size.height
+            val stroke = Stroke(
+                width = 1.8.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+            when (discipline) {
+                TodayDiscipline.RUNNING, null -> {
+                    val shoe = Path().apply {
+                        moveTo(w * 0.15f, h * 0.68f)
+                        lineTo(w * 0.85f, h * 0.68f)
+                        lineTo(w * 0.78f, h * 0.48f)
+                        lineTo(w * 0.50f, h * 0.44f)
+                        lineTo(w * 0.36f, h * 0.24f)
+                        lineTo(w * 0.18f, h * 0.40f)
+                        close()
+                    }
+                    drawPath(shoe, color = accent, style = stroke)
+                }
+                TodayDiscipline.STRENGTH -> {
+                    drawLine(accent, Offset(w * 0.25f, h * 0.50f), Offset(w * 0.75f, h * 0.50f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawRoundRect(accent, Offset(w * 0.12f, h * 0.28f), Size(w * 0.14f, h * 0.44f), CornerRadius(2.dp.toPx()))
+                    drawRoundRect(accent, Offset(w * 0.74f, h * 0.28f), Size(w * 0.14f, h * 0.44f), CornerRadius(2.dp.toPx()))
+                }
+                TodayDiscipline.CALISTHENICS -> {
+                    drawCircle(accent, radius = w * 0.12f, center = Offset(w * 0.50f, h * 0.24f))
+                    drawLine(accent, Offset(w * 0.18f, h * 0.44f), Offset(w * 0.82f, h * 0.44f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(accent, Offset(w * 0.50f, h * 0.40f), Offset(w * 0.50f, h * 0.72f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(accent, Offset(w * 0.50f, h * 0.72f), Offset(w * 0.32f, h * 0.90f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(accent, Offset(w * 0.50f, h * 0.72f), Offset(w * 0.68f, h * 0.90f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                }
+                TodayDiscipline.CONDITIONING -> {
+                    val bolt = Path().apply {
+                        moveTo(w * 0.56f, h * 0.12f)
+                        lineTo(w * 0.26f, h * 0.54f)
+                        lineTo(w * 0.52f, h * 0.54f)
+                        lineTo(w * 0.44f, h * 0.88f)
+                        lineTo(w * 0.76f, h * 0.44f)
+                        lineTo(w * 0.50f, h * 0.44f)
+                        close()
+                    }
+                    drawPath(bolt, color = accent, style = stroke)
+                }
+            }
+        }
+    }
+}
+
+private fun previewSampleRoute(): ActivityDetail {
+    val samples = listOf(
+        ActivitySample(0, 0.0, null, 138.0, null, 40.7640, -73.9730),
+        ActivitySample(1, 60.0, null, 142.0, null, 40.7670, -73.9700),
+        ActivitySample(2, 120.0, null, 145.0, null, 40.7705, -73.9685),
+        ActivitySample(3, 180.0, null, 146.0, null, 40.7712, -73.9738),
+        ActivitySample(4, 240.0, null, 144.0, null, 40.7662, -73.9752),
+        ActivitySample(5, 300.0, null, 143.0, null, 40.7642, -73.9731)
+    )
+    return ActivityDetail(
+        activityId = "run-1",
+        samples = samples,
+        laps = emptyList(),
+        fetchedAt = 0L
+    )
+}
+
+@Composable
+private fun PreviewTodayHarness(
+    selectedDate: LocalDate,
+    todayDate: LocalDate,
+    dailyState: TodayDailyTrainingState,
+    overview: TodayTrainingOverview,
+    recentRows: List<TodayRecentRow>,
+    details: Map<String, ActivityDetail> = emptyMap()
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TodayAdaptivePalette.bg)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        TodayDateContextHeader(selectedDate, todayDate, {})
+        TodayDailyTrainingCard(
+            selectedDate = selectedDate,
+            todayDate = todayDate,
+            dailyState = dailyState,
+            cachedDetails = details,
+            onOpenWorkout = { _, _ -> },
+            onOpenActivityDetail = {},
+            onOpenTraining = {}
+        )
+        TodayTrainingOverviewCard(overview = overview)
+        TodayRecentActivitiesSection(
+            rows = recentRows,
+            cachedDetails = details,
+            onSeeAll = {},
+            onOpenActivityDetail = {},
+            onOpenWorkout = { _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayPlannedEasyRunPreview() {
+    val date = LocalDate.of(2026, 11, 16)
+    val session = PlannedSession(
+        id = "s-mon", date = date, discipline = "run", title = "Easy Aerobic Run",
+        minutes = 70, distanceKm = 10.0, kind = "easy", quality = false
+    )
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = date,
+        dailyState = TodayDailyTrainingState.Sessions(
+            listOf(TodayDailySessionItem.Planned("p1", session, TodayDiscipline.RUNNING, false, null, false)),
+            hasActivePlan = true
+        ),
+        overview = TodayTrainingOverview(
+            runKm = 57.6,
+            runSeconds = 22200.0,
+            runCount = 6,
+            nonRunningChips = listOf(
+                TodayDisciplineChip(TodayDiscipline.STRENGTH, 2),
+                TodayDisciplineChip(TodayDiscipline.CALISTHENICS, 1),
+                TodayDisciplineChip(TodayDiscipline.CONDITIONING, 1)
+            ),
+            adherence = TodayWeeklyAdherence(5, 6, 57.6, 70.0, 5f / 6f)
+        ),
+        recentRows = listOf(
+            TodayRecentRow("1", TodayDiscipline.RUNNING, "Running", "16.69 km", "1:51:47 • 6:42 /km • 144 bpm", "run-1", null, null, Instant.now(), true),
+            TodayRecentRow("2", TodayDiscipline.STRENGTH, "Strength", "Lower Body", "45 min • Quads & Glutes", "str-1", null, null, Instant.now().minusSeconds(3600), false),
+            TodayRecentRow("3", TodayDiscipline.CALISTHENICS, "Calisthenics", "Push & Core", "30 min • 180 reps", "cal-1", null, null, Instant.now().minusSeconds(7200), false)
+        ),
+        details = mapOf("run-1" to previewSampleRoute())
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayPlannedStructuredPreview() {
+    val date = LocalDate.of(2026, 11, 18)
+    val session = PlannedSession(
+        id = "s-wed", date = date, discipline = "run", title = "Threshold Intervals",
+        minutes = 62, distanceKm = 12.0, kind = "tempo", quality = true
+    )
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = date,
+        dailyState = TodayDailyTrainingState.Sessions(
+            listOf(TodayDailySessionItem.Planned("p1", session, TodayDiscipline.RUNNING, false, null, true)),
+            hasActivePlan = true
+        ),
+        overview = TodayTrainingOverview(
+            runKm = 24.0,
+            runSeconds = 7800.0,
+            runCount = 2,
+            nonRunningChips = emptyList(),
+            adherence = TodayWeeklyAdherence(2, 5, 24.0, 62.0, 0.4f)
+        ),
+        recentRows = emptyList()
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayCompletedPreview() {
+    val date = LocalDate.of(2026, 11, 16)
+    val linked = ActivityRecord(
+        id = "run-1", title = "Morning Aerobic", type = "running", source = "garmin",
+        startedAt = Instant.now(), distanceM = 10120.0, durationS = 3300.0,
+        movingTimeS = 3280.0, recordedPace = 324.0, averageHr = 142.0, elevationM = 45.0
+    )
+    val session = PlannedSession(
+        id = "s-mon", date = date, discipline = "run", title = "Easy Aerobic Run",
+        minutes = 55, distanceKm = 10.0, kind = "easy", quality = false,
+        status = "completed", linkedActivityId = "run-1"
+    )
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = date,
+        dailyState = TodayDailyTrainingState.Sessions(
+            listOf(TodayDailySessionItem.Planned("p1", session, TodayDiscipline.RUNNING, true, linked, false)),
+            hasActivePlan = true
+        ),
+        overview = TodayTrainingOverview(10.1, 3280.0, 1, emptyList(), TodayWeeklyAdherence(1, 5, 10.1, 56.0, 0.2f)),
+        recentRows = listOf(
+            TodayRecentRow("1", TodayDiscipline.RUNNING, "Running", "10.12 km", "54:40 • 5:24 /km • 142 bpm", "run-1", null, null, Instant.now(), true)
+        ),
+        details = mapOf("run-1" to previewSampleRoute())
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayPastDateMultisportPreview() {
+    val date = LocalDate.of(2026, 11, 16)
+    val today = LocalDate.of(2026, 11, 19)
+    val run = PlannedSession("s1", date, "run", "Easy Run", 45, 8.0, "easy", false)
+    val str = PlannedSession("s2", date, "str", "Lower Body Strength", 45, null, "strength", true, status = "completed")
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = today,
+        dailyState = TodayDailyTrainingState.Sessions(
+            listOf(
+                TodayDailySessionItem.Planned("p1", run, TodayDiscipline.RUNNING, false, null, false),
+                TodayDailySessionItem.Planned("p1", str, TodayDiscipline.STRENGTH, true, null, false)
+            ),
+            hasActivePlan = true
+        ),
+        overview = TodayTrainingOverview(18.0, 6120.0, 2, listOf(TodayDisciplineChip(TodayDiscipline.STRENGTH, 1)), TodayWeeklyAdherence(3, 6, 18.0, 50.0, 0.5f)),
+        recentRows = emptyList()
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayNoPlanCompanionPreview() {
+    val date = LocalDate.of(2026, 11, 16)
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = date,
+        dailyState = TodayDailyTrainingState.NoPlanCompanion,
+        overview = TodayTrainingOverview(
+            runKm = 14.2,
+            runSeconds = 4920.0,
+            runCount = 2,
+            nonRunningChips = listOf(TodayDisciplineChip(TodayDiscipline.STRENGTH, 2)),
+            adherence = null
+        ),
+        recentRows = listOf(
+            TodayRecentRow("str-1", TodayDiscipline.STRENGTH, "Strength", "Upper Body", "40 min", "str-1", null, null, Instant.now(), false)
+        )
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, backgroundColor = 0xFF0B0D0F)
+@Composable
+private fun TodayRunningOnlyPreview() {
+    val date = LocalDate.of(2026, 11, 16)
+    val session = PlannedSession("s1", date, "run", "Steady Aerobic", 60, 10.5, "easy", false)
+    PreviewTodayHarness(
+        selectedDate = date,
+        todayDate = date,
+        dailyState = TodayDailyTrainingState.Sessions(
+            listOf(TodayDailySessionItem.Planned("p1", session, TodayDiscipline.RUNNING, false, null, false)),
+            hasActivePlan = true
+        ),
+        overview = TodayTrainingOverview(
+            runKm = 31.4,
+            runSeconds = 11400.0,
+            runCount = 3,
+            nonRunningChips = emptyList(),
+            adherence = TodayWeeklyAdherence(3, 4, 31.4, 42.0, 0.75f)
+        ),
+        recentRows = listOf(
+            TodayRecentRow("1", TodayDiscipline.RUNNING, "Running", "10.50 km", "58:12 • 5:32 /km • 146 bpm", "run-1", null, null, Instant.now(), true)
+        ),
+        details = mapOf("run-1" to previewSampleRoute())
+    )
+}

@@ -1,7 +1,8 @@
+FILE: Engine15StaticMultiDisciplinePlanner.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-254
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-262
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -104,7 +105,7 @@ internal object Engine15StaticMultiDisciplinePlanner {
                 add("Independent Engine 1.5 static multi-discipline plan. Every requested session was constructed by its Engine 1.5 discipline composer; no legacy generator or coaching validator was used.")
                 add("The calendar preserves selected long-run days, explicit weekday assignments and session locks, preferring optimal recovery spacing and adapting automatically when disciplines share a day.")
                 if (stackedDays > 0) {
-                    add("Adapted $stackedDays stacked multi-discipline day(s) to honor your chosen schedule. Separate paired sessions by 4ΓÇô6 hours (AM/PM) where possible and prioritize running first.")
+                    add("Adapted $stackedDays stacked multi-discipline day(s) to honor your chosen schedule. Separate paired sessions by 4–6 hours (AM/PM) where possible and prioritize running first.")
                 }
                 add("This is a static review draft. It does not adapt training load from completed or missed sessions. Review all sessions before explicit approval.")
             },
@@ -257,3 +258,11 @@ internal object Engine15StaticMultiDisciplinePlanner {
                                 if (request.timeBudgetEnabled && candidate.effectiveMinutes > request.dailyMinutes) continue
                                 if ((placed + weekPlaced).any { it.date != date && Engine15IndependentPlanGenerator.conflict(candidate, it) }) continue
                             }
+                            2 -> {
+                                if (sameDay.size >= 2) continue
+                                if (sameDay.any { !isComplementaryPair(candidate, it) }) continue
+                                if (request.timeBudgetEnabled && sameDay.sumOf { it.effectiveMinutes } + candidate.effectiveMinutes > request.dailyMinutes) continue
+                                if ((placed + weekPlaced).any { it.date != date && Engine15IndependentPlanGenerator.conflict(candidate, it) }) continue
+                            }
+                            else -> {
+                                if (sameDay.size >= 2) continue

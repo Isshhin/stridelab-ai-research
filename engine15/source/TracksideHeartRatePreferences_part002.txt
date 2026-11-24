@@ -1,0 +1,38 @@
+FILE: TracksideHeartRatePreferences.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideHeartRatePreferences.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 351-382
+--------------------------------------------------
+                    if (saved.maximumHr != null || saved.lactateThresholdHr != null ||
+                        saved.restingHr != null
+                    ) {
+                        TextButton(
+                            onClick = {
+                                preferences.clear(account)
+                                saved = preferences.settings(account)
+                            },
+                            modifier = Modifier.testTag("athlete-max-hr-clear")
+                        ) {
+                            Text("Clear", color = moreMuted)
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            preferences.save(account, candidate)
+                            saved = candidate
+                        },
+                        enabled = valid && candidate != saved,
+                        modifier = Modifier.testTag("athlete-max-hr-save"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = moreLime,
+                            contentColor = moreBlack
+                        )
+                    ) {
+                        Text("Save", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}

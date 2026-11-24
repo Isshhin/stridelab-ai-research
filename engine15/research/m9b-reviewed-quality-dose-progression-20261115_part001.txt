@@ -1,9 +1,10 @@
+FILE: m9b-reviewed-quality-dose-progression-20261115.md
 SOURCE: research/engine15/experiments/m9b-reviewed-quality-dose-progression-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-75
 --------------------------------------------------
-# Engine 1.5 M9b ΓÇö Reviewed next-week quality-dose progression
+# Engine 1.5 M9b — Reviewed next-week quality-dose progression
 
 Date: 2026-11-15. Research-only, stacked on M9a. No Android activation or plan mutation.
 
@@ -37,7 +38,7 @@ Each requested candidate retains the originally allocated EASY run distance; the
 - M6a: six days running, Saturday long, Monday daily ceiling 5 km; 60 km week one, valid longitudinal mileage allocation.
 - M6b: one candidate quality day on Tuesday.
 - Two distinct threshold claims, 12 minutes each, reportedly tolerated and with caller-asserted source identities.
-- M9b: no explicit dose increment ΓåÆ repeat 12-minute WORK preview; an externally reviewed +2-minute step within a separate +3-minute maximum ΓåÆ 14-minute WORK candidate *if M2 can select a compatible structure*. Both are only research previews.
+- M9b: no explicit dose increment → repeat 12-minute WORK preview; an externally reviewed +2-minute step within a separate +3-minute maximum → 14-minute WORK candidate *if M2 can select a compatible structure*. Both are only research previews.
 - Two candidate quality days must each meet its family-specific exposure/session cap and the *combined* external weekly quality work-dose ceiling. Inconsistent or unavailable evidence holds the whole proposal.
 
 ## Files and testing

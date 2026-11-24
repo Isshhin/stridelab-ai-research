@@ -1,0 +1,276 @@
+FILE: NativeMainActivity.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 4
+LINES: 332-601
+--------------------------------------------------
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    if (reducedNavMotion || isTabRootSwitch(from, to)) EnterTransition.None
+                    else slideInHorizontally(tween(260, easing = FastOutSlowInEasing)) { it / 6 } +
+                        fadeIn(tween(200))
+                },
+                exitTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    if (reducedNavMotion || isTabRootSwitch(from, to)) ExitTransition.None
+                    else scaleOut(targetScale = 0.96f, animationSpec = tween(260)) +
+                        fadeOut(tween(180))
+                },
+                popEnterTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    if (reducedNavMotion || (from in mainTabRoutes && to in mainTabRoutes)) EnterTransition.None
+                    else scaleIn(initialScale = 0.96f, animationSpec = tween(240)) +
+                        fadeIn(tween(200))
+                },
+                popExitTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    if (reducedNavMotion || (from in mainTabRoutes && to in mainTabRoutes)) ExitTransition.None
+                    else slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { it / 5 } +
+                        fadeOut(tween(170))
+                }
+            ) {
+                composable("home") { /* Root content is retained below NavHost. */ }
+                composable("activities") { /* Retained tab surface. */ }
+                composable("activity/{id}") { detail ->
+                    val activity = state.activities.firstOrNull {
+                        it.id == detail.arguments?.getString("id") &&
+                            ActiveActivitySources.accepts(it.source)
+                    }
+                    // Only enabled sources can open an active detail route.
+                    val matchedGroup = groupedActivities.firstOrNull { it.primary.id == activity?.id }
+                    val detailSource = matchedGroup?.detailedSource ?: activity
+                    val context=LocalContext.current
+                    val garminOwner = if(activity?.id?.let { it in state.localGarminIds } == true)
+                        state.localGarminOwner else state.account
+                    val garminSource=remember(garminOwner,context) {
+                        garminOwner?.let { owner ->
+                            GarminPersonalSource(owner,GarminCredentialVault(context.applicationContext),
+                                GarminPersonalClient())
+                        }
+                    }
+                    val garminId=activity?.takeIf { it.source=="garmin" }?.id
+                    val onLoadGarminGps:(()->Unit)?=actions.loadGarminGps?.let { load ->
+                        if(garminId!=null && garminSource!=null) ({ load(garminId,garminSource) })
+                        else null
+                    }
+                    var automaticDetailAttempted by rememberSaveable(detailSource?.id) { mutableStateOf(false) }
+                    var localRecordingChecked by remember(detailSource?.id) { mutableStateOf(false) }
+                    LaunchedEffect(detailSource?.id, state.account) {
+                        if(detailSource != null &&
+                            (state.account != null || detailSource.id in state.localGarminIds) &&
+                            detailSource.id !in state.details) {
+                            actions.loadCachedDetail?.invoke(detailSource.id)
+                        }
+                        localRecordingChecked=true
+                    }
+                    var activityTab by rememberSaveable(activity?.id) { mutableIntStateOf(0) }
+                    var matteStyle by rememberSaveable(activity?.id) { mutableStateOf(false) }
+                    LaunchedEffect(detailSource?.id, online, state.busy, state.needsSignIn, localRecordingChecked, state.details) {
+                        // Load real supplementary Intervals.icu streams when
+                        // Garmin is the canonical summary. Never use the Garmin
+                        // local summary ID as a remote stream endpoint.
+                        if (localRecordingChecked && !automaticDetailAttempted && detailSource != null &&
+                            detailSource.supportsPace &&
+                            online && !state.busy &&
+                            !state.details.containsKey(detailSource.id)) {
+                            if(detailSource.source!="garmin") {
+                                if(state.account != null && !state.needsSignIn) {
+                                    automaticDetailAttempted=true
+                                    actions.loadDetail(detailSource.id)
+                                }
+                            } else if(onLoadGarminGps!=null) {
+                                automaticDetailAttempted=true
+                                onLoadGarminGps()
+                            }
+                        }
+                    }
+                    if (activity == null) {
+                        Screen("Activity unavailable", "RECORDED ACTIVITY", compactTitle = true) {
+                            item { TextButton(onClick = { nav.popBackStack() }) {
+                                Text("Back to history")
+                            } }
+                            item { EmptyState("No activity available",
+                                "This record is not in the current account's saved cache.") }
+                        }
+                    } else {
+                        TracksideActivityDetailSurface(
+                            activity = activity,
+                            recorded = detailSource?.let { state.details[it.id] },
+                            detailSource = detailSource ?: activity,
+                            matchedSourceIds = matchedGroup?.let { group ->
+                                (listOf(group.primary) + group.additionalSources).map { it.id }.toSet()
+                            } ?: setOf(activity.id),
+                            history = visibleActivities,
+                            state = state,
+                            actions = actions,
+                            online = online,
+                            selectedTab = activityTab,
+                            onTab = { activityTab = it },
+                            matte = matteStyle,
+                            onToggleMatte = { matteStyle = !matteStyle },
+                            onBack = { nav.popBackStack() },
+                            onLoadGarminGps = onLoadGarminGps
+                        )
+                    }
+                }
+                composable("training") { /* Retained tab surface. */ }
+                composable("freeform/add") {
+                    if (freeformOwner != null && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration) {
+                            FreeformHub(
+                                owner = freeformOwner, board = freeformBoard, readError = freeformReadError,
+                                access = freeformAccess, back = { nav.popBackStack() }, retry = { freeformReload++ },
+                                update = { freeformBoard = (freeformBoard ?: FreeformBoard()).updated(it) },
+                                removeDraft = { id -> freeformBoard = freeformBoard?.without(id) },
+                                restored = { freeformBoard = it },
+                                openTemplates = { nav.navigate("freeform/templates") },
+                                startEmpty = { discipline ->
+                                    nav.navigate("freeform/new/${discipline.name}") { launchSingleTop = true }
+                                },
+                                openDraft = { id ->
+                                    nav.navigate("freeform/edit/${android.net.Uri.encode(id)}") { launchSingleTop = true }
+                                }
+                            )
+                        }
+                    } else {
+                        FreeformHistoryDetail(null, null, state.initializing) { nav.popBackStack() }
+                    }
+                }
+                composable("freeform/templates") {
+                    if (freeformOwner != null && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration) {
+                            WorkoutTemplateLibrary(
+                                freeformOwner, freeformBoard?.templates.orEmpty(), freeformAccess,
+                                back = { nav.popBackStack() },
+                                create = { nav.navigate("freeform/template/new/${it.name}") },
+                                edit = { nav.navigate("freeform/template/edit/${android.net.Uri.encode(it)}") },
+                                schedule = { nav.navigate("freeform/schedule/template/${android.net.Uri.encode(it)}") },
+                                added = { template ->
+                                    freeformBoard = freeformBoard?.withTemplate(template)
+                                },
+                                deleted = { id ->
+                                    freeformBoard = freeformBoard?.let { board ->
+                                        board.copy(templates = board.templates.filterNot { it.id == id })
+                                    }
+                                },
+                                started = { draft ->
+                                    freeformBoard = (freeformBoard ?: FreeformBoard()).updated(draft)
+                                    nav.navigate("freeform/edit/${android.net.Uri.encode(draft.id)}")
+                                }
+                            )
+                        }
+                    }
+                }
+                composable("freeform/template/{mode}/{value}") { destination ->
+                    val mode = destination.arguments?.getString("mode")
+                    val value = destination.arguments?.getString("value")
+                    val board = freeformBoard
+                    if (freeformOwner != null && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration, mode, value) {
+                            val previous = if (mode == "edit") board?.templates?.firstOrNull { it.id == value } else null
+                            val seed = when (mode) {
+                                "new" -> remember(value) {
+                                    ManualDiscipline.entries.firstOrNull { it.name == value }?.let {
+                                        ManualWorkoutTemplate.empty(freeformOwner, it)
+                                    }
+                                }
+                                "edit" -> previous
+                                "from" -> {
+                                    val workout = board?.workouts?.firstOrNull { it.id == value && it.isComplete }
+                                    remember(workout) { workout?.let(ManualWorkoutTemplate::fromWorkout) }
+                                }
+                                else -> null
+                            }
+                            if (seed != null) {
+                                WorkoutTemplateEditor(seed, previous, freeformAccess, back = { nav.popBackStack() }) { template ->
+                                    freeformBoard = freeformBoard?.withTemplate(template)
+                                    if (mode == "from") nav.navigate("freeform/templates") {
+                                        popUpTo("freeform/template/{mode}/{value}") { inclusive = true }
+                                    } else nav.popBackStack()
+                                }
+                            } else {
+                                FreeformHistoryDetail(null, null, board == null && freeformReadError == null) {
+                                    nav.popBackStack()
+                                }
+                            }
+                        }
+                    }
+                }
+                composable("freeform/schedule/{origin}/{id}") { destination ->
+                    val id = destination.arguments?.getString("id")
+                    val fromHistory = destination.arguments?.getString("origin") == "history"
+                    val board = freeformBoard
+                    if (freeformOwner != null && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration, fromHistory, id) {
+                            val template = if (fromHistory) {
+                                val workout = board?.workouts?.firstOrNull { it.id == id && it.isComplete }
+                                remember(workout) {
+                                    workout?.let {
+                                        val copy = ManualWorkoutTemplate.fromWorkout(it)
+                                        if (it.templateId != null) copy.copy(id = it.templateId) else copy
+                                    }
+                                }
+                            } else board?.templates?.firstOrNull { it.id == id }
+                            if (template != null) {
+                                val initial = remember(template.id, fromHistory) {
+                                    ScheduleRule(LocalDate.now().plusDays(if (fromHistory) 1 else 0))
+                                }
+                                ScheduleRuleScreen(
+                                    if (fromHistory) "Repeat workout" else "Schedule workout", template, initial,
+                                    allowRepeat = true, advisory = { plannerNote(template.discipline, it) },
+                                    back = { nav.popBackStack() },
+                                    persist = { rule ->
+                                        val schedule = CustomSchedule.create(template, rule, System.currentTimeMillis())
+                                        freeformAccess.saveSchedule(schedule)
+                                        freeformBoard = freeformBoard?.withSchedule(schedule)
+                                    }, saved = ::openTrainingDate
+                                )
+                            } else {
+                                FreeformHistoryDetail(null, null, board == null && freeformReadError == null) {
+                                    nav.popBackStack()
+                                }
+                            }
+                        }
+                    }
+                }
+                composable("freeform/custom/{series}/{anchor}") { destination ->
+                    val series = destination.arguments?.getString("series")
+                    val anchor = destination.arguments?.getString("anchor")?.let {
+                        runCatching { LocalDate.parse(it) }.getOrNull()
+                    }
+                    if (series != null && anchor != null && freeformOwner != null && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration, series, anchor) {
+                            val key = CustomOccurrenceKey(series, anchor)
+                            val schedule = freeformBoard?.schedules?.firstOrNull { it.id == series && it.owner == freeformOwner }
+                            val linked = freeformBoard?.workouts?.firstOrNull { it.custom?.key == key && it.owner == freeformOwner }
+                            val occurrence = schedule?.resolve(key)
+                            val item = if (linked != null && !linked.isComplete) {
+                                CustomCalendarItem(key, requireNotNull(linked.custom).date, linked.title, linked.discipline, true)
+                            } else if (linked == null && occurrence != null) {
+                                CustomCalendarItem(key, occurrence.date, occurrence.template.name, occurrence.template.discipline)
+                            } else null
+                            if (item != null) {
+                                CustomOccurrenceScreen(
+                                    freeformOwner, item, schedule, freeformAccess,
+                                    advisory = { plannerNote(item.discipline, it, key) },
+                                    back = { nav.popBackStack() },
+                                    returnToDate = ::openTrainingDate,
+                                    changed = { freeformBoard = freeformBoard?.withSchedule(it) },
+                                    openWorkout = { workout ->
+                                        freeformBoard = freeformBoard?.updated(workout)
+                                        if (workout.isComplete) openFreeformHistory(workout.id, false)
+                                        else nav.navigate("freeform/edit/${android.net.Uri.encode(workout.id)}") { launchSingleTop = true }
+                                    }
+                                )
+                            } else {
+                                FreeformHistoryDetail(linked?.takeIf { it.isComplete }, null,
+                                    freeformBoard == null && freeformReadError == null) { nav.popBackStack() }
+                            }
+                        }
+                    }
+                }
+                composable("freeform/new/{discipline}") { destination ->
+                    val disciplineName = destination.arguments?.getString("discipline")

@@ -1,0 +1,102 @@
+FILE: engine15-manual-remediation-roadmap-20261105.md
+SOURCE: docs/qa/engine15-manual-remediation-roadmap-20261105.md
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 3
+LINES: 69-164
+--------------------------------------------------
+| E17 | Global error banner across Running Goal and Week Preview | The identical validation error stays visible at the top when navigating from Week Preview back to Race & Performance and forward again. `NativeMainActivity.kt` renders `state.message` across all routes until another repository operation clears it; ordinary navigation and selecting another goal do not dismiss it. Thus stale banner is **not reliable evidence of a new generation failure**. Require contextual/dismissible, non-sticky error feedback and a clear indication of new attempt result. | **User-observed cross-route sticky banner; global state implementation confirmed** | 1A (diagnostic), 11 (UI error lifecycle) |
+| E18 | Activity / Today historical duplicate source entries | Intervals.icu is retired from active Android. The cross-provider grouping logic and supplemental recorded-detail selection were removed; Garmin alone is visible and counted, while prior Intervals rows are retained in SQLite. | Source implemented and regression tests updated; device/offline acceptance pending. | 1 |
+| E19 | Activity Detail → GPS / Map | The decorative street-grid/illustrative route has been replaced in source with **MapLibre + OpenFreeMap OSM-derived geographic tiles** when actual recorded coordinates are present; GPS MultiLineString preserves gaps and a blank-background coordinate trace is used offline. Garmin summary-only imports still have no GPS and deliberately show no fake route. | **SOURCE IMPLEMENTED; four new unit tests, Android compilation and emulator street-map acceptance NOT RUN.** See [E19 handoff](activity-e19-real-map-implementation-20261105.md). | 2 (real map), 3 (Garmin GPS) |
+
+### Plan generation validation blocker (`E16`)
+
+- **Observed:** Week Preview displays six requested running sessions and seven available days, but pressing Generate my plan yields `Choose supported goals for each discipline.` No successful new draft was shown.
+- **Confirmed reproducible code path:** In `PlanBuilder.kt`, guided `runningRoute="fitness"` chooses `"General fitness"` and stores it as a `"run"` discipline goal. `Engine1Engines.goals["run"]` does not contain this value. `CoordinatedEngine1.generate` and `Engine15.validate` reject invalid discipline goals with the exact reported message. Do not claim that this was definitely the user's choice without capturing it.
+- **Additional 5K evidence (2026-11-05):** User shows `Beat my personal best` with 5K selected and a subsequent Week Preview still carrying the message. `PlanBuilder.kt` maps race 5K `onContinue` to `"Improve 5K"`, which **is** supported. Therefore the consistency-route mapping is **a real separate code bug but an insufficient explanation for the reported 5K attempt**. Do not mark E16 diagnosed solely from that mapping.
+- **Possible additional causes, unverified:** A stale hidden `disciplineGoals` key inherited from an existing plan or previous selections (the engine checks **every** map entry, including inactive disciplines); or a global `state.message` left over from the previous failed attempt. The banner appears on both Race Goal and Week Preview because `NativeMainActivity.kt` always renders it and it is reset only when a new repository operation starts. Screenshot alone cannot establish a new post-5K generation call or its result.
+- **Diagnostic acceptance:** Use synthetic/fixture PlanRequests, log only the `goal`, active-discipline flags and sanitized `disciplineGoals` at validation (never secrets, emails, precise activity information). Reproduce valid 5K-only with fresh request; repeat 5K after prior fitness failure, returning Back, inherited old plan, and stray inactive goal entries. Assert errors are actionable, correctly scoped to the attempt and do not persist through unrelated screens. Confirm actual generated draft or actual failure event, not only banner state.
+- **Required correction:** Establish a single source of truth for offered running goals and supported engine-policy goals; make the consistency/general-fitness route valid if explicitly intended, or provide an honest supported alternative rather than a silent replacement. Detect incompatible goals *before* final Generate and identify which one is incompatible.
+- **Acceptance:** Exercise all offered running goal routes and mixed-discipline combinations on default Engine 1.5 plus explicitly selected Engine 1.0 fallback. Show saved draft with actual sessions after a valid request; assert invalid requests fail early with specific actionable feedback, no partial plan storage.
+- **Only documentation authorized in this pass.** Do not change code, tests or UI yet.
+
+### Product-design removal and step-order acceptance (`E14`, `E15`)
+
+- **E14: Remove the triple-dot appearance switch** in the Recorded Activity top-right corner. Leave the default glass appearance, map, sheet, tabs, navigation and recorded data untouched. No user-facing switch to an alternate matte design. No automatic visual mode changes. Only documentation is authorized now; do not remove the source or run a build yet.
+- **E15: Reorder the exact screen from the user's most recent builder screenshot** so that it appears in the earlier Plan Builder flow **immediately before Week Preview**. Before implementation, identify the screen accurately from the supplied screenshot and reconcile its routing with approved Figma/requirements; the current screenshot's title is not available in this text-based handoff. Retain every completed user selection, correct Back/Continue and persisted drafts. Do not guess or silently move a different step.
+- **Hold:** Both are DOCUMENTED-ONLY requests. App/source, tests, CI, and existing Figma content are not authorized for modification by this logging update.
+
+### Geographic map implementation checkpoint — 2026-11-05
+
+MapLibre Native Android + OpenFreeMap map style, georeferenced GPS MultiLineString overlay, original-geometry fallback, and four JUnit data-contract tests are now committed. The map hero no longer uses decorative city grid or fictional route. **E19 is NOT closed:** no Gradle compile/test, device map viewport/touch/overlap verification or actual online provider tile load result has been received. See [E19 implementation handoff](activity-e19-real-map-implementation-20261105.md). E12 sheet-height/E14 appearance-toggle remain separate.
+
+### Real geographic map acceptance (`E19`)
+
+- Existing Activity Detail draws a route schematic over a decorative Figma background. This is not georeferenced OpenStreetMap map rendering and must not be labeled as such.
+- When actual latitude/longitude GPS samples exist (e.g., from recorded Intervals.icu detail streams), show an accurate street basemap centered/fit to those coordinates with the real route overlaid. Preserve missing track segments (gaps >120 seconds, dateline crossings) rather than inventing straight connectors. Fit bounds, avoid clipping and support basic map pan/zoom if appropriate.
+- Select a maintained Android mapping integration, not the archived osmdroid library unless separately justified. Tile service must permit the intended usage, supply clear `© OpenStreetMap contributors` attribution and comply with applicable licensing, HTTP User-Agent and caching policy. Official OSM standard raster tiles forbid offline prefetch/bulk downloads: https://operations.osmfoundation.org/policies/tiles/. No secrets, GPS source data or user history may be sent to unrelated third parties as part of an invented fallback.
+- On offline or tile errors, preserve the **true coordinate-based route without street tiles**; do not display a fake geographic map. For Garmin summary-only imports, state clearly **no recorded GPS track available**. Garmin detailed GPS/FIT import is separate.
+- Test source GPS, non-GPS, sparse/invalid samples, weak/offline network, old cache, multiple scale/density profiles, and attribution readability. **No OSM SDK/dependency or tile code has been implemented during this report.**
+
+### Cross-provider logical activity grouping acceptance (`E18`)
+
+**User-selected precedence (2026-11-05):** For one confidently matched run, Garmin is the canonical **visible summary/metric source**, not Intervals.icu. Intervals.icu is retained as a labeled secondary provider for actual GPS/routes/charts and existing manually linked planned workouts. GPS from Intervals.icu must never be mislabeled as Garmin GPS. Unknown or unavailable Garmin metrics must not be invented. Garmin-only and Intervals-only records keep their own source identity. Source change committed; device acceptance pending.
+
+
+- Preserve both immutable Garmin and Intervals.icu records, upstream IDs, detailed streams, account isolation and sync behavior; do not delete, overwrite, silently link plans or cross-provider merge in storage.
+- Two representations of the same run may be shown as **one Activity/Today card with two source labels** only when a uniquely paired Garmin/Intervals.icu run matches within 60 seconds start time, max(30 seconds, 1%) elapsed duration and max(30 m, 0.5%) distance. Same-provider, ambiguous, missing-metric, or physically distinct runs stay separate.
+- Validate weekly `DashboardSummary` and 28-day `historyWeeklyKm` counts use one logical activity; richer Intervals.icu detail remains accessible. Unit tests and exact-head emulator acceptance **pending**.
+
+### Activity Detail sheet and chart visual acceptance (`E12`, `E13`)
+
+- **E12:** Activity Detail starts with visible map behind the partly expanded sheet. Upward drag must expand to the **safe upper edge**, respecting status bar/camera cutout and not leaving a fixed ~96dp empty strip. After expansion, further vertical gestures scroll actual content while the sheet remains expanded. Downward drag collapses it, and Back collapses before leaving Activity Detail.
+- **E12 test boundary:** Do not replace the overlapping map/independently scrolling sheet with a single scrolling screen. Verify accessibility expand/collapse semantics, genuine drag and content scroll on compact and standard emulator profiles.
+- **E13:** Charts tab for recorded pace/heart-rate/elevation streams uses distinguishable dark panels/cards with legible graph strokes, grid/axis context, selection markers and labels with accessible contrast; maintain Figma-approved overall palette/pattern.
+- **E13 data safety:** Draw only actual source samples and observed gaps; do not interpolate over missing values, invent GPS/HR/training-effect measurements or describe missing stream data as a rendered chart. Check cases with full data, sparse data and no usable stream.
+- Capture before/after screenshots under matching emulator display/font settings and run focused UI tests before marking either finding resolved.
+
+### Current Ability / provider-data acceptance (`E11`)
+
+- Distinguish a **self-selected running experience** from an **automatically recommended classification**. Current source does not infer 0/1/2 from activity history; a default Beginner chip is not evidence of being a beginner.
+- Check provenance of existing 60 km/week and 24 km longest-run display: prior PlanRequest may take precedence; otherwise recent stored activities seed weekly volume via `historyWeeklyKm` (last 28 days, distinct IDs, >=3 eligible records) and longest run. Do not assert the values originated from Intervals.icu unless the actual source records confirm it.
+- If auto classification is approved, use a conservative, documented combination of training consistency, running history, frequency, prior structured workouts and return status; do not classify solely from a single long run, one high-mileage week, or pace. Explain missing/insufficient data and permit an explicit user override.
+- Test account switch, offline cached records, prior-plan initialization, empty history and returning athlete. Verify experience-driven quality gates remain safe. Treat automatic experience recommendation as **new work**, not already functioning.
+
+### Race goal and PR-entry acceptance (`E10`)
+
+- Preserve the user's *Beat my personal best* goal even if PR entry is optional. The **Add PR** control must not imply that an entered value will be saved unless a verified input and persistence path exists.
+- Decide how to represent an optional current PR (distance, duration, provenance/date where applicable), a distinct target finish time, and a race/target date. These are different data fields. Validate and serialize only after a deliberate, backwards-compatible `PlanRequest` contract change with old-plan roundtrips.
+- If in scope, an athlete can enter/edit/clear a PR, navigate back and forward, generate and approve a plan, and reopen it offline with the exact saved PR. The draft accurately explains whether the current Engine 1.5 actually uses that PR for prescription. Do not fabricate adaptive pace/physiology or silently claim a target-time plan is supported.
+- Until implemented, change or disable the misleading **Add PR** CTA while preserving a truthful optional-PR explanation. Any target-date/time flow remains a separately approved requirement.
+
+### Running Setup coach-mode acceptance (`E08`, `E09`)
+
+- Experienced runner with six sessions, sufficient training volume and time: selecting Coach decides should propose an eligibility-aware quality frequency and workout type and indicate why a zero-quality week is appropriate when safety requires it. Do not promise quality for every week.
+- An explicit **Choose my days** control remains reachable after switching to Coach decides; switch back and forth without stale weekday pins, silent quality removal or state corruption.
+- Verify mode, quality choice, actual generated workouts and approved plans after back navigation and offline reopening on 360dp/412dp profiles.
+
+### Priority 1 implementation checkpoint — source corrections pending final verification
+
+- **E01:** Typed status/category already implemented; new correction distinguishes malformed issued access tokens from malformed activity data and refreshes a revoked stored bearer just once.
+- **E02:** Accepted GMT/offset formats, now with an explicit rejection for timezone-free `startTimeLocal` (never silently turn local time into UTC).
+- **E18:** Deduplicate **presentation and volume**, not the original provider records. Time-indexed unique matching tolerates ≤60s start difference with strict elapsed-duration/distance safeguards.
+- **Evidence:** user's emulator did successfully display a Garmin activity. Latest-head focused tests, Android unit/instrumentation and post-correction emulator are **NOT RUN**. Earlier full-suite result: 274 tests, 7 ExerciseLibraryV2 failures unrelated by class but exact cause uninspected. See [focused Garmin verification handoff](garmin-e01-e02-offline-history-implementation-20261105.md).
+- **Next:** Run selected Garmin/Activity unit tests and debug build. Review passing XML and APK compile before marking E01/E02/E18 done; preserve source data, credentials and app installation.
+
+### Current Garmin implementation checkpoint (2026-11-05)
+
+The user prioritized E01/E02 ahead of Engine 1.5 work to see Garmin activities in the native Activity tab. A narrowly scoped source change now adds typed source failures, a tolerant GMT timestamp parser and account-scoped local Garmin **summary** import. See [Garmin E01/E02 verification handoff](garmin-e01-e02-offline-history-implementation-20261105.md). **No exact-head Gradle, instrumentation, live API or physical-phone acceptance has occurred. Do not close E01/E02 or claim completed Garmin imports yet.** Subsequent tasks remain in their existing order after this urgent work.
+
+### Safe reproduction sequence for Garmin and account warnings
+
+- Use disposable emulator/profile; record platform API, font/display scaling, current StrideLab account state and screenshots. Do not upload keys, tokens, full raw responses containing personal activity information, or keystore files.
+- `E01`: reproduce a `GarminProtocolException` in tests and assert UI identifies a data/protocol issue, not expired credentials.
+- `E02`: collect **only sanitized timestamp-format evidence** or a synthetic fixture matching the format, and test each supported format plus truly invalid/missing timestamps. Never silently invent a timestamp or import corrupted activity.
+- `E03`: inspect normal expiry versus refresh failure, clarify which source owns the banner, and test reauthentication without deleting cached activities.
+- Do not press Disconnect or regenerate an API key solely because `E02` fails. Garmin keys are separate from StrideLab account sessions.
+
+## Additional findings from second source audit
+
+These are **new inspection candidates** beyond the previously registered Engine-default, quality policy, and QA-summary issues. A code-level risk is not counted as reproduced phone failure without a focused test.
+
+- **N1: Quality chips may misrepresent saved values.** `PlanBuilder.advancedQualityCsv` displays Threshold and Tempo selected when `initial.allowedQualityTypes` is empty, but the underlying serialized `PlanRequest.allowedQualityTypes` remains empty until the user toggles a chip. Reproduce in a builder state test before fixing.
+- **N2: Advanced quality count does not synchronize requested weekdays.** The Advanced Running `onQualityCount` callback updates `qualityCount` only; `qualityDays` and `weeklySlots` are not updated together. Check whether a subsequent Running Setup/manual Continue produces an unassigned slot, blocks later generation, or loses intent.

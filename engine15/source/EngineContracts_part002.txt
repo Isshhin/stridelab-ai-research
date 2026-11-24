@@ -1,13 +1,9 @@
+FILE: EngineContracts.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 227-455
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 3
+LINES: 232-479
 --------------------------------------------------
-internal data class PlannedSession(val id:String,val date:LocalDate,val discipline:String,val title:String,val minutes:Int,val distanceKm:Double?,val kind:String,val lower:Boolean=false,val quality:Boolean=false,
-    val exercises:List<ExercisePrescription> = emptyList(),val steps:List<String> = emptyList(),val reason:String="",val status:String="planned",val missedReason:String?=null,val log:WorkoutLog?=null,val suggestion:SessionSuggestion?=null,val linkedActivityId:String?=null,val linkPreviousStatus:String?=null,val swaps:List<ExerciseSwap> = emptyList(),val logRevision:Int=0,val runningPrescription:RunningPrescription?=null,val runResponse:WorkoutLog?=null,
-    val difficultyStep:Int=0,val difficultyBaseline:SessionDifficultyBaseline?=null,
-    val runnerSupportDose: RunnerSupportDose? = null, val runnerSupportPlacement: Boolean = false) {
-    init {
         require(difficultyStep in -2..2)
         require((difficultyStep==0)==(difficultyBaseline==null))
         require(runnerSupportDose == null || discipline in setOf("str", "cal"))
@@ -43,7 +39,7 @@ internal data class PlannedSession(val id:String,val date:LocalDate,val discipli
     } ?: this
     val effectiveExercises get()=exercises.map { original -> swaps.find { it.originalId==original.id }?.replacement ?: original }
     val effectiveMinutes get()=if(suggestion?.accepted==true) suggestion.minutes else minutes
-    val effectiveTitle get()=if(suggestion?.accepted==true) "Lighter alternative ┬╖ $title" else title
+    val effectiveTitle get()=if(suggestion?.accepted==true) "Lighter alternative · $title" else title
     fun encode()=JSONObject().put("id",id).put("date",date.toString()).put("discipline",discipline).put("title",title).put("minutes",minutes).put("distanceKm",distanceKm).put("kind",kind).put("lower",lower).put("quality",quality)
         .put("exercises",JSONArray(exercises.map { it.encode() })).put("steps",JSONArray(steps)).put("reason",reason).put("status",status).put("missedReason",missedReason).put("log",log?.encode()).put("suggestion",suggestion?.encode()).put("linkedActivityId",linkedActivityId).put("linkPreviousStatus",linkPreviousStatus).put("swaps",JSONArray(swaps.map { it.encode() })).put("logRevision",logRevision).put("runningPrescription",runningPrescription?.encode()).put("runResponse",runResponse?.encode())
         .apply {
@@ -232,3 +228,27 @@ internal data class RunningPrescription(
         }
         if(archetypeId!=null && !curLegacySegs && !curLegacyMixed) return false
         val strippedExpected = expected.copy(
+            archetypeId = if (archetypeId == null) null else expected.archetypeId,
+            segments = if (curLegacySegs) expected.segments.map {
+                it.copy(stepIntent=null,targetPaceMinSecPerKm=null,targetPaceMaxSecPerKm=null,
+                    targetHrMinBpm=null,targetHrMaxBpm=null)
+            } else expected.segments,
+            mixedSegments = if (mixedSegments != null && expected.mixedSegments != null && curLegacyMixed) expected.mixedSegments.map {
+                it.copy(stepIntent=null,targetPaceMinSecPerKm=null,targetPaceMaxSecPerKm=null,
+                    targetHrMinBpm=null,targetHrMaxBpm=null)
+            } else expected.mixedSegments
+        )
+        return this==strippedExpected
+    }
+    fun encode():JSONObject = (if(mixedSegments==null) {
+        JSONObject().put("version",1).put("role",role).put("family",family).put("segments",JSONArray(segments.map { it.encode() }))
+    } else {
+        when {
+            reconciledDistanceMeters!=null -> JSONObject().put("version",3).put("role",role).put("family",family)
+                .put("segments",JSONArray(mixedSegments.map { it.encode() }))
+                .put("reconciledDistanceMeters",reconciledDistanceMeters)
+                .put("distanceBasis","USER_SUPPLIED_PER_STEP_EQUIVALENTS")
+            estimatedDistanceKm==null -> JSONObject().put("version",4).put("role",role).put("family",family)
+                .put("segments",JSONArray(mixedSegments.map { it.encode() }))
+                .put("timeBasis","TIME_ONLY_NO_DISTANCE_TARGET")
+            else -> JSONObject().put("version",2).put("role",role).put("family",family)

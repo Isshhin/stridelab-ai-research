@@ -1,8 +1,133 @@
+FILE: Engine15ScheduleReview.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 287-375
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 328-540
 --------------------------------------------------
+                    fit.cap || phase in setOf(Engine15MacroPhase.RECOVERY, Engine15MacroPhase.TAPER) &&
+                        tier(original) !in setOf(Tier.UPPER_TRUNK, Tier.MOBILITY) -> RunnerSupportDose.LIGHT
+                    original.kind == "structured-plyometrics" || original.title == "Strength for Runners" ||
+                        original.discipline == "cal" && phase in setOf(Engine15MacroPhase.BUILD, Engine15MacroPhase.PEAK) ->
+                        RunnerSupportDose.ENTRY
+                    else -> null
+                }
+                val moved = original.copy(date = date, runnerSupportPlacement = date != original.date)
+                val dosed = if (mode != null) mode.apply(moved, plan.request) else moved
+                val candidate = if (fit.afterQuality) dosed.copy(
+                    reason = "${dosed.reason} Complete the quality run first. Skip support work if recovery or technique is poor."
+                ) else dosed
+                if (plan.request.timeBudgetEnabled && candidate.minutes > plan.request.minutes) return@mapNotNull null
+                if (sessions.any { it.id != candidate.id &&
+                        PlanScheduleValidation.conflict(candidate, it, plan.policyId, plan.policyId) }) return@mapNotNull null
+                if (approvedPeers.any { peer -> peer.sessions.any { existing ->
+                        existing.status in setOf("planned", "in_progress") &&
+                            PlanScheduleValidation.acrossPlansConflict(candidate, existing, plan.policyId, peer.policyId)
+                    } }) return@mapNotNull null
+                val concurrent = approvedPeers.flatMap { peer ->
+                    peer.sessions.filter { it.date == date && it.status in setOf("planned", "in_progress") }.map { peer to it }
+                }
+                val dailyCap = (listOf(plan) + concurrent.map { it.first }).filter { it.request.timeBudgetEnabled }
+                    .minOfOrNull { it.request.dailyMinutes }
+                if (fit.afterQuality && (concurrent.any { it.second.discipline != "run" } ||
+                        dailyCap != null && concurrent.sumOf { it.second.effectiveMinutes } + candidate.minutes > dailyCap))
+                    return@mapNotNull null
+                Triple(candidate, fit, phase)
+            }
+            val choice = choices.minWithOrNull(compareBy<Triple<PlannedSession, Placement, Engine15MacroPhase?>> { it.second.score }
+                .thenBy { kotlin.math.abs(ChronoUnit.DAYS.between(original.date, it.first.date)) }.thenBy { it.first.date })
+            if (choice == null) {
+                changes += Change(original, original, setOf(Option.NO_SAFE_OPTION),
+                    "Change the fixed day or widen your availability to give the key run room.")
+                continue
+            }
+            val (after, fit, phase) = choice
+            sessions[index] = after
+            val options = buildSet {
+                if (after.date != original.date) add(Option.MOVE)
+                if (fit.afterQuality) add(Option.AFTER_QUALITY)
+                if (after.exercises != original.exercises) add(Option.CAP_DOSE)
+            }
+            if (options.isNotEmpty()) {
+                val reason = when {
+                    fit.afterQuality -> "Complete the quality run first. Skip support work if recovery or technique is poor."
+                    phase in setOf(Engine15MacroPhase.RECOVERY, Engine15MacroPhase.TAPER) ->
+                        "Running ${phase?.name?.lowercase()} week. Keep the movement familiar with fewer sets or contacts."
+                    fit.cap -> "Keep two working sets so the nearby key run takes priority."
+                    else -> "Keep support work at a controlled dose before adding load from completed workouts."
+                }
+                changes += Change(original, after, options, reason)
+            }
+        }
+        if (changes.isEmpty() && sessions == plan.sessions) return null
+        return Review(plan.copy(sessions = sessions.sortedBy { it.date }), changes)
+    }
+}
+
+@Composable
+internal fun RunnerSupportPreviewCard(review: RunnerSupportSchedule.Review, weekStart: LocalDate, weekEnd: LocalDate) {
+    TracksideWorkoutNeutralCard {
+        Text("RUNNING PRIORITY", color = TracksidePalette.text, fontWeight = FontWeight.Bold)
+        Text(if (review.blocked) "No safe option for ${review.changes.count { RunnerSupportSchedule.Option.NO_SAFE_OPTION in it.options }} workouts."
+            else "${review.changes.size} schedule or dose changes. Activate to approve this support plan.")
+        for (change in review.changes.filter { it.before.date in weekStart..weekEnd }) {
+            val (before, after, options, reason) = change
+            val date = if (before.date == after.date) "${after.date}" else "${before.date} → ${after.date}"
+            Text("${after.title} · $date", fontWeight = FontWeight.SemiBold)
+            if (RunnerSupportSchedule.Option.CAP_DOSE in options)
+                Text("${RunnerSupportDose.label(before)} → ${RunnerSupportDose.label(after)}")
+            Text(reason, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun ReviewWeekdays(selected: Set<Int>, options: Set<Int> = (1..7).toSet(), toggle: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        for (day in 1..7) {
+            val allowed = day in options
+            val active = day in selected
+            Surface(
+                color = when {
+                    !allowed -> StrideLabSurfaceTokens.background
+                    active -> StrideLabSurfaceTokens.limeMuted
+                    else -> StrideLabSurfaceTokens.surfaceMuted
+                },
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = when {
+                        !allowed -> StrideLabSurfaceTokens.hairline.copy(alpha = 0.45f)
+                        active -> StrideLabSurfaceTokens.lime
+                        else -> StrideLabSurfaceTokens.hairline
+                    }
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(enabled = allowed) { toggle(day) }
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text(
+                        text = dayName(day).take(1),
+                        color = when {
+                            !allowed -> StrideLabSurfaceTokens.inkMuted.copy(alpha = 0.4f)
+                            active -> StrideLabSurfaceTokens.lime
+                            else -> StrideLabSurfaceTokens.inkSecondary
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun Engine15RecommendationReview(plan: PlanSnapshot, actions: PlanActions, busy: Boolean, onlyTarget: String? = null, embedded: Boolean = false) {
     var previews by remember(plan.owner, plan.id, onlyTarget) { mutableStateOf<List<Engine15Feedback.Proposal>?>(null) }
     fun refresh() {
@@ -24,11 +149,11 @@ internal fun Engine15RecommendationReview(plan: PlanSnapshot, actions: PlanActio
                 continue
             }
             val source = plan.sessions.first { it.id == proposal.sourceSessionId }
-            Text("Preview ┬╖ original workout active", style = MaterialTheme.typography.titleMedium)
-            Text("${source.title} ┬╖ ${source.log?.performedOn ?: source.date}")
+            Text("Preview · original workout active", style = MaterialTheme.typography.titleMedium)
+            Text("${source.title} · ${source.log?.performedOn ?: source.date}")
             Text(proposal.reason.substringAfter(": "))
             Text(proposal.uncertainty)
-            Text("${target.title} ┬╖ ${target.date} ┬╖ ${target.minutes} ΓåÆ ${proposal.suggestedMinutes} min")
+            Text("${target.title} · ${target.date} · ${target.minutes} → ${proposal.suggestedMinutes} min")
             SignalButton("Review suggestion", { actions.stageAdjustment(proposal) }, !busy)
             OutlinedButton(onClick = { actions.dismissPreview(proposal) }, enabled = !busy) { Text("Keep original") }
         }
@@ -38,9 +163,9 @@ internal fun Engine15RecommendationReview(plan: PlanSnapshot, actions: PlanActio
             val changed = reviewedRevision != plan.revision
             val stale = if (changed) "The plan changed after this review opened." else actions.pendingError(plan.id, session.id)
             Text(if (stale == null) "Awaiting your decision" else "Evidence changed", style = MaterialTheme.typography.titleMedium)
-            Text("${session.title} ┬╖ ${session.date} ┬╖ ${session.minutes} ΓåÆ ${suggestion.minutes} min")
+            Text("${session.title} · ${session.date} · ${session.minutes} → ${suggestion.minutes} min")
             val source = plan.sessions.find { suggestion.reason.endsWith("Evidence: session ${it.id}, log revision ${it.logRevision}.") }
-            source?.let { Text("${it.title} ┬╖ ${it.log?.performedOn ?: it.date}") }
+            source?.let { Text("${it.title} · ${it.log?.performedOn ?: it.date}") }
             Text(suggestion.reason.substringAfter(": ").substringBefore(" Evidence:"))
             if (stale != null) Text(stale, color = MaterialTheme.colorScheme.error)
             if (changed) OutlinedButton(onClick = { reviewedRevision = plan.revision }) { Text("Refresh decision") }
@@ -51,18 +176,18 @@ internal fun Engine15RecommendationReview(plan: PlanSnapshot, actions: PlanActio
         val lastDismissal = plan.feedback.lastOrNull { (onlyTarget == null || it.sessionId == onlyTarget) && it.text.startsWith("${Engine15Feedback.RULE_ID} dismissed:") }
         lastDismissal?.let { record ->
             val session = plan.sessions.find { it.id == record.sessionId }
-            Text("Dismissed ┬╖ ${session?.title.orEmpty()} ┬╖ original target retained")
+            Text("Dismissed · ${session?.title.orEmpty()} · original target retained")
         }
         plan.sessions.filter { (onlyTarget == null || it.id == onlyTarget) && it.suggestion?.accepted == true &&
             it.suggestion.reason.startsWith(Engine15Feedback.RULE_ID) }.forEach { session ->
             val current = Engine15SessionPresentation.forSession(plan, session.id)
-            Text("${session.date} ┬╖ ${session.title}")
+            Text("${session.date} · ${session.title}")
             Text(current.disclosure.orEmpty())
-            Text("Original prescription ┬╖ ${current.originalMinutes} min" + (current.originalDistanceKm?.let { " ┬╖ $it km" } ?: ""))
-            if (current.state == Engine15SessionPresentation.State.ACCEPTED_TIME_ONLY) Text("Current target ┬╖ ${current.currentMinutes} min")
+            Text("Original prescription · ${current.originalMinutes} min" + (current.originalDistanceKm?.let { " · $it km" } ?: ""))
+            if (current.state == Engine15SessionPresentation.State.ACCEPTED_TIME_ONLY) Text("Current target · ${current.currentMinutes} min")
             if (current.state == Engine15SessionPresentation.State.ACCEPTED_PROGRESSION) {
-                val distLabel = current.currentDistanceTargetKm?.let { " ┬╖ %.1f km".format(java.util.Locale.US, it) }.orEmpty()
-                Text("Progressed target ┬╖ ${current.currentMinutes} min$distLabel")
+                val distLabel = current.currentDistanceTargetKm?.let { " · %.1f km".format(java.util.Locale.US, it) }.orEmpty()
+                Text("Progressed target · ${current.currentMinutes} min$distLabel")
             }
         }
     }

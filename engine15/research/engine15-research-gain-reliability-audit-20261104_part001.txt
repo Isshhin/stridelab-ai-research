@@ -1,11 +1,12 @@
+FILE: engine15-research-gain-reliability-audit-20261104.md
 SOURCE: docs/engine15-research-gain-reliability-audit-20261104.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-78
 --------------------------------------------------
 # Engine 1.5 | Research-gain reliability review (4 November 2026)
 
-> **HISTORICAL RESEARCH / SAFETY AUDIT ΓÇö activation rule superseded (2026-11-05).** Existing safety evidence and conservative constraints remain historical and must be preserved. The earlier Engine 1.0-default/Engine 1.5-candidate activation rule was superseded by the [current approved Trackside contract](qa/engine15-primary-plan-quality-requirements-20261105.md). This notice does not claim the new default has been implemented or verified.
+> **HISTORICAL RESEARCH / SAFETY AUDIT — activation rule superseded (2026-11-05).** Existing safety evidence and conservative constraints remain historical and must be preserved. The earlier Engine 1.0-default/Engine 1.5-candidate activation rule was superseded by the [current approved Trackside contract](qa/engine15-primary-plan-quality-requirements-20261105.md). This notice does not claim the new default has been implemented or verified.
 
 **Branch:** `feature/engine15-versioned-foundation-20261103`  
 **PR:** [#37](https://github.com/Isshhin/stridelab-development/pull/37), open/draft/unmerged  
@@ -52,7 +53,7 @@ Evidence: **SRC** = current Engine 1.5 source read and inspected; **TST** = exis
 | Engine 1.0 fallback | Default stays 1.0, 1.5 explicit opt-in, opaque versions untouched | `Engine1Engines.resolve` selects 1.5 only for `policyChoice="engine15"`; Trackside UI unexposed (SRC/DOC) | No demonstrated defect |
 | Missing HRV / sleep / environment / individualized threshold | No speculative adaptation | No such new logic added (SRC/R-G) | **ENGINE_2X_ONLY** |
 
-**Audit limitations:** This is a targeted source/research and existing-regression review, not an exhaustive formal proof of every item. A row marked ΓÇ£no demonstrated defectΓÇ¥ does not claim a new exact-head runtime test passed. The session-spike literature does not justify a universal 10% rule or injury prediction.
+**Audit limitations:** This is a targeted source/research and existing-regression review, not an exhaustive formal proof of every item. A row marked “no demonstrated defect” does not claim a new exact-head runtime test passed. The session-spike literature does not justify a universal 10% rule or injury prediction.
 
 ## Narrow fix
 

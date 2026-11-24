@@ -1,0 +1,293 @@
+FILE: NativeMainActivity.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 4
+LINES: 903-1189
+--------------------------------------------------
+                ActivityHistoryTabScreen(
+                    evidence = evidence,
+                    loading = evidence == null || state.initializing || !state.activitySummariesReady,
+                    details = state.details,
+                    onOpenActivityDetail = { id -> nav.openActivity(id) },
+                    onOpenWorkout = { planId, sessionId -> nav.openWorkout(planId, sessionId) },
+                    onOpenFreeformHistory = openFreeformHistory,
+                    onOpenQuickLog = { quickLogOpen = true }
+                )
+            }
+            if (state.account != null) {
+                // Keep signed-in roots composed but measure/place only the
+                // selected one. Switching tabs no longer reconstructs Today,
+                // Training and More after every NavHost destination change.
+                // The keyed group is disposed if the account changes.
+                key(state.account) {
+                    PersistentTabSurface(active = visibleRoot == "training") {
+                        StrideLabUnifiedTrainingTimeline(
+                            state, groupedActivities, actions.planning,
+                            { nav.navigate("builder/all") },
+                            { p, session -> nav.openWorkout(p, session) },
+                            { id -> nav.openActivity(id) },
+                            { p, d -> nav.navigate("manage/${android.net.Uri.encode(p)}/$d") },
+                            manualBoard = freeformBoard, onAddWorkout = openFreeform, onOpenManual = openFreeformHistory,
+                            onOpenCustom = openCustomWorkout, calendarFocus = customCalendarFocus,
+                            clearCalendarFocus = { customCalendarFocus = null }
+                        )
+                    }
+                    PersistentTabSurface(active = visibleRoot == "settings") {
+                        run {
+                            var confirmSignOut by remember { mutableStateOf(false) }
+                            TracksideMoreScreen(
+                                state = state,
+                                garminConnected = garminConnected,
+                                onSignIn = { nav.navigate("auth") },
+                                        onGarmin = { garminSheetOpen = true },
+                                onOfflineMaps = { nav.navigate("more/offline-maps") },
+                                onPreferences = { nav.navigate("more/preferences") },
+                                onAbout = { nav.navigate("more/about") },
+                                onSignOut = { confirmSignOut = true },
+                                onActivityBackup = { nav.navigate("more/activity-backup") }
+                            )
+                            if (confirmSignOut) {
+                                AlertDialog(
+                                    onDismissRequest = { confirmSignOut = false },
+                                    title = { Text("Sign out?") },
+                                    text = { Text("Your saved offline records will remain on this device.") },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = { confirmSignOut = false; actions.signOut() },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFD8FB70))
+                                        ) { Text("Sign out") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { confirmSignOut = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Guest roots stay retained and account content is removed.
+                PersistentTabSurface(active = visibleRoot == "training") {
+                    StrideLabUnifiedTrainingTimeline(
+                        state, groupedActivities, actions.planning,
+                        { nav.navigate("builder/all") },
+                        { p, session -> nav.openWorkout(p, session) },
+                        { id -> nav.openActivity(id) },
+                        { p, d -> nav.navigate("manage/${android.net.Uri.encode(p)}/$d") },
+                        manualBoard = freeformBoard, onAddWorkout = openFreeform, onOpenManual = openFreeformHistory,
+                        onOpenCustom = openCustomWorkout, calendarFocus = customCalendarFocus,
+                        clearCalendarFocus = { customCalendarFocus = null }
+                    )
+                }
+                PersistentTabSurface(active = visibleRoot == "settings") {
+                    TracksideMoreScreen(
+                        state = state,
+                                garminConnected = garminConnected,
+                        onSignIn = { nav.navigate("auth") },
+                        onGarmin = { garminSheetOpen = true },
+                        onOfflineMaps = { nav.navigate("more/offline-maps") },
+                        onPreferences = { nav.navigate("more/preferences") },
+                        onAbout = { nav.navigate("more/about") },
+                        onSignOut = {},
+                        onActivityBackup = { nav.navigate("more/activity-backup") }
+                    )
+                }
+            }
+            } // Persistent tab container
+            }
+            // Keep network/refresh animation outside the navigation Column.
+            // Showing or hiding progress must not remeasure the map or tabs.
+            if (state.busy || state.initializing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.align(Alignment.TopCenter)
+                        .fillMaxWidth().height(3.dp).testTag("loading"),
+                    color = Color(0xFFD8FB70),
+                    trackColor = Color(0xFF1A2A20)
+                )
+            }
+        }
+    }
+    if (showFloatingDock) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            TracksideFloatingNavigation(
+                route = visibleRoot,
+                onTab = onDockTab,
+                onQuickLog = { quickLogOpen = true }
+            )
+        }
+    }
+    if (quickLogOpen) {
+        QuickLogBottomSheet(
+            owner = freeformOwner,
+            board = freeformBoard,
+            onStartEmpty = { discipline ->
+                nav.navigate("freeform/new/${discipline.name}") { launchSingleTop = true }
+            },
+            onResumeDraft = { id ->
+                nav.navigate("freeform/edit/${android.net.Uri.encode(id)}") { launchSingleTop = true }
+            },
+            onDiscardDraft = if (freeformOwner != null && freeformAccess != null) { id ->
+                quickLogScope.launch(Dispatchers.Main.immediate) {
+                    freeformAttempt { freeformAccess.discard(freeformOwner, id) }.onSuccess { removed ->
+                        if (removed) freeformBoard = freeformBoard?.without(id)
+                    }
+                }
+            } else null,
+            onOpenTemplates = {
+                nav.navigate("freeform/templates") { launchSingleTop = true }
+            },
+            onOpenWorkoutsHub = {
+                nav.navigate("freeform/add") { launchSingleTop = true }
+            },
+            onDismiss = { quickLogOpen = false }
+        )
+    }
+    if (garminSheetOpen) {
+        val localOwner = state.localGarminOwner ?: state.account
+        if (localOwner != null) {
+            TracksideGarminConnectionSheet(
+                accountId = localOwner,
+                syncGarmin = actions.syncGarmin,
+                backupGarminCloud = actions.backupGarminCloud,
+                restoreGarminCloud = actions.restoreGarminCloud,
+                allowCloudBackup = state.account != null && !state.needsSignIn,
+                cloudPreferenceAccount = state.account,
+                busy = garminBusy,
+                onBusyChange = { garminBusy = it },
+                onDismiss = { if (!garminBusy) garminSheetOpen = false }
+            )
+        }
+    }
+    }
+}
+
+}
+
+/**
+ * Keeps tab state alive while inactive content is not measured or placed.
+ */
+@Composable
+private fun PersistentTabSurface(
+    active: Boolean,
+    content: @Composable () -> Unit
+) {
+    Box(
+        Modifier.fillMaxSize()
+            .layout { measurable, constraints ->
+                if (active) {
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+                } else {
+                    layout(constraints.minWidth, constraints.minHeight) {}
+                }
+            }
+            .then(if (active) Modifier else Modifier.clearAndSetSemantics {})
+    ) {
+        content()
+    }
+}
+
+/** Single routing boundary for focused More subpages. */
+@Composable
+private fun TracksideMoreDetailDestination(
+    page: MorePage,
+    nav: NavHostController,
+    state: TrainingState
+) {
+    val context = LocalContext.current
+    TracksideMoreDetailScreen(
+        page = page,
+        state = state,
+        onBack = { nav.popBackStack() },
+        onSystemAppSettings = {
+            context.startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:" + context.packageName)
+                )
+            )
+        }
+    )
+}
+
+internal val LocalProfileAction=staticCompositionLocalOf<()->Unit> { {} }
+internal val LocalFloatingDockVisible=staticCompositionLocalOf { false }
+
+@Composable internal fun Screen(title: String, eyebrow: String, compactTitle: Boolean = false,
+    dense: Boolean = false, edgeToEdge: Boolean = false, titleBadge: String? = null,
+    bottomOverlayPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    hideHeader: Boolean = false,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+    Box(
+        Modifier.fillMaxSize().padding(bottom = bottomOverlayPadding),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        val horizontal = if (edgeToEdge) 0.dp else if (dense) 18.dp else 22.dp
+        val top = if (edgeToEdge) 0.dp else if (dense) 12.dp else 24.dp
+        val gap = if (edgeToEdge) 0.dp else if (dense) 12.dp else 18.dp
+        LazyColumn(
+            Modifier.widthIn(max = 760.dp).fillMaxSize().testTag("screen")
+                .semantics { paneTitle = title },
+            contentPadding = PaddingValues(
+                start = horizontal, end = horizontal, top = top,
+                bottom = if (LocalFloatingDockVisible.current) 110.dp else 32.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(gap)
+        ) {
+            if (!edgeToEdge && !hideHeader) item {
+                TracksideScreenHeader(
+                    title, eyebrow, compactTitle, LocalProfileAction.current,
+                    dense = dense, titleBadge = titleBadge
+                )
+            }
+            content()
+        }
+    }
+}
+
+/** Decorative brand strokes; never a route, chart or athlete measurement. */
+@Composable internal fun BrandMark(modifier: Modifier = Modifier) {
+    val signal = MaterialTheme.colorScheme.primary
+    Canvas(modifier) {
+        val w = size.width; val h = size.height
+        drawLine(signal, Offset(w*.12f,h*.72f), Offset(w*.48f,h*.18f), w*.14f, androidx.compose.ui.graphics.StrokeCap.Round)
+        drawLine(signal, Offset(w*.38f,h*.78f), Offset(w*.86f,h*.25f), w*.14f, androidx.compose.ui.graphics.StrokeCap.Round)
+    }
+}
+
+@Composable internal fun SignalCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    TracksideGlassCard(modifier = modifier, content = content)
+}
+@Composable private fun EmptyState(title: String, description: String) {
+    SignalCard {
+        Box(Modifier.size(52.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .10f), RoundedCornerShape(16.dp)).padding(12.dp)) { BrandMark(Modifier.fillMaxSize()) }
+        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text(description, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+@Composable internal fun ActivityRow(
+    activity: ActivityRecord, sourceLabel:String=activity.sourceLabel, onClick: () -> Unit
+) {
+    val accent = when { activity.supportsPace -> TracksidePalette.running; activity.type.contains("strength", true) || activity.type == "training" -> TracksidePalette.strength; else -> TracksidePalette.calisthenics }
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().testTag("activity-${activity.id}"), shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))) {
+        Column(Modifier.background(Brush.horizontalGradient(listOf(accent.copy(alpha = .07f), Color.Transparent))).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(8.dp).background(accent, RoundedCornerShape(4.dp)))
+                Text(activity.type.uppercase(), style = MaterialTheme.typography.labelMedium, color = accent, modifier = Modifier.weight(1f))
+                Text("↗", style = MaterialTheme.typography.titleLarge, color = accent)
+            }
+            Text(activity.title, style = MaterialTheme.typography.titleLarge)
+            Text(activity.dateLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text(if(activity.distanceM == null && !activity.supportsPace) activity.durationLabel else "${activity.distanceLabel} · ${activity.durationLabel}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(sourceLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

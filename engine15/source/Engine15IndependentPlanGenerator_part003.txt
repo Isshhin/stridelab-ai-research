@@ -1,32 +1,9 @@
+FILE: Engine15IndependentPlanGenerator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 588-829
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 6
+LINES: 612-854
 --------------------------------------------------
-                    (if (intro.recoveryMeters > 0) 0 else intro.recoverySeconds) * easySpeed
-                (780.0 * easySpeed + workM + recM) / 1000.0 * 1.03
-            }
-        } else null
-        val initialShaped = Engine15DailyLoadShaper.shape(
-            sessions = baseSessions,
-            volume = volume,
-            request = request,
-            qualitySessionIds = preQualityIds,
-            pinnedSessionIds = userDefinedQualityIds,
-            minQualitySlotKm = minQualitySlotKm
-        )
-        val sessions = if (request.qualityDistanceClaims.isNotEmpty() && preSelection != null) {
-            val claimsByKey = request.qualityDistanceClaims.groupBy { it.weekNumber to it.slotNumber }
-            val shapedById = initialShaped.associateBy { it.id }
-            val legacyClaimPins = preSelection.candidateSlots.mapNotNull { slot ->
-                val claim = claimsByKey[slot.weekNumber to slot.slotNumber]?.singleOrNull() ?: return@mapNotNull null
-                val claimKm = claim.assertedMetersByTimedSegment.sum() / 1000.0
-                val shapedKm = shapedById[slot.sessionId]?.distanceKm ?: return@mapNotNull null
-                val matchesUnshaped = kotlin.math.abs(claimKm - slot.originalEasyDistanceKm) <= 1e-6
-                val matchesShaped = kotlin.math.abs(claimKm - shapedKm) <= 1e-6
-                slot.sessionId.takeIf { matchesUnshaped && !matchesShaped }
-            }.toSet()
-            if (legacyClaimPins.isNotEmpty()) {
                 Engine15DailyLoadShaper.shape(
                     sessions = baseSessions,
                     volume = volume,
@@ -125,11 +102,11 @@ LINES: 588-829
                         val effortText = when {
                             work -> when (archetype) {
                                 Engine15WorkoutArchetype.SHORT_HILL_SPRINTS ->
-                                    "Strong uphill drive (5ΓÇô8% grade) at ~5K effort (RPE 8/10) ΓÇö focus on tall posture and power, judge by effort rather than flat pace."
+                                    "Strong uphill drive (5–8% grade) at ~5K effort (RPE 8/10) — focus on tall posture and power, judge by effort rather than flat pace."
                                 Engine15WorkoutArchetype.LONG_AEROBIC_HILLS ->
-                                    "Steady uphill climb (4ΓÇô6% grade) at Threshold/10K effort (RPE 7ΓÇô8/10) ΓÇö hold rhythm by effort on the incline."
+                                    "Steady uphill climb (4–6% grade) at Threshold/10K effort (RPE 7–8/10) — hold rhythm by effort on the incline."
                                 Engine15WorkoutArchetype.AEROBIC_FARTLEK ->
-                                    "Controlled surge at TempoΓÇô5K effort; settle smoothly into easy float recovery."
+                                    "Controlled surge at Tempo–5K effort; settle smoothly into easy float recovery."
                                 Engine15WorkoutArchetype.CONTINUOUS_TEMPO ->
                                     "Sustained Tempo effort; keep rhythm smooth and controlled."
                                 Engine15WorkoutArchetype.BROKEN_TEMPO ->
@@ -149,7 +126,7 @@ LINES: 588-829
                                 else -> when (altFamilyName) {
                                     "Threshold" -> "Controlled, comfortably hard effort. Keep repetitions even and ease off if effort rises."
                                     "Intervals" -> "Hard, repeatable effort. Keep each repetition controlled and use the full easy recovery between efforts."
-                                    "Hills" -> "Strong uphill drive (5ΓÇô8% grade) with tall posture; judge by effort and jog/walk down."
+                                    "Hills" -> "Strong uphill drive (5–8% grade) with tall posture; judge by effort and jog/walk down."
                                     "Fartlek" -> "Playful, controlled surge effort; settle smoothly back into easy running between surges."
                                     "Progression" -> "Start steady and gradually build effort across the finish block without straining."
                                     else -> "Steady, controlled effort. Ease off if you cannot speak a short phrase."
@@ -203,9 +180,9 @@ LINES: 588-829
                                 sec > 60 -> "${sec / 60}m ${sec % 60}s"
                                 else -> "${sec}s"
                             }
-                            "$durText ┬╖ ${formatMetersAsKm(st.distanceEquivalentMeters)}"
+                            "$durText · ${formatMetersAsKm(st.distanceEquivalentMeters)}"
                         }
-                        return "$extent ${st.purpose.lowercase().replace('_', ' ')} ┬╖ ${st.effort}"
+                        return "$extent ${st.purpose.lowercase().replace('_', ' ')} · ${st.effort}"
                     }
                     val totalMin = (kotlin.math.round(match.segments.sumOf { it.seconds } / 60.0).toInt())
                         .coerceAtLeast(10)
@@ -220,12 +197,12 @@ LINES: 588-829
                             alternative.progressionBasis != Engine15QualityProgressionBasis.HOLD_NO_REPEATED_EXPOSURE) {
                             "${alternative.prescription!!.rationale} Effort cues guide intensity alongside estimated pace zones."
                         } else when (altFamilyName) {
-                            "Threshold" -> "Structured Threshold intervals (3 ├ù 4 min comfortably hard with 2 min easy recovery)."
-                            "Intervals" -> "Structured VOΓéémax Intervals (4 ├ù 2 min repeatable hard effort with 2 min easy recovery)."
-                            "Hills" -> "Structured Hill Repeats (5 ├ù 1 min strong uphill drive with 2 min easy jog-down recovery)."
-                            "Fartlek" -> "Structured Fartlek surges (5 ├ù 2 min controlled surges with 2 min easy float)."
+                            "Threshold" -> "Structured Threshold intervals (3 × 4 min comfortably hard with 2 min easy recovery)."
+                            "Intervals" -> "Structured VO₂max Intervals (4 × 2 min repeatable hard effort with 2 min easy recovery)."
+                            "Hills" -> "Structured Hill Repeats (5 × 1 min strong uphill drive with 2 min easy jog-down recovery)."
+                            "Fartlek" -> "Structured Fartlek surges (5 × 2 min controlled surges with 2 min easy float)."
                             "Progression" -> "Continuous Progression finish (12 min building gradually toward steady tempo effort)."
-                            else -> "Structured Tempo run (10ΓÇô12 min steady controlled effort with easy warm-up and cooldown)."
+                            else -> "Structured Tempo run (10–12 min steady controlled effort with easy warm-up and cooldown)."
                         })
                 }
                 if (experimentalTempo.size != qualityDryRun.alternatives.size ||
@@ -245,3 +222,28 @@ LINES: 588-829
                 selection.decision != Engine15QualitySelectionDecision.FAMILY_CANDIDATE ->
                     "No family dry-run was constructed because selection deferred or is unsupported."
                 selection.selectionBasis != Engine15QualitySelectionBasis.GOAL_EXPERIENCE_MATRIX && !allowExplicitUserFamily ->
+                    "No coach-generated dry-run was constructed because this family came from explicit user direction."
+                qualityDryRun == null ->
+                    "The $familyName structure could not be linked to a valid calendar slot."
+                paceWarnings.isNotEmpty() -> paceWarnings.joinToString(" ")
+                else ->
+                    "A development-only $familyName Intro structure was dry-run for week ${qualityDryRun.weekNumber}: ${qualityDryRun.totalSeconds} seconds total, ${qualityDryRun.workSeconds} seconds work. For unresolved slots, quality distance and weekly mileage remain unknown. Quality slots (week / slot / total metres): ${qualityDryRun.alternatives.joinToString { "${it.weekNumber} / ${it.slotNumber} / ${(it.originalEasyDistanceKm * 1000).toInt()}" + (it.distanceFailureCode?.let { code -> " ($code)" } ?: "") }}."
+            }
+            return Engine15IndependentPlanDecision.Deferred(
+                "QUALITY_GENERATION_NOT_QUALIFIED",
+                "${selection.explanation} This family choice remains a provisional engineering rule, not a qualified prescription. $dryRunNote Coach-generated quality remains non-executable until family, dose, intensity and distance policies are qualified.",
+                selection,
+                qualityDryRun
+            )
+            }
+        }
+
+        val customPattern=Regex("w([1-9][0-9]*)-run(0|[1-9][0-9]*)")
+        val mappedQuality=request.userDefinedQualityWorkouts.map { (key,workout) ->
+            val match=customPattern.matchEntire(key)
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "A user-defined workout must target a stable w<week>-run<slot> identifier.")
+            val week=match.groupValues[1].toIntOrNull()
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout week is outside the supported calendar range.")
+            val slot=match.groupValues[2].toIntOrNull()
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout slot is outside the supported calendar range.")
+            if(week !in 1..request.weeks || slot !in 0 until request.runDays)

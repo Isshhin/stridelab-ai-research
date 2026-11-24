@@ -1,0 +1,27 @@
+FILE: engine15-manual-remediation-roadmap-20261105.md
+SOURCE: docs/qa/engine15-manual-remediation-roadmap-20261105.md
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 3
+LINES: 165-185
+--------------------------------------------------
+- **N3: Manual/automatic intent can be ambiguous.** `runningCustom` starts `true` even if `weeklySlots["run"]` is absent, and Continue can save default suggested weekdays as explicit pins. Distinguish truly athlete-pinned days from coach-suggested days; add state/restore tests.
+- **N4: Requested quality type may not affect engine output.** `PlanRequest.preferredQuality` and `allowedQualityTypes` exist but `Engine15.structure(request.goal)` is driven by the overall goal, not these preferences or `disciplineGoals["run"]`. Test a mixed primary-strength + secondary-running goal to verify correct running prescription.
+- **N5: Historical "not wired" presentation documentation is stale.** Current `WorkoutScreen`, `Engine15ScheduleReview`, and `TracksideManagePlanScreen` do reference `Engine15SessionPresentation` and recommendation actions. **Do not reimplement the backend/UI blindly**; verify actual production routes, accepted rest/time-only display and Figma fidelity.
+- **N6: Review copy is generic in suppression cases.** Engine 1.5 currently explains withheld quality with a combined list of possible mileage/time/deload/return/taper causes. Require one or more **actual** reasons for each affected session and week.
+- **N7: Guided race-result entry is not part of current PlanRequest.** Running Ability UI itself says race/time-trial results are not stored. Record as a known limitation, not a failure of current Engine 1.5 physics; decide any expanded input contract separately.
+- **N8: Six-run frequency ceiling is a deliberate current policy.** Seven running days are explicitly rejected in the B7 scenario matrix. Do not claim seven-run support or silently reduce a seven-day request.
+
+## Current implemented foundation to preserve, not rewrite
+
+- Deterministic versioned Engine 1.5 generation, conservative running volume caps/deloads/return and safety-limited quality.
+- Mixed-discipline generation, 2/day capacity and interference-aware pairing (Engine 1.5-specific rules), selected long/quality days and time budgets.
+- Individual locks, reviewed availability relocation/unassigned conflicts, edited-plan integrity, immutable historical activity/logs, Engine 1.0 compatibility.
+- Completion/missed evidence-driven recommendation preview, explicit stage/accept/dismiss, stale-evidence and revision rejection, secure account-scoped repository/outbox/backup.
+- Active-session time-only/rest projection already referenced in Trackside screens, plus tested Activity sheet and running weekday-selection corrections.
+- Existing JVM/Android regression suites and MARC exact-head evidence as historical safeguards, **not** blanket acceptance of revised product.
+
+## Completion rule for each manual task
+
+A task is DONE only when: (1) acceptance criteria were met by source inspection and executed named tests; (2) exact source SHA and results are recorded; (3) previous unaffected engine/repository behaviors remain intact; (4) associated QA defect(s) are updated; and (5) no unrelated feature or branch was changed.
+
+**Next actionable task:** Pull the Garmin-only native branch and run ActivityDisplayConsolidationTest, DashboardSummaryTest, Garmin*Test, RecordedGpsRouteTest, then assembleDebug. Verify Settings contains only Garmin; Activity, Today and builder mileage exclude archived Intervals.icu while the original cache stays unchanged. Then test the real Garmin FIT download and its geographic map, including the existing glass sheet and offline reopen. [Source removal handoff](intervals-icu-native-retirement-20261105.md).

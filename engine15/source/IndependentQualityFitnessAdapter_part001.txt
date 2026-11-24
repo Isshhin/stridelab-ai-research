@@ -1,6 +1,7 @@
+FILE: IndependentQualityFitnessAdapter.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityFitnessAdapter.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-210
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -95,7 +96,7 @@ internal object IndependentQualityFitnessAdapter {
             ))
         val candidatePairs = when (family) {
             IndependentQualityFamily.THRESHOLD -> {
-                // 2ΓÇô6 repeats of 3ΓÇô8 min, with easy recovery ONLY between repeats.
+                // 2–6 repeats of 3–8 min, with easy recovery ONLY between repeats.
                 (2..6).flatMap { repetitions ->
                     (3..12).mapNotNull { workMinutes ->
                         val workSeconds = repetitions * workMinutes * 60
@@ -129,7 +130,7 @@ internal object IndependentQualityFitnessAdapter {
             IndependentQualityFamily.INTERVALS,
             IndependentQualityFamily.FARTLEK -> {
                 val target = if (family == IndependentQualityFamily.FARTLEK) WorkoutTarget.FARTLEK else WorkoutTarget.INTERVALS
-                // 3ΓÇô8 repeats of 1ΓÇô4 min hard intervals/surges, with easy recovery ONLY between repeats.
+                // 3–8 repeats of 1–4 min hard intervals/surges, with easy recovery ONLY between repeats.
                 (3..8).flatMap { repetitions ->
                     (1..4).mapNotNull { workMinutes ->
                         val workSeconds = repetitions * workMinutes * 60
@@ -148,7 +149,7 @@ internal object IndependentQualityFitnessAdapter {
                 }
             }
             IndependentQualityFamily.HILLS -> {
-                // 4ΓÇô10 repeats of 45ΓÇô120s uphill work, with 2 min easy jog-down recovery between repeats.
+                // 4–10 repeats of 45–120s uphill work, with 2 min easy jog-down recovery between repeats.
                 (4..10).flatMap { repetitions ->
                     listOf(45, 60, 90, 120).mapNotNull { repSec ->
                         val workSeconds = repetitions * repSec
@@ -175,7 +176,7 @@ internal object IndependentQualityFitnessAdapter {
             else -> if (permitted <= 12 * 60) 3 else 4
         }
         // Prefer the greatest supportable dose. Equal-dose threshold ties favor a
-        // repeat count near 3ΓÇô4, then shorter total workout time.
+        // repeat count near 3–4, then shorter total workout time.
         val selected = candidatePairs.sortedWith(
             compareByDescending<Triple<IndependentWorkoutComposition, Int, Int>> { it.second }
                 .thenBy {

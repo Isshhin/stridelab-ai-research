@@ -1,9 +1,10 @@
+FILE: GATE_B_PREFLIGHT.md
 SOURCE: research/engine15-r0/GATE_B_PREFLIGHT.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-42
 --------------------------------------------------
-# Gate B preflight ΓÇö workload planning, version 0.1
+# Gate B preflight — workload planning, version 0.1
 
 Created 2026-11-16 **before M3/M4 refactoring**. Status: **DRAFT for review; not an approved coaching safety threshold**. The diagnostic acceptance conditions below are fixed for R0 execution. Proposed M3/M4 training limits must receive separate review before becoming implementation requirements. R0 reports cannot retroactively change the rubric.
 
@@ -37,8 +38,8 @@ These numbers are diagnostic *inputs*, not target workouts or evidence of safe p
 ## Proposed M3/M4 acceptance questions (not frozen safety numbers)
 
 - **M3 baseline:** Does a new experienced runner with a reported *average* of 75 km/wk receive a provisional capacity profile rather than being confused with unknown or zero data? Is a peak week distinguished from a typical week and is the reported longest run retained?
-- **M4 weekly budget:** In the 75ΓåÆ80 km case, does a trace explain any stage preventing the target? Does the final budget reconcile to prescribed/estimated distances without concealing discarded workload?
-- **Feasibility:** In 50ΓåÆ80 km in four weeks, does the planner use a stated capacity constraint and, where appropriate, report an alternative rather than force an 80 km output?
+- **M4 weekly budget:** In the 75→80 km case, does a trace explain any stage preventing the target? Does the final budget reconcile to prescribed/estimated distances without concealing discarded workload?
+- **Feasibility:** In 50→80 km in four weeks, does the planner use a stated capacity constraint and, where appropriate, report an alternative rather than force an 80 km output?
 - **Recovery:** Does explicit adverse feedback remain review-gated, independent of mileage ambitions?
 - **Workout quality:** Are Q2 warm-up/cool-down extents and Q3 family-specific verified-work constraints preserved with no unjustified Q2 remainder-filling?
 

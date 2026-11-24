@@ -1,39 +1,9 @@
+FILE: Engine15ExecutionAnalyzer.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 793-1182
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 4
+LINES: 824-1235
 --------------------------------------------------
-        if (evidenceTier == ExecutionEvidenceTier.LAP_AND_RECORD) {
-            val stepLapsMap = mapLapsToSteps(steps, laps, workoutSteps)
-            if (stepLapsMap != null) {
-                return steps.indices.map { idx ->
-                    sliceFromLaps(stepLapsMap[idx].orEmpty(), timeline)
-                }
-            }
-            // Auto-laps (e.g., every 1 km) don't always align 1:1 with multi-step intervals;
-            // fall through to window extraction across laps/records while keeping LAP_AND_RECORD tier.
-            return measureStepsFromWindows(
-                steps = steps,
-                laps = laps,
-                timeline = timeline,
-                activity = activity,
-                isLongFastFinish = isLongFastFinish,
-                sourceTag = "LAP_AND_RECORD"
-            )
-        }
-        if (evidenceTier == ExecutionEvidenceTier.RECORD_WINDOW) {
-            return measureStepsFromWindows(
-                steps = steps,
-                laps = emptyList(),
-                timeline = timeline,
-                activity = activity,
-                isLongFastFinish = isLongFastFinish,
-                sourceTag = "RECORD_WINDOW"
-            )
-        }
-        // SUMMARY_ONLY fallback
-        val totalKm = activity.distanceM?.div(1000.0) ?: 0.0
-        val totalSec = (activity.movingTimeS ?: activity.durationS) ?: 0.0
         val summaryPace = overallPace(activity, timeline, totalKm.takeIf { it > 0.0 }, totalSec.takeIf { it > 0.0 })
         val totalPlannedWeight = steps.sumOf { max(1.0, it.nominalSeconds) }.coerceAtLeast(1.0)
         return steps.map { step ->
@@ -393,3 +363,56 @@ LINES: 793-1182
     }
 
     private fun weightedBreakdownPace(breakdowns: List<ExecutionStepBreakdown>): Double? {
+        val valid = breakdowns.mapNotNull { b ->
+            val p = b.actualPaceSecPerKm ?: return@mapNotNull null
+            val w = (b.actualSeconds ?: 1).toDouble().coerceAtLeast(1.0)
+            p to w
+        }
+        if (valid.isEmpty()) return null
+        return valid.sumOf { it.first * it.second } / valid.sumOf { it.second }
+    }
+
+    private fun weightedBreakdownAdherence(breakdowns: List<ExecutionStepBreakdown>): Double? {
+        val valid = breakdowns.mapNotNull { b ->
+            val a = b.paceAdherencePct ?: return@mapNotNull null
+            val w = (b.actualSeconds ?: 1).toDouble().coerceAtLeast(1.0)
+            a to w
+        }
+        if (valid.isEmpty()) return null
+        return valid.sumOf { it.first * it.second } / valid.sumOf { it.second }
+    }
+
+    private fun computeAltitudeGain(samples: List<IndexedSample>): Double? {
+        val alts = samples.mapNotNull { it.sample.altitude?.takeIf { a -> a.isFinite() } }
+        if (alts.size < 2) return null
+        var gain = 0.0
+        for (i in 1 until alts.size) {
+            val delta = alts[i] - alts[i - 1]
+            if (delta in 0.2..40.0) gain += delta
+        }
+        return round1(gain)
+    }
+
+    private fun overallPace(
+        activity: ActivityRecord,
+        timeline: List<IndexedSample>,
+        actualKm: Double?,
+        actualDurationSec: Double?
+    ): Double? {
+        activity.recordedPace?.takeIf { it.isFinite() && it in 120.0..1200.0 }?.let { return it }
+        activity.garminMovingPaceSPerKm?.takeIf { it.isFinite() && it in 120.0..1200.0 }?.let { return it }
+        if (timeline.isNotEmpty()) {
+            weightedPace(timeline, timeline.indices)?.let { return it }
+        }
+        if (actualKm != null && actualKm > 0.0 && actualDurationSec != null && actualDurationSec > 0.0) {
+            return (actualDurationSec / actualKm).takeIf { it in 120.0..1200.0 }
+        }
+        return null
+    }
+
+    private fun computeVolumeRatio(
+        plannedKm: Double?,
+        actualKm: Double?,
+        plannedMinutes: Int?,
+        actualMinutes: Double?
+    ): Double {

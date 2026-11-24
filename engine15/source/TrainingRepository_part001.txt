@@ -1,7 +1,8 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-344
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 8
+LINES: 1-350
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -28,6 +29,8 @@ internal data class GarminRecordingLoad(val activityId: String, val error: Strin
 internal data class TrainingState(
     val initializing: Boolean = true,
     val account: String? = null,
+    val accountDisplayName: String? = null,
+    val accountEmail: String? = null,
     /** Persistent on-device Garmin namespace, independent of cloud sign-in. */
     val localGarminOwner: String? = null,
     /** Stable on-device plan namespace, distinct from cloud and local Garmin. */
@@ -64,6 +67,7 @@ internal data class TrainingState(
     val savedEquipment: Map<String, Int>? = null,
     val hybridPlanPreview: HybridPlanPreview? = null
 ) {
+    val freeformOwner: String? get() = account ?: localPlanOwner
     val displayedPlanPreview get() = planPreviewSupportReview?.candidate?.takeIf { it.id == planPreview?.id } ?: planPreview
     fun blueprintDraft(id: String): PlanSnapshot? =
         displayedPlanPreview?.takeIf { it.id == id }
@@ -88,11 +92,46 @@ internal data class TrainingState(
         }
 }
 
+internal object AccountProfilePresentation {
+    private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+    fun isUuid(raw: String?): Boolean = !raw.isNullOrBlank() && UUID_REGEX.matches(raw.trim())
+
+    fun extractJwtProfile(accessToken: String): Pair<String?, String?> = runCatching {
+        val parts = accessToken.split('.')
+        if (parts.size < 2) return@runCatching null to null
+        val payloadBytes = java.util.Base64.getUrlDecoder().decode(parts[1])
+        val json = JSONObject(String(payloadBytes, Charsets.UTF_8))
+        val meta = json.optJSONObject("user_metadata")
+        val name = listOfNotNull(
+            meta?.optString("display_name")?.takeIf { it.isNotBlank() && !isUuid(it) },
+            meta?.optString("full_name")?.takeIf { it.isNotBlank() && !isUuid(it) },
+            meta?.optString("name")?.takeIf { it.isNotBlank() && !isUuid(it) }
+        ).firstOrNull()
+        val email = json.optString("email").takeIf { it.isNotBlank() && !isUuid(it) }
+        name to email
+    }.getOrDefault(null to null)
+
+    fun resolve(account: String?, displayName: String?, email: String?): Pair<String, String> {
+        val cleanName = displayName?.trim()?.takeIf { it.isNotEmpty() && !isUuid(it) }
+        val cleanEmail = email?.trim()?.takeIf { it.isNotEmpty() && !isUuid(it) }
+        val cleanAccount = account?.trim()?.takeIf { it.isNotEmpty() && !isUuid(it) }
+        val primary = cleanName ?: cleanEmail ?: cleanAccount ?: "StrideLab Account"
+        val subtitle = if (cleanName != null && cleanEmail != null) cleanEmail else "Signed in"
+        return primary to subtitle
+    }
+}
+
 /** All network/database/encryption work is serialized off the main thread, including workers. */
 internal class TrainingRepository(context: Context, private val gateway: TrainingGateway = SupabaseGateway(),
-    databaseName: String = TrainingStore.DATABASE, preferencesName: String = "native-account-v1") {
+    databaseName: String = TrainingStore.DATABASE, preferencesName: String = "native-account-v1",
+    manualDatabaseName: String = if (databaseName == TrainingStore.DATABASE) ManualDisciplineStore.DATABASE
+        else "$databaseName-manual"
+) {
     private val store = TrainingStore(context, databaseName)
+    private val manualStore = ManualDisciplineStore(context, manualDatabaseName)
     private val appContext = context.applicationContext
+    internal val thumbnailCache = SharedThumbnailCacheHolder.get(appContext)
     private val engine15ExerciseLibrary by lazy {
         try { ExerciseLibraryV2.load { path -> appContext.assets.open(path) } }
         catch (_: Exception) { throw PlanConstraint("STRENGTH_CATALOG_UNAVAILABLE: The shared offline exercise catalog could not be read; no substitute was generated.") }
@@ -135,8 +174,15 @@ internal class TrainingRepository(context: Context, private val gateway: Trainin
         try {
             val account = preferences.getString("active", null)
             val owner = account ?: localPlanOwner
-            mutable.value = TrainingState(account = account,
-                localGarminOwner = localGarminOwner, localPlanOwner = localPlanOwner)
+            val cachedName = account?.let { preferences.getString("profile_name_$it", null) }
+            val cachedEmail = account?.let { preferences.getString("profile_email_$it", null) }
+            mutable.value = TrainingState(
+                account = account,
+                accountDisplayName = cachedName,
+                accountEmail = cachedEmail,
+                localGarminOwner = localGarminOwner,
+                localPlanOwner = localPlanOwner
+            )
             val summaries = async { traceStartup("Today activity summaries") { readSummaries(account) } }
             val session = account?.let { async {
                 runCatching { vault.read(it) }.getOrNull()?.also { _ -> copyLegacyGarminConnection(it) }
@@ -148,8 +194,25 @@ internal class TrainingRepository(context: Context, private val gateway: Trainin
             }
             publishSummaries(summaries.await())
             publishSecondary(secondary.await())
-            if (session != null && session.await() == null) {
-                mutable.value = mutable.value.copy(needsSignIn = true)
+            if (session != null) {
+                val activeSession = session.await()
+                if (activeSession == null) {
+                    mutable.value = mutable.value.copy(needsSignIn = true)
+                } else if (account != null) {
+                    val (jwtName, jwtEmail) = AccountProfilePresentation.extractJwtProfile(activeSession.accessToken)
+                    val resolvedName = jwtName ?: cachedName
+                    val resolvedEmail = jwtEmail ?: cachedEmail
+                    if (resolvedName != cachedName || resolvedEmail != cachedEmail) {
+                        preferences.edit().apply {
+                            if (resolvedName != null) putString("profile_name_$account", resolvedName)
+                            if (resolvedEmail != null) putString("profile_email_$account", resolvedEmail)
+                        }.apply()
+                    }
+                    mutable.value = mutable.value.copy(
+                        accountDisplayName = resolvedName,
+                        accountEmail = resolvedEmail
+                    )
+                }
             }
         } catch (error: CancellationException) {
             throw error
@@ -291,59 +354,3 @@ internal class TrainingRepository(context: Context, private val gateway: Trainin
     private fun publishSummaries(cache: CachedSummaries) {
         val prior = mutable.value
         val ids = cache.activities.mapTo(HashSet()) { it.id }
-        mutable.value = prior.copy(activities = cache.activities, activitySummariesReady = true,
-            groupedActivitySummaries = cache.groups,
-            localGarminIds = cache.localIds,
-            details = prior.details.filterKeys { it in ids && (it in prior.localGarminIds) == (it in cache.localIds) },
-            message = if (cache.rejected > 0 && prior.message == null)
-                "${cache.rejected} saved activities contain unsupported data and were retained for review."
-            else prior.message)
-    }
-
-    private fun loadCache(account: String) {
-        val plans = readPlans(account)
-        publishSummaries(readSummaries(account))
-        publishPlans(account, plans)
-        publishSecondary(readSecondary(account, account, plans.plans))
-    }
-
-    /** Read only exact-current-owner non-executable research records. */
-    private fun loadResearchDrafts(owner: String): List<IndependentResearchDraft> {
-        val drafts = mutableListOf<IndependentResearchDraft>()
-        store.readableDatabase.query(
-            "records", arrayOf("record_id","payload"),
-            "account=? AND kind=? AND record_id LIKE ?",
-            arrayOf(owner,"exercise","engine15-research-%"),
-            null,null,null
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                runCatching {
-                    IndependentResearchDraft.decode(
-                        JSONObject(cursor.getString(1)), owner
-                    ).also { require(it.recordId == cursor.getString(0)) }
-                }.onSuccess { drafts.add(it) }
-                // Unsupported or corrupt records remain on disk; do not
-                // fabricate a substitute or migrate owners automatically.
-            }
-        }
-        return drafts.sortedByDescending { it.createdAt }
-    }
-
-    private fun loadLocalPlanCache() {
-        val plans = readPlans(localPlanOwner)
-        publishPlans(localPlanOwner, plans)
-        publishSecondary(readSecondary(localPlanOwner, null, plans.plans))
-    }
-
-    private fun readEquipment(owner: String): Map<String, Int>? =
-        preferences.getString(hashedLocalKey("builder-gear-v1-", owner), null)?.let { raw ->
-            runCatching {
-                val json = JSONObject(raw)
-                builderEquipmentIds.filter { json.optInt(it) == 1 }.associateWith { 1 }
-            }.getOrNull()
-        }
-
-    suspend fun saveBuilderEquipment(owner: String, equipment: Map<String, Int>) =
-        operation("Saving your gearΓÇª") {
-            if (owner != LocalPlanOwnership.activeOwner(mutable.value.account, localPlanOwner))
-                throw PlanConstraint("The profile changed. Reopen equipment to save your gear.")

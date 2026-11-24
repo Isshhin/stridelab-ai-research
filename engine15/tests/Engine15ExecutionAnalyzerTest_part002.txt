@@ -1,21 +1,9 @@
+FILE: Engine15ExecutionAnalyzerTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 388-528
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 401-528
 --------------------------------------------------
-        val detail = ActivityDetail("act-hr-steady", samples, emptyList(), 1L)
-        val activity = activitySummary("act-hr-steady", 10_000.0, 3_495.0, 350.0, 145.0)
-        val hrZones = ExecutionHrZoneProfile(115, 134, 152, 166, 180, 194)
-
-        val withHr = Engine15ExecutionAnalyzer.analyze(session, activity, detail, hrZones)
-        val withoutHr = Engine15ExecutionAnalyzer.analyze(session, activity, detail, null)
-
-        assertNotNull(withHr.hrZoneCompliancePct)
-        assertNotNull(withHr.aerobicDecouplingPct)
-        assertTrue((withHr.hrZoneCompliancePct ?: 0.0) > 85.0)
-        assertTrue((withHr.aerobicDecouplingPct ?: 0.0) > 5.0)
-
-        // Strictly null when no verified HR profile is supplied (never fabricates 220 - age).
         assertNull(withoutHr.hrZoneCompliancePct)
         assertNull(withoutHr.aerobicDecouplingPct)
     }

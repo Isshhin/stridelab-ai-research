@@ -1,9 +1,10 @@
+FILE: m6a-constrained-multiweek-20261115.md
 SOURCE: research/engine15/experiments/m6a-constrained-multiweek-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-51
 --------------------------------------------------
-# Engine 1.5 M6a ΓÇö Constraint-aware multiweek mileage and base workout research
+# Engine 1.5 M6a — Constraint-aware multiweek mileage and base workout research
 
 Date: 2026-11-15. Branch: `research/engine15-m6-constrained-multiweek-allocation-20261115`. Based on draft PR #79, at `82ef95eb24940111c799f02e75cf89958279af4a`.
 

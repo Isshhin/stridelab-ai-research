@@ -1,7 +1,8 @@
+FILE: Engine15WeeklyReview.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyReview.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-224
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
+LINES: 1-233
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -227,3 +228,12 @@ internal object Engine15WeeklyReview {
             val suggestion=if(change.direction==Direction.PROGRESS) {
                 SessionSuggestion(change.minutes,"${Engine15Feedback.RULE_ID}: Approved weekly progression. ${change.reason}",true)
             } else {
+                SessionSuggestion(change.minutes,"${Engine15Feedback.RULE_ID}: Approved weekly review. ${change.reason} Original distance and structured work are not requirements for this time-only alternative.",true)
+            }
+            s.copy(suggestion=suggestion,status=if(change.minutes==0)"skipped" else s.status,
+                missedReason=if(change.minutes==0)"Reviewed rest or availability" else s.missedReason)
+        } ?: s }
+        return plan.copy(sessions=updated,feedback=plan.feedback+PlanFeedback(java.util.UUID.randomUUID().toString(),now,"Workout quality",
+            "Approved weekly review ${review.asOf}; fatigue=${review.input.fatigue ?: "unknown"}; unavailable=${review.input.unavailableDays.sorted()}; trigger=${review.input.trigger}. "+review.explanations.joinToString(" ")))
+    }
+}

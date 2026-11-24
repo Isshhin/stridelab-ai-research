@@ -1,18 +1,9 @@
+FILE: Engine15CoachingAcceptanceTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 383-703
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 4
+LINES: 393-726
 --------------------------------------------------
-            if (peakKm < 42.0) failures += "[Intermediate_10K] peak weekly km too low ($peakKm < 42.0)"
-            if (weeklyKm[8] <= weeklyKm[9]) failures += "[Intermediate_10K] W9 (${weeklyKm[8]}) should exceed W10 taper (${weeklyKm[9]})"
-        }
-
-        // 5. Beginner_5K & Advanced_5K final taper week
-        for (k in listOf("Beginner_5K", "Advanced_5K")) {
-            plansByName[k]?.let { p5k ->
-                val weeklyKm = (0 until p5k.request.weeks).map { w -> weekSessions(p5k, w).sumOf { it.distanceKm ?: 0.0 } }
-                val peakKm = weeklyKm.maxOrNull() ?: 0.0
-                if (weeklyKm.last() >= peakKm * 0.90) {
                     failures += "[$k] missing 5K final taper cut (W8=${weeklyKm.last()}, peak=$peakKm)"
                 }
             }
@@ -324,3 +315,26 @@ LINES: 383-703
     @Test
     fun step02DistanceBasedWorkoutsAndPyramidsReconcileExactMetersAndScaleCleanly() {
         val adv5kReq = profiles().first { it.name == "Advanced_5K" }.request
+        val plan5k = Engine15IndependentPlanGenerator.generateWithHistory(
+            adv5kReq, owner, emptyList(), "step02-dist-5k", now
+        )
+        val distSessions = plan5k.sessions.filter { q ->
+            q.quality && q.runningPrescription?.mixedSegments?.any { it.meters != null } == true
+        }
+        assertTrue("Expected distance-based quality workouts in Advanced_5K", distSessions.isNotEmpty())
+        assertTrue(
+            "Expected Speed-Endurance Pyramid in Advanced_5K",
+            distSessions.any { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID.id }
+        )
+
+        val pyramid = distSessions.first {
+            it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID.id
+        }
+        val pyramidWorks = pyramid.runningPrescription!!.mixedSegments!!.filter { it.purpose == "WORK" }
+        assertTrue(pyramidWorks.any { it.stepIntent == RunningStepIntent.VO2_INTERVAL })
+        assertTrue(pyramidWorks.any { it.stepIntent == RunningStepIntent.THRESHOLD })
+
+        for (session in distSessions) {
+            val rx = session.runningPrescription!!
+            val totalM = rx.mixedSegments!!.sumOf { it.meters ?: it.distanceEquivalentMeters!! }
+            assertEquals((session.distanceKm!! * 1000.0).toInt(), totalM)

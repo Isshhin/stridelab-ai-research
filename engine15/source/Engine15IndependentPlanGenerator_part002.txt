@@ -1,19 +1,9 @@
+FILE: Engine15IndependentPlanGenerator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 316-587
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 6
+LINES: 327-611
 --------------------------------------------------
-                explanations = listOf(
-                    "Independent Engine 1.5 calisthenics plan; no legacy generator or coaching validator was used.",
-                    "The selected goal and skill levels set the movement, repetition or hold targets and recovery periods.",
-                    "This is a draft. Review each exercise, equipment requirement, schedule and repetition/hold target before explicit approval."
-                ),
-                name = "Engine 1.5 independent calisthenics plan"
-            )
-        }
-        if (request.runDays == 0 && request.strengthDays > 0) {
-            Engine15StrengthWorkoutComposer.validateRequest(request)
-            val library = exerciseLibrary ?: throw PlanConstraint(
                 "STRENGTH_CATALOG_REQUIRED: The shared offline exercise catalog is unavailable; no substitute was generated."
             )
             RecordPolicy.identifier(owner)
@@ -275,3 +265,27 @@ LINES: 316-587
                     intro.workSeconds * (1000.0 / estZones.forTarget(target, arch).midpointSecondsPerKm)
                 }
                 val recM = intro.recoveryMeters.toDouble() +
+                    (if (intro.recoveryMeters > 0) 0 else intro.recoverySeconds) * easySpeed
+                (780.0 * easySpeed + workM + recM) / 1000.0 * 1.03
+            }
+        } else null
+        val initialShaped = Engine15DailyLoadShaper.shape(
+            sessions = baseSessions,
+            volume = volume,
+            request = request,
+            qualitySessionIds = preQualityIds,
+            pinnedSessionIds = userDefinedQualityIds,
+            minQualitySlotKm = minQualitySlotKm
+        )
+        val sessions = if (request.qualityDistanceClaims.isNotEmpty() && preSelection != null) {
+            val claimsByKey = request.qualityDistanceClaims.groupBy { it.weekNumber to it.slotNumber }
+            val shapedById = initialShaped.associateBy { it.id }
+            val legacyClaimPins = preSelection.candidateSlots.mapNotNull { slot ->
+                val claim = claimsByKey[slot.weekNumber to slot.slotNumber]?.singleOrNull() ?: return@mapNotNull null
+                val claimKm = claim.assertedMetersByTimedSegment.sum() / 1000.0
+                val shapedKm = shapedById[slot.sessionId]?.distanceKm ?: return@mapNotNull null
+                val matchesUnshaped = kotlin.math.abs(claimKm - slot.originalEasyDistanceKm) <= 1e-6
+                val matchesShaped = kotlin.math.abs(claimKm - shapedKm) <= 1e-6
+                slot.sessionId.takeIf { matchesUnshaped && !matchesShaped }
+            }.toSet()
+            if (legacyClaimPins.isNotEmpty()) {

@@ -1,0 +1,253 @@
+FILE: StrideLabUnifiedTrainingTimeline.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 4
+LINES: 1092-1338
+--------------------------------------------------
+        "Calisthenics" -> R.drawable.trackside_discipline_calisthenics
+        else -> R.drawable.trackside_discipline_conditioning
+    }
+    val (primary, secondary) = timelineRecordedMetrics(activity)
+    val showGpsThumb = !activityUsesStationaryDetail(activity)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(14.dp),
+                highlightBorderColor = StrideLabSurfaceTokens.lime,
+                onClick = onClick
+            )
+            .testTag("timeline-recorded-${activity.id}")
+            .semantics {
+                contentDescription = buildString {
+                    append(kind)
+                    append(", ")
+                    append(primary)
+                    if (secondary.isNotBlank()) {
+                        append(", ")
+                        append(secondary)
+                    }
+                    append(", recorded activity")
+                }
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    if (activity.source.equals("garmin", ignoreCase = true)) "Garmin · ${activity.title}" else activity.title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TimelineStyle.secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    primary,
+                    color = TimelineStyle.ink,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.3).sp,
+                    style = TabularTextStyle,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (secondary.isNotEmpty()) {
+                    Text(
+                        secondary,
+                        color = TimelineStyle.secondary,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        style = TabularTextStyle,
+                        textAlign = TextAlign.Start,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (showGpsThumb) {
+                TodayCachedGpsThumbnail(
+                    activityId = activity.id,
+                    detail = cachedDetail,
+                    modifier = Modifier.size(width = 48.dp, height = 44.dp)
+                )
+            }
+        }
+        StrideLabHairline()
+    }
+}
+
+@Composable
+private fun TimelinePlannedCard(
+    planId: String,
+    session: PlannedSession,
+    hasDraft: Boolean,
+    onClick: () -> Unit
+) {
+    val accent = when {
+        session.discipline == "run" && session.kind == "long" -> StrideLabVisualPalette.lime
+        session.discipline == "run" && session.kind == "quality" -> {
+            val fam = session.runningPrescription?.family?.lowercase(Locale.ROOT).orEmpty()
+            if (fam == "intervals" || fam == "hills") StrideLabVisualPalette.highCoral
+            else StrideLabVisualPalette.moderateAmber
+        }
+        session.discipline == "run" -> StrideLabVisualPalette.easyTeal
+        else -> StrideLabVisualPalette.disciplineColor(session.discipline)
+    }
+    val icon = when (session.discipline) {
+        "run" -> R.drawable.trackside_discipline_running
+        "str" -> R.drawable.trackside_discipline_strength
+        "cal" -> R.drawable.trackside_discipline_calisthenics
+        else -> R.drawable.trackside_discipline_conditioning
+    }
+    val recorded = session.isMarkedComplete
+    val details = buildList {
+        add(if (trainingTrack(session) in setOf("plyo", "iso")) trainingTrackLabel(trainingTrack(session))
+            else plannedDisciplineLabel(session))
+        val reviewedTimeOnly = session.suggestion?.let { it.accepted && it.minutes < session.minutes } == true
+        val distance = if (recorded) session.log?.distanceKm
+        else if (reviewedTimeOnly) null else session.distanceKm
+        val estimated = if (!recorded && !reviewedTimeOnly && distance == null)
+            session.runningPrescription?.estimatedDistanceKm else null
+        distance?.takeIf { it.isFinite() && it >= 0 }?.let {
+            add(
+                (if (recorded) "" else "Target ") +
+                    String.format(Locale.getDefault(), "%.1f km", it)
+            )
+        }
+        estimated?.let {
+            add(String.format(Locale.getDefault(), "~%.1f km estimated", it))
+        }
+        val minutes = if (recorded) session.log?.minutes else session.effectiveMinutes.toDouble()
+        minutes?.takeIf { it.isFinite() && it > 0 }?.let {
+            add(
+                (if (recorded) "" else "Planned ") +
+                    String.format(Locale.getDefault(), "%.0f min", it)
+            )
+        }
+        if (recorded) add("Completed")
+        else if (session.status == "in_progress") add("In progress")
+        if (hasDraft) add("Entry draft")
+    }.joinToString(" · ")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(14.dp),
+                highlightBorderColor = accent,
+                onClick = onClick
+            )
+            .testTag("timeline-planned-${session.id}")
+            .semantics {
+                contentDescription = "${session.effectiveTitle}, $details"
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("timeline-session-$planId-${session.id}"),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            val eyebrowTint = if (recorded) StrideLabVisualPalette.lime else accent
+                            Box(
+                                Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(eyebrowTint)
+                            )
+                            Text(
+                                if (recorded) "COACHED · COMPLETED" else "COACHED · PLANNED",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.8.sp,
+                                color = eyebrowTint
+                            )
+                        }
+                        Text(
+                            session.effectiveTitle,
+                            color = TimelineStyle.ink,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            details,
+                            color = TimelineStyle.secondary,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            style = TabularTextStyle,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text("›", color = TimelineStyle.muted, fontSize = 18.sp)
+                }
+                if (session.discipline == "run") {
+                    val blocks = remember(session.id, session.title, session.distanceKm) {
+                        WorkoutVisualBlocks.fromSession(session)
+                    }
+                    if (blocks.isNotEmpty()) {
+                        WorkoutStructureBarChart(
+                            blocks = blocks,
+                            height = 14.dp,
+                            interactive = false,
+                            tag = "timeline-mini-bars-${session.id}"
+                        )
+                    }
+                }
+            }
+        }
+        StrideLabHairline()
+    }
+}

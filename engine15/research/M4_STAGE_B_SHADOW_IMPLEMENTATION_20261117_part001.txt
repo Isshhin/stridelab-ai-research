@@ -1,9 +1,10 @@
+FILE: M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-43
 --------------------------------------------------
-# M4 Stage B ΓÇö independent volume candidate (shadow-only)
+# M4 Stage B — independent volume candidate (shadow-only)
 
 Date: 2026-11-17. Branch: feature/engine15-m4b-independent-volume-candidate-20261117; stacked on M4 Stage A draft PR #112.
 
@@ -34,15 +35,15 @@ Expected synthetic reports (only created after test execution) in `native-androi
 - `shadow-weekly-comparison.csv`: 8-week pre-Q2 R0 allocated volumes next to M4B pre-composition budgets, with signed difference.
 - `synthetic-profile-comparison.csv`: R0 *mixed-unit final estimate* and M4B *pre-composition budget* side by side across seven test personas, explicitly labeled **NOT_DIRECTLY_COMPARABLE**.
 
-Other tests cover 50ΓåÆ80 in four weeks, 30ΓåÆ35, 0ΓåÆ20 time-only, returning 40ΓåÆ50, three-day 75ΓåÆ80, unknown, peak-only, legacy scalar, health hold, contradicted peak, confidence-no-numeric-override, missing longest, and 48 combinations of mileage/days/returning for ceiling and deload invariants.
+Other tests cover 50→80 in four weeks, 30→35, 0→20 time-only, returning 40→50, three-day 75→80, unknown, peak-only, legacy scalar, health hold, contradicted peak, confidence-no-numeric-override, missing longest, and 48 combinations of mileage/days/returning for ceiling and deload invariants.
 
 **Validation at commit:** Source committed; no focused local Gradle run yet. Do not label calculations `EXECUTED` until the tests run. Math is preregistered in `M4_STAGE_B_GATE_B_PREFLIGHT_20261117.md`.
 
 ## Architectural migration and retirement plan
 
-- **Now:** The live app still runs the existing hybrid Engine 1.0 ΓåÆ 1.5 scheduling/workout generator. Stage B is a separate unused, deliberately shadow-only independent module.
+- **Now:** The live app still runs the existing hybrid Engine 1.0 → 1.5 scheduling/workout generator. Stage B is a separate unused, deliberately shadow-only independent module.
 - **After Gate B candidate review:** M5 must generate long/easy/quality workouts from the independent budget, faithfully preserve Q2 timed support and Q3 evidence rules, and reconcile final mixed-unit estimated distances before approval.
-- **After M6 scheduling/periodization:** Direct new running-plan generation through the independent M3ΓåÆM4BΓåÆM5ΓåÆM6 pipeline, with *no silent Engine 1.0 fallback*. Fail with an explicit review reason when independent generation is infeasible.
+- **After M6 scheduling/periodization:** Direct new running-plan generation through the independent M3→M4B→M5→M6 pipeline, with *no silent Engine 1.0 fallback*. Fail with an explicit review reason when independent generation is infeasible.
 - **After M9 acceptance:** Retire Engine 1.0 runtime routing for new plans. Maintain decoding of historical saved plans, existing backups and completed activity data.
 
 Do not remove Engine 1.0 early: Stage B deliberately has **no session composer or scheduler**, so such a change would make running-plan generation unavailable rather than safely independent.

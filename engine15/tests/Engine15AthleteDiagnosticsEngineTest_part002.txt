@@ -1,21 +1,9 @@
+FILE: Engine15AthleteDiagnosticsEngineTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 364-468
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 377-468
 --------------------------------------------------
-            "voq-$w" to qualityAnalysis("voq-$w", "voa-$w", ExecutionVerdict.VOLUME_ONLY_MATCH, 355.0, verified = false)
-        }
-        val snap = Engine15AthleteDiagnosticsEngine.evaluate(basePlan(sessions), acts, matches, analyses, null, asOf, zone)
-
-        assertEquals(3, snap.qualityExecution.evaluatedQualityCount)
-        assertEquals(3, snap.qualityExecution.volumeOnlySubstitutionCount)
-        assertEquals(0, snap.qualityExecution.verifiedHitCount)
-        assertEquals(0.0, snap.qualityExecution.verifiedHitRatePct!!, 0.01)
-    }
-
-    @Test
-    fun strictHrGateAndSummaryOnlyConfidenceDowngrade() {
-        val sessions = (0 until 4).map { w -> qualitySession("sum-q-$w", asOf.minusDays(21L - w * 7L), 10.0) }
         val acts = (0 until 4).map { w -> runActivity("sum-a-$w", asOf.minusDays(21L - w * 7L), 10.0, 45.0, 270.0, 168.0) }
         val matches = (0 until 4).associate { w -> "sum-a-$w" to linkedMatch("sum-a-$w", "sum-q-$w") }
         val analyses = (0 until 4).associate { w ->

@@ -1,7 +1,8 @@
+FILE: Engine15CoachingUi.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachingUi.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-191
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
+LINES: 1-172
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -39,9 +40,9 @@ internal fun PendingActivityMatchCards(state: TrainingState, actions: PlanAction
             SignalCard(modifier.testTag("activity-match-${match.activityId}-${session.id}")) {
                 Text("CONFIRM WORKOUT LINK", style = MaterialTheme.typography.labelMedium, color = CoachingMuted)
                 Text(activity.title, style = MaterialTheme.typography.titleMedium, color = CoachingInk)
-                Text("${activity.dateLabel} ┬╖ ${activity.distanceLabel}", color = CoachingMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Candidate: ${session.title} ┬╖ ${session.date}", color = CoachingInk, style = MaterialTheme.typography.bodyMedium)
-                Text("${(candidate.confidenceScore * 100).toInt()}% match${candidate.reasonCodes.firstOrNull()?.let { " ┬╖ ${it.replace('_', ' ').lowercase().replaceFirstChar(Char::uppercase)}" } ?: if (candidate.dateOffsetDays != 0) " ┬╖ off-day match" else ""}", color = CoachingLime, style = MaterialTheme.typography.labelMedium)
+                Text("${activity.dateLabel} · ${activity.distanceLabel}", color = CoachingMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Candidate: ${session.title} · ${session.date}", color = CoachingInk, style = MaterialTheme.typography.bodyMedium)
+                Text("${(candidate.confidenceScore * 100).toInt()}% match${candidate.reasonCodes.firstOrNull()?.let { " · ${it.replace('_', ' ').lowercase().replaceFirstChar(Char::uppercase)}" } ?: if (candidate.dateOffsetDays != 0) " · off-day match" else ""}", color = CoachingLime, style = MaterialTheme.typography.labelMedium)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { actions.confirmActivityMatch(plan.id, plan.revision, session.id, activity.id) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Confirm Link") }
                     OutlinedButton(onClick = { actions.rejectActivityMatch(activity.id, session.id) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Not This Workout") }
@@ -54,26 +55,7 @@ internal fun PendingActivityMatchCards(state: TrainingState, actions: PlanAction
 @Composable
 internal fun AthleteDiagnosticsCard(diagnostic: AthleteDiagnosticSnapshot?, modifier: Modifier = Modifier) {
     if (diagnostic == null) return
-    SignalCard(modifier.testTag("coaching-diagnostics")) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("COACHING DIAGNOSTICS", style = MaterialTheme.typography.labelMedium, color = CoachingMuted)
-            CoachingBadge(diagnostic.overallConfidence.name)
-        }
-        val volume = diagnostic.volumeTolerance
-        Text("Volume ┬╖ ${volume.completedKm.oneDecimal()} / ${volume.plannedKm.oneDecimal()} km ┬╖ ${volume.completedSessions}/${volume.plannedSessions} sessions ┬╖ ${volume.exposureStatus.name.prettyLabel()}", color = CoachingInk, style = MaterialTheme.typography.bodySmall)
-        val quality = diagnostic.qualityExecution
-        val hitRate = quality.verifiedHitRatePct?.let { "${it.toInt()}% verified hit rate" } ?: "${quality.verifiedHitCount}/${quality.evaluatedQualityCount} verified quality sessions"
-        val easy = diagnostic.easyDiscipline
-        Text("Quality ┬╖ $hitRate ┬╖ Easy days in zone ${easy.evaluatedEasyCount - easy.tooFastCount}/${easy.evaluatedEasyCount}", color = CoachingMuted, style = MaterialTheme.typography.bodySmall)
-        val hr = diagnostic.aerobicEfficiency
-        if (hr.hrDataAvailable) {
-            Text("HR efficiency ┬╖ ${hr.trend.name.prettyLabel()}${hr.efChangePct?.let { " ┬╖ ${it.oneDecimal()}%" } ?: ""}", color = CoachingMuted, style = MaterialTheme.typography.bodySmall)
-        }
-        diagnostic.insights.sortedBy { when (it.severity) { DiagnosticInsightSeverity.ACTIONABLE -> 0; DiagnosticInsightSeverity.CAUTION -> 1; DiagnosticInsightSeverity.INFO -> 2 } }.take(2).forEach { insight ->
-            Text("${insight.severity.name.prettyLabel()} ┬╖ ${insight.message}", color = if (insight.severity == DiagnosticInsightSeverity.INFO) CoachingMuted else CoachingInk, style = MaterialTheme.typography.bodySmall)
-        }
-        if (diagnostic.recalibrationAdvisory == RecalibrationAdvisory.ADDRESS_EASY_PACING_FIRST) EasyPacingLockBanner()
-    }
+    AthleteDiagnosticsVisualCard(diagnostic = diagnostic, modifier = modifier)
 }
 
 @Composable
@@ -92,7 +74,7 @@ internal fun AdaptationProposalBanner(proposal: PlanAdaptationProposal?, onRevie
     SignalCard(modifier.testTag("adaptation-proposal-banner")) {
         Text("COACHING ADJUSTMENT", style = MaterialTheme.typography.labelMedium, color = CoachingMuted)
         Text(proposal.title, style = MaterialTheme.typography.titleMedium, color = CoachingInk)
-        Text("Source confidence ┬╖ ${proposal.sourceConfidence.name}", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
+        Text("Source confidence · ${proposal.sourceConfidence.name}", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
         OutlinedButton(onClick = onReview, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Review Adjustment") }
     }
 }
@@ -107,16 +89,16 @@ internal fun AdaptationProposalSheet(proposal: PlanAdaptationProposal?, busy: Bo
             CoachingBadge(proposal.sourceConfidence.name)
             Text(proposal.coachingRationale, style = MaterialTheme.typography.bodyMedium)
             val diff = proposal.diff
-            Text("FROM ${diff.effectiveFromDate} ┬╖ ${diff.affectedSessionCount} sessions", style = MaterialTheme.typography.labelMedium, color = CoachingMuted)
+            Text("FROM ${diff.effectiveFromDate} · ${diff.affectedSessionCount} sessions", style = MaterialTheme.typography.labelMedium, color = CoachingMuted)
             val disciplineRecovery = "NON_RUNNING_RECOVERY" in proposal.reasonCodes || proposal.type == AdaptationType.RUNNER_SUPPORT_DOSE
             if (!disciplineRecovery)
-                Text("Remaining distance ┬╖ ${diff.totalRemainingKmBefore.oneDecimal()} ΓåÆ ${diff.totalRemainingKmAfter.oneDecimal()} km", style = MaterialTheme.typography.bodyMedium)
+                Text("Remaining distance · ${diff.totalRemainingKmBefore.oneDecimal()} → ${diff.totalRemainingKmAfter.oneDecimal()} km", style = MaterialTheme.typography.bodyMedium)
             diff.paceDiffs.forEach { pace ->
-                Text("${pace.intent.name.prettyLabel()} ┬╖ ${paceBand(pace.oldMinSecPerKm, pace.oldMaxSecPerKm)} ΓåÆ ${paceBand(pace.newMinSecPerKm, pace.newMaxSecPerKm)}", style = MaterialTheme.typography.bodySmall)
+                Text("${pace.intent.name.prettyLabel()} · ${paceBand(pace.oldMinSecPerKm, pace.oldMaxSecPerKm)} → ${paceBand(pace.newMinSecPerKm, pace.newMaxSecPerKm)}", style = MaterialTheme.typography.bodySmall)
             }
             diff.weekDiffs.forEach { week ->
-                val km = if (disciplineRecovery) "" else " ┬╖ ${week.plannedKmBefore.oneDecimal()} ΓåÆ ${week.plannedKmAfter.oneDecimal()} km"
-                Text("Week ${week.weekIndex + 1} ┬╖ ${week.phaseBefore} ΓåÆ ${week.phaseAfter}$km\n${week.summaryNote}", style = MaterialTheme.typography.bodySmall)
+                val km = if (disciplineRecovery) "" else " · ${week.plannedKmBefore.oneDecimal()} → ${week.plannedKmAfter.oneDecimal()} km"
+                Text("Week ${week.weekIndex + 1} · ${week.phaseBefore} → ${week.phaseAfter}$km\n${week.summaryNote}", style = MaterialTheme.typography.bodySmall)
             }
             if (proposal.candidatePlanJson != null) {
                 Button(onClick = { onApply(proposal.planId, proposal.proposalId); onDismiss() }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Apply Adjustment") }
@@ -151,10 +133,10 @@ internal fun WorkoutExecutionVerdictCard(analysis: WorkoutExecutionAnalysis, mod
             if (analysis.verdict == ExecutionVerdict.VOLUME_ONLY_MATCH) CoachingBadge("Volume Only", tint = Color(0xFFB9A77A))
         }
         Text(analysis.coachingSummary, style = MaterialTheme.typography.bodyMedium, color = CoachingInk)
-        Text("Distance ┬╖ Actual ${analysis.actualKm?.oneDecimal() ?: "ΓÇö"} / Planned ${analysis.plannedKm?.oneDecimal() ?: "ΓÇö"} km", style = MaterialTheme.typography.bodySmall)
-        analysis.workStepPaceAdherencePct?.let { Text("Work pace adherence ┬╖ ${it.toInt()}%", style = MaterialTheme.typography.bodySmall) }
-        analysis.hrZoneCompliancePct?.let { Text("HR zone compliance ┬╖ ${it.toInt()}%", style = MaterialTheme.typography.bodySmall) }
-        analysis.aerobicDecouplingPct?.let { Text("Pa:Hr decoupling ┬╖ ${it.oneDecimal()}%", style = MaterialTheme.typography.bodySmall) }
+        Text("Distance · Actual ${analysis.actualKm?.oneDecimal() ?: "—"} / Planned ${analysis.plannedKm?.oneDecimal() ?: "—"} km", style = MaterialTheme.typography.bodySmall)
+        analysis.workStepPaceAdherencePct?.let { Text("Work pace adherence · ${it.toInt()}%", style = MaterialTheme.typography.bodySmall) }
+        analysis.hrZoneCompliancePct?.let { Text("HR zone compliance · ${it.toInt()}%", style = MaterialTheme.typography.bodySmall) }
+        analysis.aerobicDecouplingPct?.let { Text("Pa:Hr decoupling · ${it.oneDecimal()}%", style = MaterialTheme.typography.bodySmall) }
     }
 }
 
@@ -166,11 +148,11 @@ internal fun ExecutionStepBreakdownCards(analysis: WorkoutExecutionAnalysis, mod
         analysis.stepBreakdowns.forEachIndexed { index, step ->
             Column(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("${index + 1}. ${step.purpose}", style = MaterialTheme.typography.titleSmall, color = CoachingInk)
-                val planned = step.plannedDistanceKm?.let { "${it.oneDecimal()} km" } ?: step.plannedSeconds?.let { "${it / 60} min" } ?: "ΓÇö"
-                val observed = step.actualDistanceKm?.let { "${it.oneDecimal()} km" } ?: step.actualSeconds?.let { "${it / 60} min" } ?: "ΓÇö"
-                Text("Planned $planned ┬╖ Observed $observed", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
+                val planned = step.plannedDistanceKm?.let { "${it.oneDecimal()} km" } ?: step.plannedSeconds?.let { "${it / 60} min" } ?: "—"
+                val observed = step.actualDistanceKm?.let { "${it.oneDecimal()} km" } ?: step.actualSeconds?.let { "${it / 60} min" } ?: "—"
+                Text("Planned $planned · Observed $observed", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
                 val pace = step.actualPaceSecPerKm?.let { "${formatPace(it.toInt())}/km observed" } ?: "Pace unavailable"
-                Text("$pace${step.paceAdherencePct?.let { " ┬╖ ${it.toInt()}% adherence" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
+                Text("$pace${step.paceAdherencePct?.let { " · ${it.toInt()}% adherence" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = CoachingMuted)
             }
         }
     }
@@ -184,7 +166,7 @@ internal fun ExecutionStepBreakdownCards(analysis: WorkoutExecutionAnalysis, mod
 
 private fun Double.oneDecimal() = String.format(Locale.ROOT, "%.1f", this)
 private fun String.prettyLabel() = lowercase().replace('_', ' ').replaceFirstChar(Char::uppercase)
-private fun paceBand(min: Int, max: Int) = "${formatPace(min)}ΓÇô${formatPace(max)} /km"
+private fun paceBand(min: Int, max: Int) = "${formatPace(min)}–${formatPace(max)} /km"
 private fun formatPace(seconds: Int) = "%d:%02d".format(Locale.ROOT, seconds / 60, seconds % 60)
 private fun verdictTint(verdict: ExecutionVerdict): Color = when (verdict) {
     ExecutionVerdict.ON_TARGET -> Color(0xFF8CB89B)

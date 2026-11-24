@@ -1,9 +1,10 @@
+FILE: M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-22
 --------------------------------------------------
-# M6 Stage A ΓÇö shadow independent date-placement implementation
+# M6 Stage A — shadow independent date-placement implementation
 
 Date 2026-11-17. Branch `feature/engine15-m6a-independent-calendar-20261117`, stacked on M5C PR #116. See frozen spec `M6_STAGE_A_PREFLIGHT_20261117.md`.
 

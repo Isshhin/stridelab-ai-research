@@ -1,42 +1,9 @@
+FILE: Engine15PlanAdaptationEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 622-942
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 5
+LINES: 656-980
 --------------------------------------------------
-            val origWkKm = origWkSessions.sumOf { it.distanceKm ?: 0.0 }
-            val candWkKm = candWkSessions.sumOf { it.distanceKm ?: 0.0 }
-            val origTaperQuality = candWkSessions.count { it.quality }
-            if (candWkKm > origWkKm + 0.1 || origTaperQuality > 1) {
-                warnings += "TAPER_WEEK_INFLATED:wk$wkIdx"
-            }
-        }
-
-        // 8. Zero make-up cramming on current partial week
-        if (allowZeroMakeUpCheck) {
-            val curWk = weekIndexOf(originalPlan.request.start, effectiveFromDate.minusDays(1))
-            if (curWk >= 0) {
-                for (cand in byWeek[curWk].orEmpty()) {
-                    if (!cand.date.isBefore(effectiveFromDate)) {
-                        val orig = origById[cand.id]
-                        if (orig == null || (cand.distanceKm ?: 0.0) > (orig.distanceKm ?: 0.0) + 1e-6) {
-                            warnings += "CURRENT_WEEK_MAKEUP_CRAMMING:${cand.id}"
-                        }
-                    }
-                }
-            }
-        }
-
-        // 9. Lossless JSON round-trip check
-        runCatching {
-            val decoded = PlanSnapshot.decode(candidatePlan.encode(), candidatePlan.owner)
-            require(decoded.sessions.size == candidatePlan.sessions.size)
-        }.onFailure {
-            warnings += "SNAPSHOT_JSON_ROUNDTRIP_FAILED"
-        }
-
-        return ValidationOutcome(passed = warnings.isEmpty(), warnings = warnings)
-    }
-
     private fun buildPaceRecalibrationProposal(
         plan: PlanSnapshot,
         diagnostic: AthleteDiagnosticSnapshot,
@@ -324,3 +291,41 @@ LINES: 622-942
         val gate = validateCandidatePlan(
             originalPlan = plan,
             candidatePlan = candidatePlan,
+            effectiveFromDate = effectiveFromDate,
+            trailing30dLongestKm = trailing30dLongestKm,
+            linkedSessionIds = linkedSessionIds,
+            futureEngineValidationPlan = futureValidationPlan,
+            allowZeroMakeUpCheck = true,
+            reEntryWeekIndices = reEntryWeeks
+        )
+        if (!gate.passed) return null
+
+        val diff = buildPlanDiff(plan, candidatePlan, effectiveFromDate, affectedCount, emptyList(), gate, weekNotes)
+        return PlanAdaptationProposal(
+            proposalId = "prop-${plan.id}-recovery-${disruption.tier.name.lowercase(Locale.ROOT)}-$asOfDate",
+            planId = plan.id,
+            type = AdaptationType.MISSED_WEEK_RECOVERY,
+            status = AdaptationProposalStatus.PENDING,
+            createdAtDate = asOfDate,
+            effectiveFromDate = effectiveFromDate,
+            expiresAtDate = asOfDate.plusDays(PROPOSAL_EXPIRY_DAYS),
+            disruptionTier = disruption.tier,
+            disruptionFingerprint = disruption.fingerprint,
+            sourceDiagnosticDate = diagnostic.asOfDate,
+            sourceConfidence = diagnostic.overallConfidence,
+            title = when (disruption.tier) {
+                DisruptionTier.SHORT_DISRUPTION_3_TO_5D -> "Smooth Short-Gap Re-Entry (${disruption.gapDays}d Missed)"
+                DisruptionTier.FULL_MISSED_WEEK_6_TO_10D -> "Insert Re-Entry Bridge Week (~82% Volume)"
+                DisruptionTier.EXTENDED_GAP_11D_PLUS -> "2-Week Aerobic Rebuild After ${disruption.gapDays}d Gap"
+                DisruptionTier.NONE -> "Recovery Adjustment"
+            },
+            coachingRationale = "Detected ${disruption.missedCount} consecutive missed sessions (${disruption.gapDays}-day interruption). Proposed ${disruption.tier.name.lowercase(Locale.ROOT).replace('_', ' ')} starting $effectiveFromDate with zero make-up cramming.",
+            diff = diff,
+            candidatePlanJson = candidatePlan.encode().toString(),
+            reasonCodes = reasonCodes.toList() + "PRE_SURFACE_INVARIANT_PASSED"
+        )
+    }
+
+    private fun buildProactiveDeloadProposal(
+        plan: PlanSnapshot,
+        diagnostic: AthleteDiagnosticSnapshot,

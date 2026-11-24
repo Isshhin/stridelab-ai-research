@@ -1,8 +1,18 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 8
-LINES: 2131-2178
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 8 / 8
+LINES: 2231-2287
 --------------------------------------------------
+        vault.clear(account)
+        check(preferences.edit().remove("active").commit())
+        mutable.value = TrainingState(initializing = false,busy = true,
+            localGarminOwner=localGarminOwner,localPlanOwner=localPlanOwner,
+            loginGeneration = mutable.value.loginGeneration + 1,
+            task = "Finishing sign-out…")
+        loadLocalPlanCache() // Show only local plans; cloud plans remain under their cloud owner.
+        loadLocalGarminCache() // Hide cloud activities, retain local Garmin history.
+        val revoked = saved != null && runCatching { gateway.signOut(saved); true }.getOrDefault(false)
         mutable.value = mutable.value.copy(message = if(revoked) null else "Signed out on this device. Server session revocation was unavailable; saved files were retained.")
     }
 }
@@ -47,7 +57,7 @@ private fun validatedActivityTitle(input:String):String {
     val title = input.trim()
     require(title.isNotBlank() && title.length <= 100 &&
         title.none { Character.isISOControl(it) }) {
-        "Activity title must contain 1ΓÇô100 printable characters."
+        "Activity title must contain 1–100 printable characters."
     }
     return title
 }

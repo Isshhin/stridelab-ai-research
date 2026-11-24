@@ -1,300 +1,498 @@
-﻿engine15/research/ENGINE15_EXECUTION_part001.txt | ENGINE15_EXECUTION.md | Lines 1-49
-engine15/research/ENGINE15_EXECUTION_part002.txt | ENGINE15_EXECUTION.md | Lines 50-69
-engine15/research/ENGINE15_EXECUTION_part003.txt | ENGINE15_EXECUTION.md | Lines 70-89
-engine15/research/ENGINE15_EXECUTION_part004.txt | ENGINE15_EXECUTION.md | Lines 90-142
-engine15/research/ENGINE15_EXECUTION_part005.txt | ENGINE15_EXECUTION.md | Lines 143-193
-engine15/research/ENGINE15_EXECUTION_part006.txt | ENGINE15_EXECUTION.md | Lines 194-260
-engine15/research/ENGINE15_EXECUTION_part007.txt | ENGINE15_EXECUTION.md | Lines 261-296
-engine15/research/ENGINE15_EXECUTION_part008.txt | ENGINE15_EXECUTION.md | Lines 297-371
-engine15/research/ENGINE15_EXECUTION_part009.txt | ENGINE15_EXECUTION.md | Lines 372-467
-engine15/research/ENGINE15_EXECUTION_part010.txt | ENGINE15_EXECUTION.md | Lines 468-535
-engine15/research/engine15-batch-b_part001.txt | docs/engine15-batch-b.md | Lines 1-55
-engine15/research/engine15-batch-b2-multisession_part001.txt | docs/engine15-batch-b2-multisession.md | Lines 1-17
-engine15/research/engine15-batch-b3_part001.txt | docs/engine15-batch-b3.md | Lines 1-27
-engine15/research/engine15-batch-b4_part001.txt | docs/engine15-batch-b4.md | Lines 1-11
-engine15/research/engine15-batch-b5_part001.txt | docs/engine15-batch-b5.md | Lines 1-17
-engine15/research/engine15-batch-b6_part001.txt | docs/engine15-batch-b6.md | Lines 1-17
-engine15/research/engine15-batch-b7_part001.txt | docs/engine15-batch-b7.md | Lines 1-21
-engine15/research/engine15-batch-c_part001.txt | docs/engine15-batch-c.md | Lines 1-40
-engine15/research/engine15-batch-d-e-handoff_part001.txt | docs/engine15-batch-d-e-handoff.md | Lines 1-63
-engine15/research/engine15-batch-e2-figma-review_part001.txt | docs/engine15-batch-e2-figma-review.md | Lines 1-34
-engine15/research/engine15-foundation_part001.txt | docs/engine15-foundation.md | Lines 1-23
-engine15/research/engine15-research-gain-reliability-audit-20261104_part001.txt | docs/engine15-research-gain-reliability-audit-20261104.md | Lines 1-78
-engine15/source/ActivityAthleteEvidence_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityAthleteEvidence.kt | Lines 1-95
-engine15/source/Engine15ActivityAutoMatcher_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ActivityAutoMatcher.kt | Lines 1-374
-engine15/source/Engine15ActivityAutoMatcher_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ActivityAutoMatcher.kt | Lines 375-384
-engine15/source/Engine15AdaptationContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AdaptationContracts.kt | Lines 1-333
-engine15/source/Engine15AthleteCapacity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteCapacity.kt | Lines 1-167
-engine15/source/Engine15AthleteDiagnosticsEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt | Lines 1-384
-engine15/source/Engine15AthleteDiagnosticsEngine_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt | Lines 385-750
-engine15/source/Engine15AthleteDiagnosticsEngine_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt | Lines 751-774
-engine15/source/Engine15AthleteEffortBaseline_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteEffortBaseline.kt | Lines 1-233
-engine15/source/Engine15Availability_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15Availability.kt | Lines 1-146
-engine15/source/Engine15CalisthenicsWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CalisthenicsWorkoutComposer.kt | Lines 1-186
-engine15/source/Engine15CoachControls_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachControls.kt | Lines 1-172
-engine15/source/Engine15CoachingUi_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachingUi.kt | Lines 1-191
-engine15/source/Engine15ConditioningWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ConditioningWorkoutComposer.kt | Lines 1-129
-engine15/source/Engine15DailyLoadShaper_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt | Lines 1-348
-engine15/source/Engine15DailyLoadShaper_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt | Lines 349-442
-engine15/source/Engine15DebriefEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DebriefEngine.kt | Lines 1-130
-engine15/source/Engine15DebriefModels_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DebriefModels.kt | Lines 1-49
-engine15/source/Engine15DiagnosticContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DiagnosticContracts.kt | Lines 1-349
-engine15/source/Engine15DisciplineProgression_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt | Lines 1-260
-engine15/source/Engine15DisciplineProgression_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt | Lines 261-316
-engine15/source/Engine15DistanceRounding_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DistanceRounding.kt | Lines 1-65
-engine15/source/Engine15ExecutionAnalyzer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 1-407
-engine15/source/Engine15ExecutionAnalyzer_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 408-792
-engine15/source/Engine15ExecutionAnalyzer_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 793-1182
-engine15/source/Engine15ExecutionAnalyzer_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 1183-1413
-engine15/source/Engine15ExecutionContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionContracts.kt | Lines 1-368
-engine15/source/Engine15Feedback_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15Feedback.kt | Lines 1-249
-engine15/source/Engine15HistoryInformedPlanning_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15HistoryInformedPlanning.kt | Lines 1-163
-engine15/source/Engine15I10ReadOnlyCandidateAssembly_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I10ReadOnlyCandidateAssembly.kt | Lines 1-162
-engine15/source/Engine15I3SourceLinkedQualityDuration_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I3SourceLinkedQualityDuration.kt | Lines 1-177
-engine15/source/Engine15I4WorkLapHeartRateReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I4WorkLapHeartRateReview.kt | Lines 1-242
-engine15/source/Engine15I5TimedDistanceFeasibility_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I5TimedDistanceFeasibility.kt | Lines 1-286
-engine15/source/Engine15I6SourceWorkLapPaceConsistency_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistency.kt | Lines 1-285
-engine15/source/Engine15I7IntensityCalibrationReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I7IntensityCalibrationReview.kt | Lines 1-205
-engine15/source/Engine15I8CalibrationArtifactIntegrity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrity.kt | Lines 1-189
-engine15/source/Engine15I9ReadOnlyBasePlanAssembly_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I9ReadOnlyBasePlanAssembly.kt | Lines 1-192
-engine15/source/Engine15IndependentPlanGenerator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1-315
-engine15/source/Engine15IndependentPlanGenerator_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 316-587
-engine15/source/Engine15IndependentPlanGenerator_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 588-829
-engine15/source/Engine15IndependentPlanGenerator_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 830-1046
-engine15/source/Engine15IndependentPlanGenerator_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1047-1319
-engine15/source/Engine15IndependentPlanGenerator_part006.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1320-1508
-engine15/source/Engine15IndependentVolumePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentVolumePlanner.kt | Lines 1-302
-engine15/source/Engine15M5QualityPreviewComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposer.kt | Lines 1-172
-engine15/source/Engine15M5TimedDistanceReconciler_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt | Lines 1-343
-engine15/source/Engine15M5TimedDistanceReconciler_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt | Lines 344-401
-engine15/source/Engine15M5WorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5WorkoutComposer.kt | Lines 1-247
-engine15/source/Engine15M6IndependentCalendar_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentCalendar.kt | Lines 1-271
-engine15/source/Engine15M6IndependentInterferenceReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentInterferenceReview.kt | Lines 1-211
-engine15/source/Engine15M6IndependentPeriodizationReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentPeriodizationReview.kt | Lines 1-266
-engine15/source/Engine15M6IndependentQualitySpacing_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacing.kt | Lines 1-197
-engine15/source/Engine15MacrocyclePeriodization_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MacrocyclePeriodization.kt | Lines 1-155
-engine15/source/Engine15MarathonTidEvaluator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MarathonTidEvaluator.kt | Lines 1-208
-engine15/source/Engine15MileageOptions_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MileageOptions.kt | Lines 1-13
-engine15/source/Engine15MileageTargetIntegrity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MileageTargetIntegrity.kt | Lines 1-76
-engine15/source/Engine15PaceZoneEstimator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt | Lines 1-350
-engine15/source/Engine15PaceZoneEstimator_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt | Lines 351-492
-engine15/source/Engine15PlanAdaptationEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 1-310
-engine15/source/Engine15PlanAdaptationEngine_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 311-621
-engine15/source/Engine15PlanAdaptationEngine_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 622-942
-engine15/source/Engine15PlanAdaptationEngine_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 943-1260
-engine15/source/Engine15PlanAdaptationEngine_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 1261-1607
-engine15/source/Engine15QualityFamilySelection_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt | Lines 1-262
-engine15/source/Engine15QualityFamilySelection_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt | Lines 263-357
-engine15/source/Engine15QualityProgressionPolicy_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 1-340
-engine15/source/Engine15QualityProgressionPolicy_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 341-616
-engine15/source/Engine15QualityProgressionPolicy_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 617-886
-engine15/source/Engine15QualityProgressionPolicy_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 887-1180
-engine15/source/Engine15QualityProgressionPolicy_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 1181-1300
-engine15/source/Engine15QualityWorkoutDryRun_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRun.kt | Lines 1-248
-engine15/source/Engine15RunHistory_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15RunHistory.kt | Lines 1-102
-engine15/source/Engine15RunningDebriefAnalyzer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15RunningDebriefAnalyzer.kt | Lines 1-250
-engine15/source/Engine15ScheduleReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt | Lines 1-286
-engine15/source/Engine15ScheduleReview_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt | Lines 287-375
-engine15/source/Engine15SessionLocks_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15SessionLocks.kt | Lines 1-48
-engine15/source/Engine15SessionPresentation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15SessionPresentation.kt | Lines 1-93
-engine15/source/Engine15StaticMultiDisciplinePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt | Lines 1-254
-engine15/source/Engine15StaticMultiDisciplinePlanner_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt | Lines 255-397
-engine15/source/Engine15StrengthWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StrengthWorkoutComposer.kt | Lines 1-220
-engine15/source/Engine15TimeOnlyRunWalkBuilder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt | Lines 1-338
-engine15/source/Engine15TimeOnlyRunWalkBuilder_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt | Lines 339-362
-engine15/source/Engine15UserWorkoutAuthoring_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15UserWorkoutAuthoring.kt | Lines 1-33
-engine15/source/Engine15WeeklyReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyReview.kt | Lines 1-224
-engine15/source/Engine15WeeklyReview_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyReview.kt | Lines 225-233
-engine15/source/Engine15WeeklyVolumeSkeleton_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyVolumeSkeleton.kt | Lines 1-190
-engine15/source/Engine15WorkloadLedger_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkloadLedger.kt | Lines 1-121
-engine15/source/Engine15WorkoutDetection_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDetection.kt | Lines 1-310
-engine15/source/Engine15WorkoutDifficultyAdjuster_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 1-320
-engine15/source/Engine15WorkoutDifficultyAdjuster_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 321-669
-engine15/source/Engine15WorkoutDifficultyAdjuster_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 670-752
-engine15/source/Engine1Engines_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine1Engines.kt | Lines 1-33
-engine15/source/EngineContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 1-226
-engine15/source/EngineContracts_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 227-455
-engine15/source/EngineContracts_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 456-513
-engine15/source/IndependentAdaptiveWeek_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAdaptiveWeek.kt | Lines 1-113
-engine15/source/IndependentAndroidResearchBridge_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAndroidResearchBridge.kt | Lines 1-177
-engine15/source/IndependentAndroidResearchPreviewPanel_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAndroidResearchPreviewPanel.kt | Lines 1-285
-engine15/source/IndependentCapacityProfiler_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentCapacityProfiler.kt | Lines 1-157
-engine15/source/IndependentCompletionAttribution_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentCompletionAttribution.kt | Lines 1-184
-engine15/source/IndependentConstrainedMultiweekPlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentConstrainedMultiweekPlanner.kt | Lines 1-175
-engine15/source/IndependentGoalAwareTrajectoryReplay_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentGoalAwareTrajectoryReplay.kt | Lines 1-182
-engine15/source/IndependentIntervalGroup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentIntervalGroup.kt | Lines 1-30
-engine15/source/IndependentLongitudinalShadow_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentLongitudinalShadow.kt | Lines 1-128
-engine15/source/IndependentMileageFeasibility_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentMileageFeasibility.kt | Lines 1-165
-engine15/source/IndependentMultiweekResponse_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentMultiweekResponse.kt | Lines 1-256
-engine15/source/IndependentQualityDoseProgression_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityDoseProgression.kt | Lines 1-303
-engine15/source/IndependentQualityDoseProgression_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityDoseProgression.kt | Lines 304-342
-engine15/source/IndependentQualityExposure_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityExposure.kt | Lines 1-172
-engine15/source/IndependentQualityFitnessAdapter_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityFitnessAdapter.kt | Lines 1-210
-engine15/source/IndependentQualityOverlayComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityOverlayComposer.kt | Lines 1-260
-engine15/source/IndependentQualitySourceBinding_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualitySourceBinding.kt | Lines 1-163
-engine15/source/IndependentQualitySpacingPlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualitySpacingPlanner.kt | Lines 1-202
-engine15/source/IndependentQualityTemplates_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityTemplates.kt | Lines 1-191
-engine15/source/IndependentResearchDraft_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentResearchDraft.kt | Lines 1-292
-engine15/source/IndependentResearchScenarioRunner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentResearchScenarioRunner.kt | Lines 1-153
-engine15/source/IndependentRunWeekComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentRunWeekComposer.kt | Lines 1-151
-engine15/source/IndependentRunningHistory_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentRunningHistory.kt | Lines 1-133
-engine15/source/IndependentTimedQualityDistanceReconciliation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentTimedQualityDistanceReconciliation.kt | Lines 1-198
-engine15/source/IndependentWeeklyEvidenceLedger_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyEvidenceLedger.kt | Lines 1-164
-engine15/source/IndependentWeeklyMileagePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyMileagePlanner.kt | Lines 1-247
-engine15/source/IndependentWeeklyProgramReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyProgramReview.kt | Lines 1-287
-engine15/source/IndependentWorkout_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWorkout.kt | Lines 1-57
-engine15/source/IndependentWorkoutComposition_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWorkoutComposition.kt | Lines 1-58
-engine15/source/PlanScheduleValidation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanScheduleValidation.kt | Lines 1-86
-engine15/source/RunningHistoryCoverage_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/RunningHistoryCoverage.kt | Lines 1-130
-engine15/source/TrainingRepository_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1-344
-engine15/source/TrainingRepository_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 345-647
-engine15/source/TrainingRepository_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 648-931
-engine15/source/TrainingRepository_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 932-1193
-engine15/source/TrainingRepository_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1194-1491
-engine15/source/TrainingRepository_part006.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1492-1802
-engine15/source/TrainingRepository_part007.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1803-2130
-engine15/source/TrainingRepository_part008.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 2131-2178
-engine15/tests/Engine15AcceptanceEvidenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AcceptanceEvidenceTest.kt | Lines 1-106
-engine15/tests/Engine15ActivityAutoMatcherTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ActivityAutoMatcherTest.kt | Lines 1-301
-engine15/tests/Engine15AdaptiveHistoryAndUiContractTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AdaptiveHistoryAndUiContractTest.kt | Lines 1-132
-engine15/tests/Engine15ArchitectureTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ArchitectureTest.kt | Lines 1-195
-engine15/tests/Engine15AthleteDiagnosticsEngineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt | Lines 1-363
-engine15/tests/Engine15AthleteDiagnosticsEngineTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt | Lines 364-468
-engine15/tests/Engine15AthleteEffortBaselineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteEffortBaselineTest.kt | Lines 1-142
-engine15/tests/Engine15AvailabilityReconciliationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AvailabilityReconciliationTest.kt | Lines 1-108
-engine15/tests/Engine15Batch1AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt | Lines 1-387
-engine15/tests/Engine15Batch1AuditFixesTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt | Lines 388-442
-engine15/tests/Engine15Batch2AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch2AuditFixesTest.kt | Lines 1-295
-engine15/tests/Engine15Batch3AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch3AuditFixesTest.kt | Lines 1-215
-engine15/tests/Engine15CoachingAcceptanceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 1-382
-engine15/tests/Engine15CoachingAcceptanceTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 383-703
-engine15/tests/Engine15CoachingAcceptanceTest_part003.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 704-1012
-engine15/tests/Engine15CoachingAcceptanceTest_part004.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 1013-1254
-engine15/tests/Engine15CompletePlanRobustnessMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CompletePlanRobustnessMatrixTest.kt | Lines 1-302
-engine15/tests/Engine15DailyLoadShaperTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DailyLoadShaperTest.kt | Lines 1-298
-engine15/tests/Engine15DisciplineProgressionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DisciplineProgressionTest.kt | Lines 1-156
-engine15/tests/Engine15DistanceRoundingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DistanceRoundingTest.kt | Lines 1-51
-engine15/tests/Engine15ExecutionAnalyzerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt | Lines 1-387
-engine15/tests/Engine15ExecutionAnalyzerTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt | Lines 388-528
-engine15/tests/Engine15FeedbackTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15FeedbackTest.kt | Lines 1-236
-engine15/tests/Engine15HistoryInformedPlanningTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15HistoryInformedPlanningTest.kt | Lines 1-105
-engine15/tests/Engine15I1IntegratedShadowMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I1IntegratedShadowMatrixTest.kt | Lines 1-353
-engine15/tests/Engine15I1IntegratedShadowMatrixTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I1IntegratedShadowMatrixTest.kt | Lines 354-405
-engine15/tests/Engine15I2AdversarialShadowMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I2AdversarialShadowMatrixTest.kt | Lines 1-259
-engine15/tests/Engine15I3SourceLinkedQualityDurationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I3SourceLinkedQualityDurationTest.kt | Lines 1-291
-engine15/tests/Engine15I4WorkLapHeartRateReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I4WorkLapHeartRateReviewTest.kt | Lines 1-328
-engine15/tests/Engine15I5TimedDistanceFeasibilityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I5TimedDistanceFeasibilityTest.kt | Lines 1-409
-engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistencyTest.kt | Lines 1-403
-engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistencyTest.kt | Lines 404-458
-engine15/tests/Engine15I7IntensityCalibrationReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I7IntensityCalibrationReviewTest.kt | Lines 1-379
-engine15/tests/Engine15I7IntensityCalibrationReviewTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I7IntensityCalibrationReviewTest.kt | Lines 380-392
-engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt | Lines 1-385
-engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt | Lines 386-483
-engine15/tests/Engine15I9ReadOnlyBasePlanAssemblyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I9ReadOnlyBasePlanAssemblyTest.kt | Lines 1-321
-engine15/tests/Engine15IndependentDevelopmentRouteTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentDevelopmentRouteTest.kt | Lines 1-271
-engine15/tests/Engine15IndependentPlanGeneratorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 1-300
-engine15/tests/Engine15IndependentPlanGeneratorTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 301-559
-engine15/tests/Engine15IndependentPlanGeneratorTest_part003.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 560-910
-engine15/tests/Engine15IndependentPlanGeneratorTest_part004.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 911-922
-engine15/tests/Engine15M28CoachingAuditTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M28CoachingAuditTest.kt | Lines 1-360
-engine15/tests/Engine15M28CoachingAuditTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M28CoachingAuditTest.kt | Lines 361-414
-engine15/tests/Engine15M3AthleteBaselineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M3AthleteBaselineTest.kt | Lines 1-155
-engine15/tests/Engine15M4BIndependentVolumePlannerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M4BIndependentVolumePlannerTest.kt | Lines 1-254
-engine15/tests/Engine15M4WeeklyVolumeSkeletonTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M4WeeklyVolumeSkeletonTest.kt | Lines 1-144
-engine15/tests/Engine15M5QualityPreviewComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposerTest.kt | Lines 1-237
-engine15/tests/Engine15M5TimedDistanceReconcilerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconcilerTest.kt | Lines 1-245
-engine15/tests/Engine15M5WorkoutComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5WorkoutComposerTest.kt | Lines 1-212
-engine15/tests/Engine15M6IndependentCalendarTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentCalendarTest.kt | Lines 1-219
-engine15/tests/Engine15M6IndependentInterferenceReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentInterferenceReviewTest.kt | Lines 1-258
-engine15/tests/Engine15M6IndependentPeriodizationReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentPeriodizationReviewTest.kt | Lines 1-261
-engine15/tests/Engine15M6IndependentQualitySpacingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacingTest.kt | Lines 1-247
-engine15/tests/Engine15MarathonTidEvaluatorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MarathonTidEvaluatorTest.kt | Lines 1-110
-engine15/tests/Engine15MissedSuggestionSafetyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MissedSuggestionSafetyTest.kt | Lines 1-110
-engine15/tests/Engine15MultiDisciplineStabilizationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MultiDisciplineStabilizationTest.kt | Lines 1-202
-engine15/tests/Engine15PaceZoneEstimatorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PaceZoneEstimatorTest.kt | Lines 1-68
-engine15/tests/Engine15Phase2CoachingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Phase2CoachingTest.kt | Lines 1-239
-engine15/tests/Engine15Phase3Track6Test_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Phase3Track6Test.kt | Lines 1-161
-engine15/tests/Engine15PhaseACoreTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PhaseACoreTest.kt | Lines 1-111
-engine15/tests/Engine15PlanAdaptationEngineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt | Lines 1-318
-engine15/tests/Engine15PlanAdaptationEngineTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt | Lines 319-395
-engine15/tests/Engine15QualityFamilySelectionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityFamilySelectionTest.kt | Lines 1-229
-engine15/tests/Engine15QualityProgressionPolicyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicyTest.kt | Lines 1-217
-engine15/tests/Engine15QualityWorkoutDryRunTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt | Lines 1-280
-engine15/tests/Engine15QualityWorkoutDryRunTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt | Lines 281-474
-engine15/tests/Engine15RunningDebriefAnalyzerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15RunningDebriefAnalyzerTest.kt | Lines 1-232
-engine15/tests/Engine15RunningPrescriptionSprintTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15RunningPrescriptionSprintTest.kt | Lines 1-228
-engine15/tests/Engine15WeeklyReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WeeklyReviewTest.kt | Lines 1-90
-engine15/tests/Engine15WorkoutDetectionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WorkoutDetectionTest.kt | Lines 1-244
-engine15/tests/Engine15WorkoutDifficultyAdjusterTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjusterTest.kt | Lines 1-263
-engine15/research/engine15-q1-quality-baseline-20261116_part001.txt | research/engine15-q1-quality-baseline-20261116.md | Lines 1-42
-engine15/research/engine15-q1-quality-executed-findings-20261116_part001.txt | research/engine15-q1-quality-executed-findings-20261116.md | Lines 1-68
-engine15/research/engine15-q2-mixed-unit-cooldown-20261116_part001.txt | research/engine15-q2-mixed-unit-cooldown-20261116.md | Lines 1-37
-engine15/research/engine15-q3-verified-quality-20261116_part001.txt | research/engine15-q3-verified-quality-20261116.md | Lines 1-20
-engine15/research/DECISION_LOG_part001.txt | research/engine15-r0/DECISION_LOG.md | Lines 1-74
-engine15/research/GATE_B_EXECUTED_READOUT_20261117_part001.txt | research/engine15-r0/GATE_B_EXECUTED_READOUT_20261117.md | Lines 1-50
-engine15/research/GATE_B_PREFLIGHT_part001.txt | research/engine15-r0/GATE_B_PREFLIGHT.md | Lines 1-42
-engine15/research/I1_INTEGRATED_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I1_INTEGRATED_SHADOW_MATRIX_IMPLEMENTATION_20261117.md | Lines 1-23
-engine15/research/I1_INTEGRATED_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I1_INTEGRATED_SHADOW_MATRIX_PREFLIGHT_20261117.md | Lines 1-23
-engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I2_ADVERSARIAL_SHADOW_MATRIX_IMPLEMENTATION_20261117.md | Lines 1-21
-engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117.md | Lines 1-22
-engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I3_SOURCE_LINKED_QUALITY_DURATION_IMPLEMENTATION_20261117.md | Lines 1-18
-engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117.md | Lines 1-26
-engine15/research/I4_WORK_LAP_HR_SIGNAL_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I4_WORK_LAP_HR_SIGNAL_IMPLEMENTATION_20261117.md | Lines 1-19
-engine15/research/I4_WORK_LAP_HR_SIGNAL_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I4_WORK_LAP_HR_SIGNAL_PREFLIGHT_20261117.md | Lines 1-25
-engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I5_TIMED_DISTANCE_FEASIBILITY_IMPLEMENTATION_20261117.md | Lines 1-19
-engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117.md | Lines 1-28
-engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117.md | Lines 1-17
-engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117.md | Lines 1-26
-engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117.md | Lines 1-17
-engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117.md | Lines 1-19
-engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117.md | Lines 1-15
-engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117.md | Lines 1-23
-engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117.md | Lines 1-16
-engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117.md | Lines 1-23
-engine15/research/M3_CAPACITY_CONTRACT_20261117_part001.txt | research/engine15-r0/M3_CAPACITY_CONTRACT_20261117.md | Lines 1-34
-engine15/research/M4_GATE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M4_GATE_B_PREFLIGHT_20261117.md | Lines 1-36
-engine15/research/M4_STAGE_A_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M4_STAGE_A_IMPLEMENTATION_20261117.md | Lines 1-31
-engine15/research/M4_STAGE_B_GATE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M4_STAGE_B_GATE_B_PREFLIGHT_20261117.md | Lines 1-45
-engine15/research/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-43
-engine15/research/M5_STAGE_A_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_A_PREFLIGHT_20261117.md | Lines 1-32
-engine15/research/M5_STAGE_A_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-26
-engine15/research/M5_STAGE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_B_PREFLIGHT_20261117.md | Lines 1-24
-engine15/research/M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-26
-engine15/research/M5_STAGE_C_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_C_PREFLIGHT_20261117.md | Lines 1-24
-engine15/research/M5_STAGE_C_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-23
-engine15/research/M6_STAGE_A_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_A_PREFLIGHT_20261117.md | Lines 1-26
-engine15/research/M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-22
-engine15/research/M6_STAGE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_B_PREFLIGHT_20261117.md | Lines 1-26
-engine15/research/M6_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-23
-engine15/research/M6_STAGE_C_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_C_PREFLIGHT_20261117.md | Lines 1-26
-engine15/research/M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-22
-engine15/research/M6_STAGE_D_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_D_PREFLIGHT_20261117.md | Lines 1-28
-engine15/research/M6_STAGE_D_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_D_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-19
-engine15/research/R0_LEDGER_CONTRACT_part001.txt | research/engine15-r0/R0_LEDGER_CONTRACT.md | Lines 1-46
-engine15/research/engine15-train-your-way-target-integrity-20261116_part001.txt | research/engine15-train-your-way-target-integrity-20261116.md | Lines 1-21
-engine15/research/ASTRA_INDEPENDENT_REVIEW_BRIEF_part001.txt | research/engine15/ASTRA_INDEPENDENT_REVIEW_BRIEF.md | Lines 1-98
-engine15/research/ASTRA_REVIEW_PACKET_ENGINE15_20261117_part001.txt | research/engine15/ASTRA_REVIEW_PACKET_ENGINE15_20261117.md | Lines 1-162
-engine15/research/COHESIVE_CANDIDATE_RECONCILIATION_20261117_part001.txt | research/engine15/COHESIVE_CANDIDATE_RECONCILIATION_20261117.md | Lines 1-94
-engine15/research/COHESIVE_CANDIDATE_RECONCILIATION_20261117_part002.txt | research/engine15/COHESIVE_CANDIDATE_RECONCILIATION_20261117.md | Lines 95-117
-engine15/research/ENGINE15_INDEPENDENT_GENERATION_AUDIT_20261117_part001.txt | research/engine15/ENGINE15_INDEPENDENT_GENERATION_AUDIT_20261117.md | Lines 1-83
-engine15/research/M28A_COACHING_AUDIT_20261121_part001.txt | research/engine15/M28A_COACHING_AUDIT_20261121.md | Lines 1-208
-engine15/research/m10.1-android-validation-20261115_part001.txt | research/engine15/experiments/m10.1-android-validation-20261115.md | Lines 1-78
-engine15/research/m106-coach-ui-integration-20261115_part001.txt | research/engine15/experiments/m106-coach-ui-integration-20261115.md | Lines 1-55
-engine15/research/m106-history-weekly-review-20261115_part001.txt | research/engine15/experiments/m106-history-weekly-review-20261115.md | Lines 1-54
-engine15/research/m106-whole-week-coaching-20261115_part001.txt | research/engine15/experiments/m106-whole-week-coaching-20261115.md | Lines 1-61
-engine15/research/m10a-android-research-preview-20261115_part001.txt | research/engine15/experiments/m10a-android-research-preview-20261115.md | Lines 1-61
-engine15/research/m10b-signed-out-local-plans-20261115_part001.txt | research/engine15/experiments/m10b-signed-out-local-plans-20261115.md | Lines 1-58
-engine15/research/m10c-review-only-engine-selection-20261115_part001.txt | research/engine15/experiments/m10c-review-only-engine-selection-20261115.md | Lines 1-50
-engine15/research/m10d-android-reconciliation-20261115_part001.txt | research/engine15/experiments/m10d-android-reconciliation-20261115.md | Lines 1-23
-engine15/research/m2-tempo-structural-dry-run-20261118_part001.txt | research/engine15/experiments/m2-tempo-structural-dry-run-20261118.md | Lines 1-53
-engine15/research/m6a-constrained-multiweek-20261115_part001.txt | research/engine15/experiments/m6a-constrained-multiweek-20261115.md | Lines 1-51
-engine15/research/m6b-quality-spacing-20261115_part001.txt | research/engine15/experiments/m6b-quality-spacing-20261115.md | Lines 1-44
-engine15/research/m7a-completion-audit-20261115_part001.txt | research/engine15/experiments/m7a-completion-audit-20261115.md | Lines 1-29
-engine15/research/m7b-weekly-evidence-ledger-20261115_part001.txt | research/engine15/experiments/m7b-weekly-evidence-ledger-20261115.md | Lines 1-59
-engine15/research/m8a-longitudinal-shadow-20261115_part001.txt | research/engine15/experiments/m8a-longitudinal-shadow-20261115.md | Lines 1-39
-engine15/research/m8b-goal-aware-trajectory-replay-20261115_part001.txt | research/engine15/experiments/m8b-goal-aware-trajectory-replay-20261115.md | Lines 1-70
-engine15/research/m9a-timed-quality-distance-20261115_part001.txt | research/engine15/experiments/m9a-timed-quality-distance-20261115.md | Lines 1-64
-engine15/research/m9b-reviewed-quality-dose-progression-20261115_part001.txt | research/engine15/experiments/m9b-reviewed-quality-dose-progression-20261115.md | Lines 1-75
-engine15/research/m9c-complete-week-program-review-20261115_part001.txt | research/engine15/experiments/m9c-complete-week-program-review-20261115.md | Lines 1-74
-engine15/research/next-week-review-20261115_part001.txt | research/engine15/experiments/next-week-review-20261115.md | Lines 1-121
-engine15/research/next-week-review-20261115_part002.txt | research/engine15/experiments/next-week-review-20261115.md | Lines 122-122
+engine15/research/ENGINE15_EXECUTION_part001.txt | ENGINE15_EXECUTION.md | Lines 1-51 | Part 1/10 | 17570 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part002.txt | ENGINE15_EXECUTION.md | Lines 52-71 | Part 2/10 | 16439 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part003.txt | ENGINE15_EXECUTION.md | Lines 72-95 | Part 3/10 | 17476 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part004.txt | ENGINE15_EXECUTION.md | Lines 96-156 | Part 4/10 | 17938 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part005.txt | ENGINE15_EXECUTION.md | Lines 157-218 | Part 5/10 | 17482 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part006.txt | ENGINE15_EXECUTION.md | Lines 219-272 | Part 6/10 | 17939 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part007.txt | ENGINE15_EXECUTION.md | Lines 273-331 | Part 7/10 | 17803 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part008.txt | ENGINE15_EXECUTION.md | Lines 332-408 | Part 8/10 | 17813 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part009.txt | ENGINE15_EXECUTION.md | Lines 409-521 | Part 9/10 | 17934 bytes | sha256:695ecc319601
+engine15/research/ENGINE15_EXECUTION_part010.txt | ENGINE15_EXECUTION.md | Lines 522-535 | Part 10/10 | 2800 bytes | sha256:695ecc319601
+engine15/research/engine15-batch-b_part001.txt | docs/engine15-batch-b.md | Lines 1-55 | Part 1/1 | 3053 bytes | sha256:7fce9ad7712e
+engine15/research/engine15-batch-b2-multisession_part001.txt | docs/engine15-batch-b2-multisession.md | Lines 1-17 | Part 1/1 | 2208 bytes | sha256:37e83ad3fd22
+engine15/research/engine15-batch-b3_part001.txt | docs/engine15-batch-b3.md | Lines 1-27 | Part 1/1 | 3195 bytes | sha256:21e1a4c32975
+engine15/research/engine15-batch-b4_part001.txt | docs/engine15-batch-b4.md | Lines 1-11 | Part 1/1 | 1750 bytes | sha256:d304f2f99c8d
+engine15/research/engine15-batch-b5_part001.txt | docs/engine15-batch-b5.md | Lines 1-17 | Part 1/1 | 2319 bytes | sha256:4f539b7d57c9
+engine15/research/engine15-batch-b6_part001.txt | docs/engine15-batch-b6.md | Lines 1-17 | Part 1/1 | 1653 bytes | sha256:8f2311bf1d80
+engine15/research/engine15-batch-b7_part001.txt | docs/engine15-batch-b7.md | Lines 1-21 | Part 1/1 | 3293 bytes | sha256:7eaa8f42d170
+engine15/research/engine15-batch-c_part001.txt | docs/engine15-batch-c.md | Lines 1-40 | Part 1/1 | 5755 bytes | sha256:40b740d92173
+engine15/research/engine15-batch-d-e-handoff_part001.txt | docs/engine15-batch-d-e-handoff.md | Lines 1-63 | Part 1/1 | 13501 bytes | sha256:64e39b507550
+engine15/research/engine15-batch-e2-figma-review_part001.txt | docs/engine15-batch-e2-figma-review.md | Lines 1-34 | Part 1/1 | 5693 bytes | sha256:6856cca500ad
+engine15/research/engine15-foundation_part001.txt | docs/engine15-foundation.md | Lines 1-23 | Part 1/1 | 2276 bytes | sha256:46508d0ff632
+engine15/research/engine15-research-gain-reliability-audit-20261104_part001.txt | docs/engine15-research-gain-reliability-audit-20261104.md | Lines 1-78 | Part 1/1 | 11311 bytes | sha256:2e43a39df294
+engine15/research/2026-11-07-garmin-auto-sync-and-cloud-backup_part001.txt | docs/engineering/2026-11-07-garmin-auto-sync-and-cloud-backup.md | Lines 1-59 | Part 1/1 | 5075 bytes | sha256:d4488df5154e
+engine15/research/engine15-continuous-handoff-20261113_part001.txt | docs/qa/engine15-continuous-handoff-20261113.md | Lines 1-12 | Part 1/1 | 3705 bytes | sha256:27064b743bc2
+engine15/research/engine15-final-integration-acceptance-20261115_part001.txt | docs/qa/engine15-final-integration-acceptance-20261115.md | Lines 1-118 | Part 1/1 | 10361 bytes | sha256:7073aa8f9434
+engine15/research/engine15-manual-remediation-roadmap-20261105_part001.txt | docs/qa/engine15-manual-remediation-roadmap-20261105.md | Lines 1-68 | Part 1/3 | 17939 bytes | sha256:a93a3a87fddd
+engine15/research/engine15-manual-remediation-roadmap-20261105_part002.txt | docs/qa/engine15-manual-remediation-roadmap-20261105.md | Lines 69-164 | Part 2/3 | 17732 bytes | sha256:a93a3a87fddd
+engine15/research/engine15-manual-remediation-roadmap-20261105_part003.txt | docs/qa/engine15-manual-remediation-roadmap-20261105.md | Lines 165-185 | Part 3/3 | 3790 bytes | sha256:a93a3a87fddd
+engine15/research/engine15-primary-plan-quality-requirements-20261105_part001.txt | docs/qa/engine15-primary-plan-quality-requirements-20261105.md | Lines 1-68 | Part 1/1 | 9969 bytes | sha256:803cca00044a
+engine15/research/REPOSITORY-SOURCE-REVIEW-20261030_part001.txt | docs/reports/REPOSITORY-SOURCE-REVIEW-20261030.md | Lines 1-66 | Part 1/1 | 11132 bytes | sha256:a9b7e57bf96d
+engine15/research/App-Architecture_part001.txt | docs/wiki/architecture/App-Architecture.md | Lines 1-64 | Part 1/1 | 5252 bytes | sha256:846b99174be0
+engine15/research/Engine-1.5_part001.txt | docs/wiki/architecture/Engine-1.5.md | Lines 1-49 | Part 1/1 | 7976 bytes | sha256:e716067bd532
+engine15/research/Hard-Guardrails_part001.txt | docs/wiki/architecture/Hard-Guardrails.md | Lines 1-47 | Part 1/1 | 5042 bytes | sha256:ff4fe29414ea
+engine15/research/Storage-and-FIT-Contracts_part001.txt | docs/wiki/architecture/Storage-and-FIT-Contracts.md | Lines 1-56 | Part 1/1 | 5456 bytes | sha256:9dec14ff52fc
+engine15/research/ADR-01-Engine15-Isolation-from-Freeform-and-Custom-Logging_part001.txt | docs/wiki/decisions/ADR-01-Engine15-Isolation-from-Freeform-and-Custom-Logging.md | Lines 1-29 | Part 1/1 | 2297 bytes | sha256:fab8e96dba04
+engine15/research/ADR-02-GPS-200m-Default-Privacy-Trimming_part001.txt | docs/wiki/decisions/ADR-02-GPS-200m-Default-Privacy-Trimming.md | Lines 1-30 | Part 1/1 | 2105 bytes | sha256:cbb3136105cd
+engine15/research/ADR-03-Offline-First-Independent-Local-Ownership_part001.txt | docs/wiki/decisions/ADR-03-Offline-First-Independent-Local-Ownership.md | Lines 1-29 | Part 1/1 | 2056 bytes | sha256:2358e10d5ca1
+engine15/research/ADR-04-Retiring-Redundant-UI-While-Preserving-Unified-Data-Layers_part001.txt | docs/wiki/decisions/ADR-04-Retiring-Redundant-UI-While-Preserving-Unified-Data-Layers.md | Lines 1-39 | Part 1/1 | 3606 bytes | sha256:f71949b91347
+engine15/research/Garmin-and-Activity-Import_part001.txt | docs/wiki/features/Garmin-and-Activity-Import.md | Lines 1-41 | Part 1/1 | 4467 bytes | sha256:3886cf7d00c7
+engine15/research/Guided-Workout-Player-and-Debrief_part001.txt | docs/wiki/features/Guided-Workout-Player-and-Debrief.md | Lines 1-33 | Part 1/1 | 4850 bytes | sha256:4388b543083f
+engine15/research/Progress-and-History_part001.txt | docs/wiki/features/Progress-and-History.md | Lines 1-33 | Part 1/1 | 3883 bytes | sha256:e8f8e9223c59
+engine15/research/engine15-q1-quality-baseline-20261116_part001.txt | research/engine15-q1-quality-baseline-20261116.md | Lines 1-42 | Part 1/1 | 3807 bytes | sha256:4e886daef073
+engine15/research/engine15-q1-quality-executed-findings-20261116_part001.txt | research/engine15-q1-quality-executed-findings-20261116.md | Lines 1-68 | Part 1/1 | 7301 bytes | sha256:e9a3a93cfa58
+engine15/research/engine15-q2-mixed-unit-cooldown-20261116_part001.txt | research/engine15-q2-mixed-unit-cooldown-20261116.md | Lines 1-37 | Part 1/1 | 4332 bytes | sha256:0bc29ca8298b
+engine15/research/engine15-q3-verified-quality-20261116_part001.txt | research/engine15-q3-verified-quality-20261116.md | Lines 1-20 | Part 1/1 | 3221 bytes | sha256:126b4480adb7
+engine15/research/DECISION_LOG_part001.txt | research/engine15-r0/DECISION_LOG.md | Lines 1-74 | Part 1/1 | 9023 bytes | sha256:74ed7911d623
+engine15/research/GATE_B_EXECUTED_READOUT_20261117_part001.txt | research/engine15-r0/GATE_B_EXECUTED_READOUT_20261117.md | Lines 1-50 | Part 1/1 | 5064 bytes | sha256:aa1260af129e
+engine15/research/GATE_B_PREFLIGHT_part001.txt | research/engine15-r0/GATE_B_PREFLIGHT.md | Lines 1-42 | Part 1/1 | 5224 bytes | sha256:ac0d6fd69d9f
+engine15/research/I1_INTEGRATED_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I1_INTEGRATED_SHADOW_MATRIX_IMPLEMENTATION_20261117.md | Lines 1-23 | Part 1/1 | 3331 bytes | sha256:7f378b15e345
+engine15/research/I1_INTEGRATED_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I1_INTEGRATED_SHADOW_MATRIX_PREFLIGHT_20261117.md | Lines 1-23 | Part 1/1 | 4352 bytes | sha256:c0c2c2bdfc93
+engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I2_ADVERSARIAL_SHADOW_MATRIX_IMPLEMENTATION_20261117.md | Lines 1-21 | Part 1/1 | 3125 bytes | sha256:31f7d3a7a257
+engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117.md | Lines 1-22 | Part 1/1 | 3458 bytes | sha256:b72492af4886
+engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I3_SOURCE_LINKED_QUALITY_DURATION_IMPLEMENTATION_20261117.md | Lines 1-18 | Part 1/1 | 2913 bytes | sha256:0288764e544f
+engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117.md | Lines 1-26 | Part 1/1 | 4705 bytes | sha256:16c420bc80a9
+engine15/research/I4_WORK_LAP_HR_SIGNAL_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I4_WORK_LAP_HR_SIGNAL_IMPLEMENTATION_20261117.md | Lines 1-19 | Part 1/1 | 3218 bytes | sha256:d9759126f624
+engine15/research/I4_WORK_LAP_HR_SIGNAL_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I4_WORK_LAP_HR_SIGNAL_PREFLIGHT_20261117.md | Lines 1-25 | Part 1/1 | 4567 bytes | sha256:7c975c688daf
+engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I5_TIMED_DISTANCE_FEASIBILITY_IMPLEMENTATION_20261117.md | Lines 1-19 | Part 1/1 | 3613 bytes | sha256:0f2d1d5b7902
+engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117.md | Lines 1-28 | Part 1/1 | 5093 bytes | sha256:6757bd7b9a26
+engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117.md | Lines 1-17 | Part 1/1 | 2978 bytes | sha256:fc476513e752
+engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117.md | Lines 1-26 | Part 1/1 | 4589 bytes | sha256:b31a6eb3c553
+engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117.md | Lines 1-17 | Part 1/1 | 3053 bytes | sha256:f42babdafb1b
+engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117.md | Lines 1-19 | Part 1/1 | 2818 bytes | sha256:1282d7ef4b91
+engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117.md | Lines 1-15 | Part 1/1 | 2866 bytes | sha256:badcdbdec969
+engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117.md | Lines 1-23 | Part 1/1 | 3879 bytes | sha256:68ad34097008
+engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117.md | Lines 1-16 | Part 1/1 | 2763 bytes | sha256:b82751c78316
+engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117_part001.txt | research/engine15-r0/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117.md | Lines 1-23 | Part 1/1 | 3741 bytes | sha256:8b48691f6d8b
+engine15/research/M3_CAPACITY_CONTRACT_20261117_part001.txt | research/engine15-r0/M3_CAPACITY_CONTRACT_20261117.md | Lines 1-34 | Part 1/1 | 4125 bytes | sha256:f22b014cd250
+engine15/research/M4_GATE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M4_GATE_B_PREFLIGHT_20261117.md | Lines 1-36 | Part 1/1 | 4042 bytes | sha256:499eb50f102b
+engine15/research/M4_STAGE_A_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M4_STAGE_A_IMPLEMENTATION_20261117.md | Lines 1-31 | Part 1/1 | 3398 bytes | sha256:5c0771d6d82f
+engine15/research/M4_STAGE_B_GATE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M4_STAGE_B_GATE_B_PREFLIGHT_20261117.md | Lines 1-45 | Part 1/1 | 5508 bytes | sha256:1ef339e88b94
+engine15/research/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-43 | Part 1/1 | 4942 bytes | sha256:733714676e11
+engine15/research/M5_STAGE_A_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_A_PREFLIGHT_20261117.md | Lines 1-32 | Part 1/1 | 4469 bytes | sha256:faf951c74c78
+engine15/research/M5_STAGE_A_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-26 | Part 1/1 | 2493 bytes | sha256:15a3f0a82dd7
+engine15/research/M5_STAGE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_B_PREFLIGHT_20261117.md | Lines 1-24 | Part 1/1 | 3619 bytes | sha256:9d7cdd8f6aa0
+engine15/research/M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-26 | Part 1/1 | 2860 bytes | sha256:9703df8fdc4f
+engine15/research/M5_STAGE_C_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M5_STAGE_C_PREFLIGHT_20261117.md | Lines 1-24 | Part 1/1 | 3509 bytes | sha256:b815915bad9c
+engine15/research/M5_STAGE_C_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M5_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-23 | Part 1/1 | 2726 bytes | sha256:91f653d5705d
+engine15/research/M6_STAGE_A_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_A_PREFLIGHT_20261117.md | Lines 1-26 | Part 1/1 | 3913 bytes | sha256:f0677bd6965d
+engine15/research/M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_A_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-22 | Part 1/1 | 2963 bytes | sha256:bc4c784b45a2
+engine15/research/M6_STAGE_B_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_B_PREFLIGHT_20261117.md | Lines 1-26 | Part 1/1 | 3833 bytes | sha256:55f04b2bbec3
+engine15/research/M6_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-23 | Part 1/1 | 3331 bytes | sha256:842e6db7638d
+engine15/research/M6_STAGE_C_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_C_PREFLIGHT_20261117.md | Lines 1-26 | Part 1/1 | 4424 bytes | sha256:843e39740f80
+engine15/research/M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-22 | Part 1/1 | 3680 bytes | sha256:1f76fb4f433e
+engine15/research/M6_STAGE_D_PREFLIGHT_20261117_part001.txt | research/engine15-r0/M6_STAGE_D_PREFLIGHT_20261117.md | Lines 1-28 | Part 1/1 | 4604 bytes | sha256:47bc7c425f28
+engine15/research/M6_STAGE_D_SHADOW_IMPLEMENTATION_20261117_part001.txt | research/engine15-r0/M6_STAGE_D_SHADOW_IMPLEMENTATION_20261117.md | Lines 1-19 | Part 1/1 | 2693 bytes | sha256:792893fe91d8
+engine15/research/R0_LEDGER_CONTRACT_part001.txt | research/engine15-r0/R0_LEDGER_CONTRACT.md | Lines 1-46 | Part 1/1 | 4462 bytes | sha256:8cdf2bf2f507
+engine15/research/engine15-train-your-way-target-integrity-20261116_part001.txt | research/engine15-train-your-way-target-integrity-20261116.md | Lines 1-21 | Part 1/1 | 2832 bytes | sha256:650d2456b31b
+engine15/research/ASTRA_INDEPENDENT_REVIEW_BRIEF_part001.txt | research/engine15/ASTRA_INDEPENDENT_REVIEW_BRIEF.md | Lines 1-98 | Part 1/1 | 12733 bytes | sha256:e7a46fb873ed
+engine15/research/ASTRA_REVIEW_PACKET_ENGINE15_20261117_part001.txt | research/engine15/ASTRA_REVIEW_PACKET_ENGINE15_20261117.md | Lines 1-162 | Part 1/1 | 14373 bytes | sha256:f44cc9a69fc8
+engine15/research/COHESIVE_CANDIDATE_RECONCILIATION_20261117_part001.txt | research/engine15/COHESIVE_CANDIDATE_RECONCILIATION_20261117.md | Lines 1-96 | Part 1/2 | 17722 bytes | sha256:9386016615a8
+engine15/research/COHESIVE_CANDIDATE_RECONCILIATION_20261117_part002.txt | research/engine15/COHESIVE_CANDIDATE_RECONCILIATION_20261117.md | Lines 97-117 | Part 2/2 | 6322 bytes | sha256:9386016615a8
+engine15/research/ENGINE15_INDEPENDENT_GENERATION_AUDIT_20261117_part001.txt | research/engine15/ENGINE15_INDEPENDENT_GENERATION_AUDIT_20261117.md | Lines 1-83 | Part 1/1 | 16563 bytes | sha256:ab080aa7a52f
+engine15/research/M28A_COACHING_AUDIT_20261121_part001.txt | research/engine15/M28A_COACHING_AUDIT_20261121.md | Lines 1-208 | Part 1/1 | 12890 bytes | sha256:47b6625e6c66
+engine15/research/m10.1-android-validation-20261115_part001.txt | research/engine15/experiments/m10.1-android-validation-20261115.md | Lines 1-78 | Part 1/1 | 11184 bytes | sha256:fa357153854d
+engine15/research/m106-coach-ui-integration-20261115_part001.txt | research/engine15/experiments/m106-coach-ui-integration-20261115.md | Lines 1-55 | Part 1/1 | 8224 bytes | sha256:ee9c02ba4fd4
+engine15/research/m106-history-weekly-review-20261115_part001.txt | research/engine15/experiments/m106-history-weekly-review-20261115.md | Lines 1-54 | Part 1/1 | 8611 bytes | sha256:286f86323cb7
+engine15/research/m106-whole-week-coaching-20261115_part001.txt | research/engine15/experiments/m106-whole-week-coaching-20261115.md | Lines 1-61 | Part 1/1 | 8900 bytes | sha256:3d28d7709482
+engine15/research/m10a-android-research-preview-20261115_part001.txt | research/engine15/experiments/m10a-android-research-preview-20261115.md | Lines 1-61 | Part 1/1 | 6604 bytes | sha256:28bb6589592f
+engine15/research/m10b-signed-out-local-plans-20261115_part001.txt | research/engine15/experiments/m10b-signed-out-local-plans-20261115.md | Lines 1-58 | Part 1/1 | 7244 bytes | sha256:781197eb0d68
+engine15/research/m10c-review-only-engine-selection-20261115_part001.txt | research/engine15/experiments/m10c-review-only-engine-selection-20261115.md | Lines 1-50 | Part 1/1 | 8284 bytes | sha256:bc4564c6727e
+engine15/research/m10d-android-reconciliation-20261115_part001.txt | research/engine15/experiments/m10d-android-reconciliation-20261115.md | Lines 1-23 | Part 1/1 | 3160 bytes | sha256:f6e769c0fba1
+engine15/research/m2-tempo-structural-dry-run-20261118_part001.txt | research/engine15/experiments/m2-tempo-structural-dry-run-20261118.md | Lines 1-53 | Part 1/1 | 6108 bytes | sha256:5732dddd0d23
+engine15/research/m6a-constrained-multiweek-20261115_part001.txt | research/engine15/experiments/m6a-constrained-multiweek-20261115.md | Lines 1-51 | Part 1/1 | 5505 bytes | sha256:032bce901b1d
+engine15/research/m6b-quality-spacing-20261115_part001.txt | research/engine15/experiments/m6b-quality-spacing-20261115.md | Lines 1-44 | Part 1/1 | 6241 bytes | sha256:dcba94edd692
+engine15/research/m7a-completion-audit-20261115_part001.txt | research/engine15/experiments/m7a-completion-audit-20261115.md | Lines 1-29 | Part 1/1 | 3866 bytes | sha256:f03304968400
+engine15/research/m7b-weekly-evidence-ledger-20261115_part001.txt | research/engine15/experiments/m7b-weekly-evidence-ledger-20261115.md | Lines 1-59 | Part 1/1 | 4963 bytes | sha256:939b3b5a93b5
+engine15/research/m8a-longitudinal-shadow-20261115_part001.txt | research/engine15/experiments/m8a-longitudinal-shadow-20261115.md | Lines 1-39 | Part 1/1 | 4262 bytes | sha256:d475dce0337f
+engine15/research/m8b-goal-aware-trajectory-replay-20261115_part001.txt | research/engine15/experiments/m8b-goal-aware-trajectory-replay-20261115.md | Lines 1-70 | Part 1/1 | 6551 bytes | sha256:86a173da543d
+engine15/research/m9a-timed-quality-distance-20261115_part001.txt | research/engine15/experiments/m9a-timed-quality-distance-20261115.md | Lines 1-64 | Part 1/1 | 6207 bytes | sha256:694020c3d952
+engine15/research/m9b-reviewed-quality-dose-progression-20261115_part001.txt | research/engine15/experiments/m9b-reviewed-quality-dose-progression-20261115.md | Lines 1-75 | Part 1/1 | 7883 bytes | sha256:596ccbd2e20d
+engine15/research/m9c-complete-week-program-review-20261115_part001.txt | research/engine15/experiments/m9c-complete-week-program-review-20261115.md | Lines 1-74 | Part 1/1 | 7848 bytes | sha256:0e687f915038
+engine15/research/next-week-review-20261115_part001.txt | research/engine15/experiments/next-week-review-20261115.md | Lines 1-121 | Part 1/2 | 16766 bytes | sha256:c4ae9d895333
+engine15/research/next-week-review-20261115_part002.txt | research/engine15/experiments/next-week-review-20261115.md | Lines 122-122 | Part 2/2 | 1548 bytes | sha256:c4ae9d895333
+engine15/source/ActiveActivitySources_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActiveActivitySources.kt | Lines 1-15 | Part 1/1 | 914 bytes | sha256:478f1c7d4abf
+engine15/source/ActivityAthleteEvidence_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityAthleteEvidence.kt | Lines 1-95 | Part 1/1 | 4413 bytes | sha256:0d0783d263d5
+engine15/source/ActivityDetail_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityDetail.kt | Lines 1-162 | Part 1/1 | 8287 bytes | sha256:02631c195381
+engine15/source/ActivityDetailSectionAnalysis_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityDetailSectionAnalysis.kt | Lines 1-161 | Part 1/1 | 8054 bytes | sha256:94483de61120
+engine15/source/ActivityDisplayConsolidation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityDisplayConsolidation.kt | Lines 1-100 | Part 1/1 | 4964 bytes | sha256:adab42af25d7
+engine15/source/ActivityEffortAnalysis_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityEffortAnalysis.kt | Lines 1-96 | Part 1/1 | 5134 bytes | sha256:83b0f2897f74
+engine15/source/ActivityImportMatcher_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityImportMatcher.kt | Lines 1-81 | Part 1/1 | 3596 bytes | sha256:254b9a6d02c2
+engine15/source/ActivityIntelligence_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityIntelligence.kt | Lines 1-206 | Part 1/1 | 10314 bytes | sha256:980d8039a46e
+engine15/source/ActivityPlanLink_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityPlanLink.kt | Lines 1-286 | Part 1/1 | 13447 bytes | sha256:403b54035b94
+engine15/source/ActivityRecord_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityRecord.kt | Lines 1-58 | Part 1/1 | 4149 bytes | sha256:1f56fcb3574b
+engine15/source/ActivityRunComparison_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityRunComparison.kt | Lines 1-65 | Part 1/1 | 3235 bytes | sha256:40d43229d442
+engine15/source/ActivityWorkoutIntelligence_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityWorkoutIntelligence.kt | Lines 1-333 | Part 1/2 | 17925 bytes | sha256:ad2abe8deaea
+engine15/source/ActivityWorkoutIntelligence_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ActivityWorkoutIntelligence.kt | Lines 334-446 | Part 2/2 | 6010 bytes | sha256:ad2abe8deaea
+engine15/source/AthleteHeartRatePreferences_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/AthleteHeartRatePreferences.kt | Lines 1-119 | Part 1/1 | 4518 bytes | sha256:8e78a35f7a3f
+engine15/source/DashboardSummary_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/DashboardSummary.kt | Lines 1-47 | Part 1/1 | 4401 bytes | sha256:a933aa9be488
+engine15/source/Engine15ActivityAutoMatcher_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ActivityAutoMatcher.kt | Lines 1-384 | Part 1/1 | 17667 bytes | sha256:d7c8a52199fa
+engine15/source/Engine15AdaptationContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AdaptationContracts.kt | Lines 1-333 | Part 1/1 | 13947 bytes | sha256:758cbe8a2aa1
+engine15/source/Engine15AthleteCapacity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteCapacity.kt | Lines 1-167 | Part 1/1 | 8401 bytes | sha256:6766ec9a7b40
+engine15/source/Engine15AthleteDiagnosticsEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt | Lines 1-401 | Part 1/2 | 17962 bytes | sha256:2aca155b1071
+engine15/source/Engine15AthleteDiagnosticsEngine_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt | Lines 402-774 | Part 2/2 | 17559 bytes | sha256:2aca155b1071
+engine15/source/Engine15AthleteEffortBaseline_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteEffortBaseline.kt | Lines 1-233 | Part 1/1 | 11077 bytes | sha256:0ac214e2f46d
+engine15/source/Engine15Availability_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15Availability.kt | Lines 1-146 | Part 1/1 | 7844 bytes | sha256:d8f78b2a6572
+engine15/source/Engine15CalisthenicsWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CalisthenicsWorkoutComposer.kt | Lines 1-186 | Part 1/1 | 14339 bytes | sha256:8ed60fadd5ba
+engine15/source/Engine15CoachControls_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachControls.kt | Lines 1-388 | Part 1/2 | 17978 bytes | sha256:9673d48d0ecf
+engine15/source/Engine15CoachControls_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachControls.kt | Lines 389-680 | Part 2/2 | 17625 bytes | sha256:9673d48d0ecf
+engine15/source/Engine15CoachingUi_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CoachingUi.kt | Lines 1-172 | Part 1/1 | 13361 bytes | sha256:abd25d2f4167
+engine15/source/Engine15ConditioningWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ConditioningWorkoutComposer.kt | Lines 1-129 | Part 1/1 | 10576 bytes | sha256:5560ab8eb6b6
+engine15/source/Engine15DailyLoadShaper_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt | Lines 1-369 | Part 1/2 | 17995 bytes | sha256:8ea39928a322
+engine15/source/Engine15DailyLoadShaper_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt | Lines 370-442 | Part 2/2 | 3395 bytes | sha256:8ea39928a322
+engine15/source/Engine15DebriefEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DebriefEngine.kt | Lines 1-130 | Part 1/1 | 6994 bytes | sha256:f134422ac748
+engine15/source/Engine15DebriefModels_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DebriefModels.kt | Lines 1-49 | Part 1/1 | 1635 bytes | sha256:15640dd13da0
+engine15/source/Engine15DiagnosticContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DiagnosticContracts.kt | Lines 1-349 | Part 1/1 | 14983 bytes | sha256:38b4d48b571d
+engine15/source/Engine15DisciplineProgression_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt | Lines 1-267 | Part 1/2 | 17955 bytes | sha256:e21c699bfe70
+engine15/source/Engine15DisciplineProgression_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt | Lines 268-316 | Part 2/2 | 2369 bytes | sha256:e21c699bfe70
+engine15/source/Engine15DistanceRounding_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DistanceRounding.kt | Lines 1-65 | Part 1/1 | 3116 bytes | sha256:1fc51cf1601b
+engine15/source/Engine15ExecutionAnalyzer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 1-425 | Part 1/4 | 17937 bytes | sha256:c2ea543eebcb
+engine15/source/Engine15ExecutionAnalyzer_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 426-823 | Part 2/4 | 17905 bytes | sha256:c2ea543eebcb
+engine15/source/Engine15ExecutionAnalyzer_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 824-1235 | Part 3/4 | 17933 bytes | sha256:c2ea543eebcb
+engine15/source/Engine15ExecutionAnalyzer_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt | Lines 1236-1413 | Part 4/4 | 8742 bytes | sha256:c2ea543eebcb
+engine15/source/Engine15ExecutionContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionContracts.kt | Lines 1-368 | Part 1/1 | 15876 bytes | sha256:69a69456a52a
+engine15/source/Engine15Feedback_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15Feedback.kt | Lines 1-249 | Part 1/1 | 14074 bytes | sha256:7831fb3ba489
+engine15/source/Engine15HistoryInformedPlanning_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15HistoryInformedPlanning.kt | Lines 1-163 | Part 1/1 | 8271 bytes | sha256:2c690cd6391e
+engine15/source/Engine15I10ReadOnlyCandidateAssembly_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I10ReadOnlyCandidateAssembly.kt | Lines 1-162 | Part 1/1 | 8039 bytes | sha256:d763c89b71d0
+engine15/source/Engine15I3SourceLinkedQualityDuration_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I3SourceLinkedQualityDuration.kt | Lines 1-177 | Part 1/1 | 8483 bytes | sha256:0f080fc2dae4
+engine15/source/Engine15I4WorkLapHeartRateReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I4WorkLapHeartRateReview.kt | Lines 1-242 | Part 1/1 | 11730 bytes | sha256:e2687804fa26
+engine15/source/Engine15I5TimedDistanceFeasibility_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I5TimedDistanceFeasibility.kt | Lines 1-286 | Part 1/1 | 13888 bytes | sha256:7c9e52865703
+engine15/source/Engine15I6SourceWorkLapPaceConsistency_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistency.kt | Lines 1-285 | Part 1/1 | 14169 bytes | sha256:954d5907ace4
+engine15/source/Engine15I7IntensityCalibrationReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I7IntensityCalibrationReview.kt | Lines 1-205 | Part 1/1 | 10267 bytes | sha256:a419a843d985
+engine15/source/Engine15I8CalibrationArtifactIntegrity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrity.kt | Lines 1-189 | Part 1/1 | 8932 bytes | sha256:69cb67a766ae
+engine15/source/Engine15I9ReadOnlyBasePlanAssembly_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15I9ReadOnlyBasePlanAssembly.kt | Lines 1-192 | Part 1/1 | 9455 bytes | sha256:49e5f13dfe7f
+engine15/source/Engine15IndependentPlanGenerator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1-326 | Part 1/6 | 17990 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentPlanGenerator_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 327-611 | Part 2/6 | 17955 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentPlanGenerator_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 612-854 | Part 3/6 | 17879 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentPlanGenerator_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 855-1084 | Part 4/6 | 17959 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentPlanGenerator_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1085-1379 | Part 5/6 | 17929 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentPlanGenerator_part006.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt | Lines 1380-1508 | Part 6/6 | 8739 bytes | sha256:63d2fd2f23ac
+engine15/source/Engine15IndependentVolumePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentVolumePlanner.kt | Lines 1-302 | Part 1/1 | 14333 bytes | sha256:e1c135449431
+engine15/source/Engine15M5QualityPreviewComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposer.kt | Lines 1-172 | Part 1/1 | 8404 bytes | sha256:90bc8cd4ac16
+engine15/source/Engine15M5TimedDistanceReconciler_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt | Lines 1-356 | Part 1/2 | 17970 bytes | sha256:7d083ae693ee
+engine15/source/Engine15M5TimedDistanceReconciler_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt | Lines 357-401 | Part 2/2 | 2582 bytes | sha256:7d083ae693ee
+engine15/source/Engine15M5WorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5WorkoutComposer.kt | Lines 1-247 | Part 1/1 | 12310 bytes | sha256:4fb742752989
+engine15/source/Engine15M6IndependentCalendar_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentCalendar.kt | Lines 1-271 | Part 1/1 | 13577 bytes | sha256:bf666101d8ef
+engine15/source/Engine15M6IndependentInterferenceReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentInterferenceReview.kt | Lines 1-211 | Part 1/1 | 9853 bytes | sha256:f87f8d504459
+engine15/source/Engine15M6IndependentPeriodizationReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentPeriodizationReview.kt | Lines 1-266 | Part 1/1 | 12878 bytes | sha256:f1445c7838fa
+engine15/source/Engine15M6IndependentQualitySpacing_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacing.kt | Lines 1-197 | Part 1/1 | 9367 bytes | sha256:e8fbe6546d05
+engine15/source/Engine15MacrocyclePeriodization_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MacrocyclePeriodization.kt | Lines 1-155 | Part 1/1 | 7442 bytes | sha256:3b25fbe24e46
+engine15/source/Engine15MarathonTidEvaluator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MarathonTidEvaluator.kt | Lines 1-208 | Part 1/1 | 10273 bytes | sha256:0c8ab121a3d3
+engine15/source/Engine15MileageOptions_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MileageOptions.kt | Lines 1-13 | Part 1/1 | 1659 bytes | sha256:3f8370a9008f
+engine15/source/Engine15MileageTargetIntegrity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MileageTargetIntegrity.kt | Lines 1-76 | Part 1/1 | 3810 bytes | sha256:123c5ac36006
+engine15/source/Engine15PaceZoneEstimator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt | Lines 1-368 | Part 1/2 | 17937 bytes | sha256:90f81eab58a3
+engine15/source/Engine15PaceZoneEstimator_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt | Lines 369-492 | Part 2/2 | 6271 bytes | sha256:90f81eab58a3
+engine15/source/Engine15PlanAdaptationEngine_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 1-323 | Part 1/5 | 17959 bytes | sha256:023692cff768
+engine15/source/Engine15PlanAdaptationEngine_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 324-655 | Part 2/5 | 17987 bytes | sha256:023692cff768
+engine15/source/Engine15PlanAdaptationEngine_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 656-980 | Part 3/5 | 17984 bytes | sha256:023692cff768
+engine15/source/Engine15PlanAdaptationEngine_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 981-1325 | Part 4/5 | 17971 bytes | sha256:023692cff768
+engine15/source/Engine15PlanAdaptationEngine_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt | Lines 1326-1607 | Part 5/5 | 12987 bytes | sha256:023692cff768
+engine15/source/Engine15QualityFamilySelection_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt | Lines 1-272 | Part 1/2 | 17933 bytes | sha256:50eee2ec6fb4
+engine15/source/Engine15QualityFamilySelection_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt | Lines 273-357 | Part 2/2 | 5618 bytes | sha256:50eee2ec6fb4
+engine15/source/Engine15QualityProgressionPolicy_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 1-354 | Part 1/5 | 17987 bytes | sha256:d465936db2f0
+engine15/source/Engine15QualityProgressionPolicy_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 355-643 | Part 2/5 | 17983 bytes | sha256:d465936db2f0
+engine15/source/Engine15QualityProgressionPolicy_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 644-928 | Part 3/5 | 17976 bytes | sha256:d465936db2f0
+engine15/source/Engine15QualityProgressionPolicy_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 929-1232 | Part 4/5 | 17897 bytes | sha256:d465936db2f0
+engine15/source/Engine15QualityProgressionPolicy_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt | Lines 1233-1300 | Part 5/5 | 3969 bytes | sha256:d465936db2f0
+engine15/source/Engine15QualityWorkoutDryRun_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRun.kt | Lines 1-248 | Part 1/1 | 13127 bytes | sha256:e90c2fd44f8f
+engine15/source/Engine15RunHistory_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15RunHistory.kt | Lines 1-102 | Part 1/1 | 6470 bytes | sha256:584fbb44c668
+engine15/source/Engine15RunningDebriefAnalyzer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15RunningDebriefAnalyzer.kt | Lines 1-250 | Part 1/1 | 15030 bytes | sha256:15bfaf2c4b36
+engine15/source/Engine15ScheduleReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt | Lines 1-327 | Part 1/2 | 17976 bytes | sha256:7e4ef2e0d7ca
+engine15/source/Engine15ScheduleReview_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt | Lines 328-540 | Part 2/2 | 14114 bytes | sha256:7e4ef2e0d7ca
+engine15/source/Engine15SessionLocks_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15SessionLocks.kt | Lines 1-48 | Part 1/1 | 2529 bytes | sha256:47f3c4de15ec
+engine15/source/Engine15SessionPresentation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15SessionPresentation.kt | Lines 1-93 | Part 1/1 | 4789 bytes | sha256:510fbf93388b
+engine15/source/Engine15StaticMultiDisciplinePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt | Lines 1-262 | Part 1/2 | 17919 bytes | sha256:6b9a5c287ad8
+engine15/source/Engine15StaticMultiDisciplinePlanner_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt | Lines 263-397 | Part 2/2 | 7957 bytes | sha256:6b9a5c287ad8
+engine15/source/Engine15StrengthWorkoutComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StrengthWorkoutComposer.kt | Lines 1-220 | Part 1/1 | 15417 bytes | sha256:4a346dbc2bfa
+engine15/source/Engine15TimeOnlyRunWalkBuilder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt | Lines 1-354 | Part 1/2 | 17963 bytes | sha256:ca679c552eae
+engine15/source/Engine15TimeOnlyRunWalkBuilder_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt | Lines 355-362 | Part 2/2 | 491 bytes | sha256:ca679c552eae
+engine15/source/Engine15UserWorkoutAuthoring_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15UserWorkoutAuthoring.kt | Lines 1-33 | Part 1/1 | 2321 bytes | sha256:d38efb34a393
+engine15/source/Engine15WeeklyReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyReview.kt | Lines 1-233 | Part 1/1 | 17901 bytes | sha256:277b033004e9
+engine15/source/Engine15WeeklyVolumeSkeleton_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WeeklyVolumeSkeleton.kt | Lines 1-190 | Part 1/1 | 8420 bytes | sha256:43a164c1fbb1
+engine15/source/Engine15WorkloadLedger_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkloadLedger.kt | Lines 1-121 | Part 1/1 | 5385 bytes | sha256:ba5f46a295e3
+engine15/source/Engine15WorkoutDetection_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDetection.kt | Lines 1-310 | Part 1/1 | 14767 bytes | sha256:82a073584229
+engine15/source/Engine15WorkoutDifficultyAdjuster_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 1-333 | Part 1/3 | 17946 bytes | sha256:645b3f2df8b1
+engine15/source/Engine15WorkoutDifficultyAdjuster_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 334-704 | Part 2/3 | 17989 bytes | sha256:645b3f2df8b1
+engine15/source/Engine15WorkoutDifficultyAdjuster_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt | Lines 705-752 | Part 3/3 | 2052 bytes | sha256:645b3f2df8b1
+engine15/source/Engine1Engines_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/Engine1Engines.kt | Lines 1-33 | Part 1/1 | 1839 bytes | sha256:9cb325fa175a
+engine15/source/EngineContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 1-231 | Part 1/3 | 17978 bytes | sha256:dba7f2e4688b
+engine15/source/EngineContracts_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 232-479 | Part 2/3 | 17932 bytes | sha256:dba7f2e4688b
+engine15/source/EngineContracts_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt | Lines 480-513 | Part 3/3 | 2163 bytes | sha256:dba7f2e4688b
+engine15/source/FitActivityDecoder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/FitActivityDecoder.kt | Lines 1-176 | Part 1/1 | 10201 bytes | sha256:1287f071c530
+engine15/source/FitContainerReader_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/FitContainerReader.kt | Lines 1-163 | Part 1/1 | 7583 bytes | sha256:e607e1862252
+engine15/source/FitFileIntake_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/FitFileIntake.kt | Lines 1-41 | Part 1/1 | 2165 bytes | sha256:eddf908085b8
+engine15/source/FitImportCache_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/FitImportCache.kt | Lines 1-79 | Part 1/1 | 3893 bytes | sha256:793e38e61e59
+engine15/source/GarminActivityWorkouts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminActivityWorkouts.kt | Lines 1-59 | Part 1/1 | 2949 bytes | sha256:b6b105bf6360
+engine15/source/GarminCloudBackupGateway_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminCloudBackupGateway.kt | Lines 1-94 | Part 1/1 | 4467 bytes | sha256:940335229dd4
+engine15/source/GarminFitArchive_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminFitArchive.kt | Lines 1-48 | Part 1/1 | 2471 bytes | sha256:3194ec4d4ffe
+engine15/source/GarminFitWorkoutEncoder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminFitWorkoutEncoder.kt | Lines 1-205 | Part 1/1 | 8993 bytes | sha256:eb1eeb58d87a
+engine15/source/GarminGpsDetail_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminGpsDetail.kt | Lines 1-234 | Part 1/1 | 12212 bytes | sha256:2257192420e3
+engine15/source/GarminHeartRateZones_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminHeartRateZones.kt | Lines 1-116 | Part 1/1 | 5305 bytes | sha256:499eddd466fd
+engine15/source/GarminHistoryImport_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminHistoryImport.kt | Lines 1-51 | Part 1/1 | 2830 bytes | sha256:fa190c8704fb
+engine15/source/GarminPersonalApi_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminPersonalApi.kt | Lines 1-288 | Part 1/1 | 14932 bytes | sha256:b561a44791f7
+engine15/source/GarminPersonalSource_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminPersonalSource.kt | Lines 1-237 | Part 1/1 | 12426 bytes | sha256:7bd4f73f2e50
+engine15/source/GarminSettings_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminSettings.kt | Lines 1-305 | Part 1/1 | 14957 bytes | sha256:456f4cb1c341
+engine15/source/GarminSyncPreferences_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminSyncPreferences.kt | Lines 1-108 | Part 1/1 | 4700 bytes | sha256:560b24a066d1
+engine15/source/GarminZonePreferenceStore_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/GarminZonePreferenceStore.kt | Lines 1-79 | Part 1/1 | 3701 bytes | sha256:208d0ad7c98a
+engine15/source/HeartRateZoneAnalysis_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/HeartRateZoneAnalysis.kt | Lines 1-183 | Part 1/1 | 7232 bytes | sha256:f1027d5b00e6
+engine15/source/HybridPlanBuilder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/HybridPlanBuilder.kt | Lines 1-236 | Part 1/1 | 13391 bytes | sha256:58704ec11aa0
+engine15/source/IndependentAdaptiveWeek_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAdaptiveWeek.kt | Lines 1-113 | Part 1/1 | 7782 bytes | sha256:2822a39ca37c
+engine15/source/IndependentAndroidResearchBridge_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAndroidResearchBridge.kt | Lines 1-177 | Part 1/1 | 9400 bytes | sha256:674661a24dc2
+engine15/source/IndependentAndroidResearchPreviewPanel_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentAndroidResearchPreviewPanel.kt | Lines 1-285 | Part 1/1 | 15450 bytes | sha256:f32115e0cd85
+engine15/source/IndependentCapacityProfiler_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentCapacityProfiler.kt | Lines 1-157 | Part 1/1 | 6589 bytes | sha256:8099ecbd184b
+engine15/source/IndependentCompletionAttribution_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentCompletionAttribution.kt | Lines 1-184 | Part 1/1 | 9390 bytes | sha256:bd49ae6be09f
+engine15/source/IndependentConstrainedMultiweekPlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentConstrainedMultiweekPlanner.kt | Lines 1-175 | Part 1/1 | 8711 bytes | sha256:9ba2ddb0788b
+engine15/source/IndependentGoalAwareTrajectoryReplay_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentGoalAwareTrajectoryReplay.kt | Lines 1-182 | Part 1/1 | 8808 bytes | sha256:6a1bfd0fa634
+engine15/source/IndependentIntervalGroup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentIntervalGroup.kt | Lines 1-30 | Part 1/1 | 1720 bytes | sha256:2d330c46bbd2
+engine15/source/IndependentLongitudinalShadow_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentLongitudinalShadow.kt | Lines 1-128 | Part 1/1 | 6591 bytes | sha256:31a0660fd246
+engine15/source/IndependentMileageFeasibility_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentMileageFeasibility.kt | Lines 1-165 | Part 1/1 | 8824 bytes | sha256:241be5c9bdf6
+engine15/source/IndependentMultiweekResponse_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentMultiweekResponse.kt | Lines 1-256 | Part 1/1 | 13725 bytes | sha256:00d3a58d53c3
+engine15/source/IndependentQualityDoseProgression_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityDoseProgression.kt | Lines 1-311 | Part 1/2 | 17861 bytes | sha256:85043dd50f08
+engine15/source/IndependentQualityDoseProgression_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityDoseProgression.kt | Lines 312-342 | Part 2/2 | 2329 bytes | sha256:85043dd50f08
+engine15/source/IndependentQualityExposure_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityExposure.kt | Lines 1-172 | Part 1/1 | 7839 bytes | sha256:a98b7a63e537
+engine15/source/IndependentQualityFitnessAdapter_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityFitnessAdapter.kt | Lines 1-210 | Part 1/1 | 12024 bytes | sha256:ec2f231bcb51
+engine15/source/IndependentQualityOverlayComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityOverlayComposer.kt | Lines 1-260 | Part 1/1 | 12076 bytes | sha256:43c0a1f47542
+engine15/source/IndependentQualitySourceBinding_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualitySourceBinding.kt | Lines 1-163 | Part 1/1 | 8434 bytes | sha256:dd38d4b368b3
+engine15/source/IndependentQualitySpacingPlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualitySpacingPlanner.kt | Lines 1-202 | Part 1/1 | 8793 bytes | sha256:80a9196dab86
+engine15/source/IndependentQualityTemplates_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityTemplates.kt | Lines 1-191 | Part 1/1 | 11644 bytes | sha256:9bb4fd34c302
+engine15/source/IndependentResearchDraft_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentResearchDraft.kt | Lines 1-292 | Part 1/1 | 14007 bytes | sha256:52c219e7b964
+engine15/source/IndependentResearchScenarioRunner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentResearchScenarioRunner.kt | Lines 1-153 | Part 1/1 | 6850 bytes | sha256:217bbe0f2b0d
+engine15/source/IndependentRunWeekComposer_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentRunWeekComposer.kt | Lines 1-151 | Part 1/1 | 6820 bytes | sha256:7c43e17e7cc8
+engine15/source/IndependentRunningHistory_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentRunningHistory.kt | Lines 1-133 | Part 1/1 | 6442 bytes | sha256:6f095c2876e3
+engine15/source/IndependentTimedQualityDistanceReconciliation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentTimedQualityDistanceReconciliation.kt | Lines 1-198 | Part 1/1 | 10732 bytes | sha256:28f66af573f4
+engine15/source/IndependentWeeklyEvidenceLedger_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyEvidenceLedger.kt | Lines 1-164 | Part 1/1 | 7598 bytes | sha256:20e7043fce59
+engine15/source/IndependentWeeklyMileagePlanner_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyMileagePlanner.kt | Lines 1-247 | Part 1/1 | 11321 bytes | sha256:f0a47e31d4b6
+engine15/source/IndependentWeeklyProgramReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWeeklyProgramReview.kt | Lines 1-287 | Part 1/1 | 14857 bytes | sha256:0e753cdfe6b2
+engine15/source/IndependentWorkout_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWorkout.kt | Lines 1-57 | Part 1/1 | 2585 bytes | sha256:e03a4cf74781
+engine15/source/IndependentWorkoutComposition_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/IndependentWorkoutComposition.kt | Lines 1-58 | Part 1/1 | 3125 bytes | sha256:a7d1cf589bb3
+engine15/source/LocalActivityArchive_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/LocalActivityArchive.kt | Lines 1-349 | Part 1/1 | 16480 bytes | sha256:514444533de9
+engine15/source/LocalPlanOwnership_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/LocalPlanOwnership.kt | Lines 1-31 | Part 1/1 | 1388 bytes | sha256:5921dad2b00d
+engine15/source/ManualDisciplineStore_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ManualDisciplineStore.kt | Lines 1-383 | Part 1/2 | 17991 bytes | sha256:3fb7087f8097
+engine15/source/ManualDisciplineStore_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/ManualDisciplineStore.kt | Lines 384-496 | Part 2/2 | 5763 bytes | sha256:3fb7087f8097
+engine15/source/NativeMainActivity_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt | Lines 1-331 | Part 1/4 | 17968 bytes | sha256:4d7625c8e9c6
+engine15/source/NativeMainActivity_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt | Lines 332-601 | Part 2/4 | 17921 bytes | sha256:4d7625c8e9c6
+engine15/source/NativeMainActivity_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt | Lines 602-902 | Part 3/4 | 17963 bytes | sha256:4d7625c8e9c6
+engine15/source/NativeMainActivity_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt | Lines 903-1189 | Part 4/4 | 14698 bytes | sha256:4d7625c8e9c6
+engine15/source/PlanActions_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanActions.kt | Lines 1-39 | Part 1/1 | 3110 bytes | sha256:2a8171a11ff1
+engine15/source/PlanBackup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanBackup.kt | Lines 1-122 | Part 1/1 | 6821 bytes | sha256:20c676ccb566
+engine15/source/PlanBuilder_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt | Lines 1-340 | Part 1/4 | 17969 bytes | sha256:5c0817c314ba
+engine15/source/PlanBuilder_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt | Lines 341-694 | Part 2/4 | 17945 bytes | sha256:5c0817c314ba
+engine15/source/PlanBuilder_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt | Lines 695-1040 | Part 3/4 | 17927 bytes | sha256:5c0817c314ba
+engine15/source/PlanBuilder_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt | Lines 1041-1077 | Part 4/4 | 2107 bytes | sha256:5c0817c314ba
+engine15/source/PlanOperations_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanOperations.kt | Lines 1-214 | Part 1/2 | 17661 bytes | sha256:b54e3420bfd6
+engine15/source/PlanOperations_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanOperations.kt | Lines 215-268 | Part 2/2 | 4773 bytes | sha256:b54e3420bfd6
+engine15/source/PlanScheduleValidation_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/PlanScheduleValidation.kt | Lines 1-86 | Part 1/1 | 5742 bytes | sha256:a723ccfc828b
+engine15/source/RunningHistoryCoverage_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/RunningHistoryCoverage.kt | Lines 1-130 | Part 1/1 | 7185 bytes | sha256:01fd9fb3d7d8
+engine15/source/RunningWorkoutFitExport_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/RunningWorkoutFitExport.kt | Lines 1-141 | Part 1/1 | 6869 bytes | sha256:f42d18dd9635
+engine15/source/StrideApplication_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/StrideApplication.kt | Lines 1-156 | Part 1/1 | 10431 bytes | sha256:862e4c25066c
+engine15/source/StrideLabUnifiedTrainingTimeline_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt | Lines 1-368 | Part 1/4 | 17984 bytes | sha256:ffa65b092158
+engine15/source/StrideLabUnifiedTrainingTimeline_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt | Lines 369-672 | Part 2/4 | 17905 bytes | sha256:ffa65b092158
+engine15/source/StrideLabUnifiedTrainingTimeline_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt | Lines 673-1091 | Part 3/4 | 17951 bytes | sha256:ffa65b092158
+engine15/source/StrideLabUnifiedTrainingTimeline_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt | Lines 1092-1338 | Part 4/4 | 10389 bytes | sha256:ffa65b092158
+engine15/source/TodayAdaptiveDashboard_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt | Lines 1-405 | Part 1/4 | 17974 bytes | sha256:ec4eb506f5a7
+engine15/source/TodayAdaptiveDashboard_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt | Lines 406-829 | Part 2/4 | 17956 bytes | sha256:ec4eb506f5a7
+engine15/source/TodayAdaptiveDashboard_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt | Lines 830-1311 | Part 3/4 | 17987 bytes | sha256:ec4eb506f5a7
+engine15/source/TodayAdaptiveDashboard_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt | Lines 1312-1589 | Part 4/4 | 12038 bytes | sha256:ec4eb506f5a7
+engine15/source/TodayDisciplineAnalytics_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayDisciplineAnalytics.kt | Lines 1-167 | Part 1/1 | 7850 bytes | sha256:94d569013d1c
+engine15/source/TodayStartup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TodayStartup.kt | Lines 1-128 | Part 1/1 | 5190 bytes | sha256:d860042a52ce
+engine15/source/TracksideBuilderSchedule_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderSchedule.kt | Lines 1-402 | Part 1/2 | 17982 bytes | sha256:9122ef534e96
+engine15/source/TracksideBuilderSchedule_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderSchedule.kt | Lines 403-626 | Part 2/2 | 9598 bytes | sha256:9122ef534e96
+engine15/source/TracksideBuilderScreens_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderScreens.kt | Lines 1-411 | Part 1/3 | 17971 bytes | sha256:3cd65fb09025
+engine15/source/TracksideBuilderScreens_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderScreens.kt | Lines 412-777 | Part 2/3 | 17954 bytes | sha256:3cd65fb09025
+engine15/source/TracksideBuilderScreens_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderScreens.kt | Lines 778-877 | Part 3/3 | 4917 bytes | sha256:3cd65fb09025
+engine15/source/TracksideCrossTrainingGoals_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideCrossTrainingGoals.kt | Lines 1-384 | Part 1/1 | 16882 bytes | sha256:ff7c712dd478
+engine15/source/TracksideHeartRatePreferences_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideHeartRatePreferences.kt | Lines 1-350 | Part 1/2 | 17960 bytes | sha256:2ec0f3999278
+engine15/source/TracksideHeartRatePreferences_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideHeartRatePreferences.kt | Lines 351-382 | Part 2/2 | 1582 bytes | sha256:2ec0f3999278
+engine15/source/TracksideManagePlan_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideManagePlan.kt | Lines 1-356 | Part 1/2 | 17960 bytes | sha256:90d278e63f75
+engine15/source/TracksideManagePlan_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideManagePlan.kt | Lines 357-480 | Part 2/2 | 5389 bytes | sha256:90d278e63f75
+engine15/source/TracksideParityPausedPlan_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideParityPausedPlan.kt | Lines 1-106 | Part 1/1 | 6019 bytes | sha256:7eb6c29783ab
+engine15/source/TracksideParityTraining_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideParityTraining.kt | Lines 1-410 | Part 1/2 | 17970 bytes | sha256:44dbf26a658a
+engine15/source/TracksideParityTraining_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideParityTraining.kt | Lines 411-479 | Part 2/2 | 4181 bytes | sha256:44dbf26a658a
+engine15/source/TracksideRunningSetup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideRunningSetup.kt | Lines 1-387 | Part 1/2 | 17941 bytes | sha256:5a5e5c7207ff
+engine15/source/TracksideRunningSetup_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideRunningSetup.kt | Lines 388-467 | Part 2/2 | 4471 bytes | sha256:5a5e5c7207ff
+engine15/source/TracksideStrengthSetup_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideStrengthSetup.kt | Lines 1-412 | Part 1/2 | 17982 bytes | sha256:9aaf398aeb28
+engine15/source/TracksideStrengthSetup_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideStrengthSetup.kt | Lines 413-466 | Part 2/2 | 2646 bytes | sha256:9aaf398aeb28
+engine15/source/TracksideWeekReview_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideWeekReview.kt | Lines 1-383 | Part 1/2 | 17976 bytes | sha256:b3ddcf0a4347
+engine15/source/TracksideWeekReview_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TracksideWeekReview.kt | Lines 384-635 | Part 2/2 | 13536 bytes | sha256:b3ddcf0a4347
+engine15/source/TrainingEffectCalculator_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingEffectCalculator.kt | Lines 1-125 | Part 1/1 | 6499 bytes | sha256:c1e5cbef7feb
+engine15/source/TrainingRepository_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1-350 | Part 1/8 | 17899 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 351-673 | Part 2/8 | 17925 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 674-978 | Part 3/8 | 17993 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part004.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 979-1250 | Part 4/8 | 17977 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part005.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1251-1564 | Part 5/8 | 17976 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part006.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1565-1889 | Part 6/8 | 17971 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part007.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 1890-2230 | Part 7/8 | 17989 bytes | sha256:c000cd9a199d
+engine15/source/TrainingRepository_part008.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt | Lines 2231-2287 | Part 8/8 | 2814 bytes | sha256:c000cd9a199d
+engine15/source/TrainingScreens_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/TrainingScreens.kt | Lines 1-227 | Part 1/1 | 17704 bytes | sha256:043c890df467
+engine15/source/UserActivityWorkoutLabelStore_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/UserActivityWorkoutLabelStore.kt | Lines 1-34 | Part 1/1 | 1671 bytes | sha256:bb083b2284dc
+engine15/source/WearableProviderContracts_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/WearableProviderContracts.kt | Lines 1-141 | Part 1/1 | 6086 bytes | sha256:1de2fb2f2cb5
+engine15/source/WorkoutEvidence_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/WorkoutEvidence.kt | Lines 1-280 | Part 1/1 | 15128 bytes | sha256:c799c515399e
+engine15/source/WorkoutScreen_part001.txt | native-android/app/src/main/java/io/stridelab/privatealpha/WorkoutScreen.kt | Lines 1-195 | Part 1/3 | 17989 bytes | sha256:d1f34f0a2e7b
+engine15/source/WorkoutScreen_part002.txt | native-android/app/src/main/java/io/stridelab/privatealpha/WorkoutScreen.kt | Lines 196-512 | Part 2/3 | 17921 bytes | sha256:d1f34f0a2e7b
+engine15/source/WorkoutScreen_part003.txt | native-android/app/src/main/java/io/stridelab/privatealpha/WorkoutScreen.kt | Lines 513-571 | Part 3/3 | 7993 bytes | sha256:d1f34f0a2e7b
+engine15/tests/ActivityIntelligenceUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/ActivityIntelligenceUiTest.kt | Lines 1-313 | Part 1/2 | 17934 bytes | sha256:91c91aa0b37c
+engine15/tests/ActivityIntelligenceUiTest_part002.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/ActivityIntelligenceUiTest.kt | Lines 314-337 | Part 2/2 | 1997 bytes | sha256:91c91aa0b37c
+engine15/tests/ActivityPlanLinkUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/ActivityPlanLinkUiTest.kt | Lines 1-47 | Part 1/1 | 2426 bytes | sha256:3cb75dc51fb6
+engine15/tests/AthleteHeartRatePreferencesUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/AthleteHeartRatePreferencesUiTest.kt | Lines 1-81 | Part 1/1 | 4021 bytes | sha256:8c5339d9d428
+engine15/tests/Engine15CoachControlsTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15CoachControlsTest.kt | Lines 1-300 | Part 1/2 | 17915 bytes | sha256:2a9343fec52a
+engine15/tests/Engine15CoachControlsTest_part002.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15CoachControlsTest.kt | Lines 301-335 | Part 2/2 | 3356 bytes | sha256:2a9343fec52a
+engine15/tests/Engine15CoachingUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15CoachingUiTest.kt | Lines 1-139 | Part 1/1 | 9642 bytes | sha256:8637af3e5abb
+engine15/tests/Engine15FeedbackRepositoryTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15FeedbackRepositoryTest.kt | Lines 1-345 | Part 1/2 | 17956 bytes | sha256:53efc3872f3a
+engine15/tests/Engine15FeedbackRepositoryTest_part002.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15FeedbackRepositoryTest.kt | Lines 346-404 | Part 2/2 | 2927 bytes | sha256:53efc3872f3a
+engine15/tests/Engine15ProcessRestartTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/Engine15ProcessRestartTest.kt | Lines 1-187 | Part 1/1 | 11231 bytes | sha256:28112d0e0d06
+engine15/tests/FitFileIntakeTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/FitFileIntakeTest.kt | Lines 1-61 | Part 1/1 | 2681 bytes | sha256:525550f980af
+engine15/tests/FitImportCacheTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/FitImportCacheTest.kt | Lines 1-38 | Part 1/1 | 2274 bytes | sha256:3c7eb8954c99
+engine15/tests/GarminAutomaticSyncPreferencesTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/GarminAutomaticSyncPreferencesTest.kt | Lines 1-49 | Part 1/1 | 2637 bytes | sha256:12595e607876
+engine15/tests/GarminCredentialVaultTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/GarminCredentialVaultTest.kt | Lines 1-34 | Part 1/1 | 1823 bytes | sha256:0779215499c9
+engine15/tests/GarminZonePreferenceStoreTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/GarminZonePreferenceStoreTest.kt | Lines 1-48 | Part 1/1 | 2583 bytes | sha256:2a017f50036d
+engine15/tests/IndependentResearchDraftRepositoryTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/IndependentResearchDraftRepositoryTest.kt | Lines 1-253 | Part 1/1 | 12029 bytes | sha256:64acf131b97e
+engine15/tests/LocalActivityArchiveAndroidTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/LocalActivityArchiveAndroidTest.kt | Lines 1-247 | Part 1/1 | 11469 bytes | sha256:aed74726853f
+engine15/tests/LocalActivityArchiveScreenUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/LocalActivityArchiveScreenUiTest.kt | Lines 1-53 | Part 1/1 | 2612 bytes | sha256:a8bc7486f741
+engine15/tests/LocalPlanRepositoryTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/LocalPlanRepositoryTest.kt | Lines 1-329 | Part 1/2 | 17946 bytes | sha256:7f485dcef75f
+engine15/tests/LocalPlanRepositoryTest_part002.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/LocalPlanRepositoryTest.kt | Lines 330-388 | Part 2/2 | 3571 bytes | sha256:7f485dcef75f
+engine15/tests/PlanBuilderRouteRestorationTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/PlanBuilderRouteRestorationTest.kt | Lines 1-44 | Part 1/1 | 2198 bytes | sha256:578b7e464362
+engine15/tests/TodayDisciplinePagesTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/TodayDisciplinePagesTest.kt | Lines 1-105 | Part 1/1 | 5574 bytes | sha256:f502bf0adbd5
+engine15/tests/TracksideEngine15ManagementUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/TracksideEngine15ManagementUiTest.kt | Lines 1-155 | Part 1/1 | 8856 bytes | sha256:96e6f322e55e
+engine15/tests/TracksideManagePlanTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/TracksideManagePlanTest.kt | Lines 1-80 | Part 1/1 | 3642 bytes | sha256:5daeed824d07
+engine15/tests/TracksideTodayTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/TracksideTodayTest.kt | Lines 1-253 | Part 1/1 | 12931 bytes | sha256:32a630088c24
+engine15/tests/WorkoutEvidenceUiTest_part001.txt | native-android/app/src/androidTest/java/io/stridelab/privatealpha/WorkoutEvidenceUiTest.kt | Lines 1-114 | Part 1/1 | 5341 bytes | sha256:a506af4e0603
+engine15/tests/ActivityAnalyticsFilteringTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityAnalyticsFilteringTest.kt | Lines 1-67 | Part 1/1 | 3284 bytes | sha256:483f9cbfeeb4
+engine15/tests/ActivityAthleteEvidenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityAthleteEvidenceTest.kt | Lines 1-46 | Part 1/1 | 2373 bytes | sha256:b791761d7e0d
+engine15/tests/ActivityChartDisplayScaleTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityChartDisplayScaleTest.kt | Lines 1-36 | Part 1/1 | 1628 bytes | sha256:69f1548813d9
+engine15/tests/ActivityChartMovingTimeAxisTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityChartMovingTimeAxisTest.kt | Lines 1-62 | Part 1/1 | 2835 bytes | sha256:06fb30eca463
+engine15/tests/ActivityDetailSectionAnalysisTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityDetailSectionAnalysisTest.kt | Lines 1-107 | Part 1/1 | 5663 bytes | sha256:cfe8861c3739
+engine15/tests/ActivityDetailTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityDetailTest.kt | Lines 1-40 | Part 1/1 | 2861 bytes | sha256:04d2182ae544
+engine15/tests/ActivityDisciplinePresentationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityDisciplinePresentationTest.kt | Lines 1-60 | Part 1/1 | 2733 bytes | sha256:1b9d47f791af
+engine15/tests/ActivityDisplayConsolidationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityDisplayConsolidationTest.kt | Lines 1-140 | Part 1/1 | 7167 bytes | sha256:862a23f61c3e
+engine15/tests/ActivityEffortAnalysisTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityEffortAnalysisTest.kt | Lines 1-86 | Part 1/1 | 4113 bytes | sha256:1008b43cf9af
+engine15/tests/ActivityHistoryAnalyticsTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityHistoryAnalyticsTest.kt | Lines 1-121 | Part 1/1 | 5744 bytes | sha256:c1f1f529e996
+engine15/tests/ActivityImportMatcherTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityImportMatcherTest.kt | Lines 1-54 | Part 1/1 | 2825 bytes | sha256:919220ea9736
+engine15/tests/ActivityIntelligenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityIntelligenceTest.kt | Lines 1-108 | Part 1/1 | 5981 bytes | sha256:1a59433aebf9
+engine15/tests/ActivityPlanLinkWindowTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityPlanLinkWindowTest.kt | Lines 1-51 | Part 1/1 | 2514 bytes | sha256:dd1422096f93
+engine15/tests/ActivityRecordTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityRecordTest.kt | Lines 1-58 | Part 1/1 | 3599 bytes | sha256:7b3ef2734e4f
+engine15/tests/ActivityRunComparisonTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityRunComparisonTest.kt | Lines 1-99 | Part 1/1 | 4882 bytes | sha256:f9e1f63d912d
+engine15/tests/ActivityWorkoutIntelligenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/ActivityWorkoutIntelligenceTest.kt | Lines 1-297 | Part 1/1 | 14435 bytes | sha256:21878ab56df0
+engine15/tests/BackupIntegrityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/BackupIntegrityTest.kt | Lines 1-127 | Part 1/1 | 9723 bytes | sha256:77033893d8f2
+engine15/tests/Engine15AcceptanceEvidenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AcceptanceEvidenceTest.kt | Lines 1-106 | Part 1/1 | 5199 bytes | sha256:5d036951d8d6
+engine15/tests/Engine15ActivityAutoMatcherTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ActivityAutoMatcherTest.kt | Lines 1-301 | Part 1/1 | 12328 bytes | sha256:b8227a4f0d04
+engine15/tests/Engine15AdaptiveHistoryAndUiContractTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AdaptiveHistoryAndUiContractTest.kt | Lines 1-132 | Part 1/1 | 5557 bytes | sha256:4b401048b389
+engine15/tests/Engine15ArchitectureTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ArchitectureTest.kt | Lines 1-195 | Part 1/1 | 10135 bytes | sha256:d79b0f08f50a
+engine15/tests/Engine15AthleteDiagnosticsEngineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt | Lines 1-376 | Part 1/2 | 17947 bytes | sha256:fe4f58298352
+engine15/tests/Engine15AthleteDiagnosticsEngineTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt | Lines 377-468 | Part 2/2 | 4988 bytes | sha256:fe4f58298352
+engine15/tests/Engine15AthleteEffortBaselineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteEffortBaselineTest.kt | Lines 1-142 | Part 1/1 | 7360 bytes | sha256:507a8ea3c9f0
+engine15/tests/Engine15AvailabilityReconciliationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AvailabilityReconciliationTest.kt | Lines 1-108 | Part 1/1 | 6049 bytes | sha256:740100712f4b
+engine15/tests/Engine15Batch1AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt | Lines 1-403 | Part 1/2 | 17992 bytes | sha256:2e1827a3c0b2
+engine15/tests/Engine15Batch1AuditFixesTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt | Lines 404-442 | Part 2/2 | 2125 bytes | sha256:2e1827a3c0b2
+engine15/tests/Engine15Batch2AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch2AuditFixesTest.kt | Lines 1-295 | Part 1/1 | 13089 bytes | sha256:e43188d916e6
+engine15/tests/Engine15Batch3AuditFixesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch3AuditFixesTest.kt | Lines 1-215 | Part 1/1 | 12250 bytes | sha256:c046d26eeae8
+engine15/tests/Engine15CoachingAcceptanceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 1-392 | Part 1/4 | 17897 bytes | sha256:3214da4fa862
+engine15/tests/Engine15CoachingAcceptanceTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 393-726 | Part 2/4 | 17946 bytes | sha256:3214da4fa862
+engine15/tests/Engine15CoachingAcceptanceTest_part003.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 727-1051 | Part 3/4 | 17922 bytes | sha256:3214da4fa862
+engine15/tests/Engine15CoachingAcceptanceTest_part004.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt | Lines 1052-1254 | Part 4/4 | 11228 bytes | sha256:3214da4fa862
+engine15/tests/Engine15CompletePlanRobustnessMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CompletePlanRobustnessMatrixTest.kt | Lines 1-302 | Part 1/1 | 15165 bytes | sha256:5a63aed8dcc4
+engine15/tests/Engine15DailyLoadShaperTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DailyLoadShaperTest.kt | Lines 1-299 | Part 1/1 | 12819 bytes | sha256:9687ba2d0d1c
+engine15/tests/Engine15DisciplineProgressionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DisciplineProgressionTest.kt | Lines 1-156 | Part 1/1 | 9723 bytes | sha256:f55d59d0c650
+engine15/tests/Engine15DistanceRoundingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15DistanceRoundingTest.kt | Lines 1-51 | Part 1/1 | 2317 bytes | sha256:8b10ada30f76
+engine15/tests/Engine15ExecutionAnalyzerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt | Lines 1-400 | Part 1/2 | 17989 bytes | sha256:d168dbf68257
+engine15/tests/Engine15ExecutionAnalyzerTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt | Lines 401-528 | Part 2/2 | 5742 bytes | sha256:d168dbf68257
+engine15/tests/Engine15FeedbackTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15FeedbackTest.kt | Lines 1-236 | Part 1/1 | 12189 bytes | sha256:df9ab8cd0951
+engine15/tests/Engine15HistoryInformedPlanningTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15HistoryInformedPlanningTest.kt | Lines 1-105 | Part 1/1 | 5519 bytes | sha256:7eec8b6997f0
+engine15/tests/Engine15I1IntegratedShadowMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I1IntegratedShadowMatrixTest.kt | Lines 1-367 | Part 1/2 | 17931 bytes | sha256:e2780b2303e5
+engine15/tests/Engine15I1IntegratedShadowMatrixTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I1IntegratedShadowMatrixTest.kt | Lines 368-405 | Part 2/2 | 2320 bytes | sha256:e2780b2303e5
+engine15/tests/Engine15I2AdversarialShadowMatrixTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I2AdversarialShadowMatrixTest.kt | Lines 1-259 | Part 1/1 | 14937 bytes | sha256:b33f5f81c792
+engine15/tests/Engine15I3SourceLinkedQualityDurationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I3SourceLinkedQualityDurationTest.kt | Lines 1-291 | Part 1/1 | 13389 bytes | sha256:38d64a2feef3
+engine15/tests/Engine15I4WorkLapHeartRateReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I4WorkLapHeartRateReviewTest.kt | Lines 1-328 | Part 1/1 | 14364 bytes | sha256:0e074f58296b
+engine15/tests/Engine15I5TimedDistanceFeasibilityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I5TimedDistanceFeasibilityTest.kt | Lines 1-409 | Part 1/1 | 16969 bytes | sha256:67695a8a4d69
+engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistencyTest.kt | Lines 1-419 | Part 1/2 | 17993 bytes | sha256:a9fe111b2e50
+engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistencyTest.kt | Lines 420-458 | Part 2/2 | 1934 bytes | sha256:a9fe111b2e50
+engine15/tests/Engine15I7IntensityCalibrationReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I7IntensityCalibrationReviewTest.kt | Lines 1-392 | Part 1/1 | 17747 bytes | sha256:018aaf8b6357
+engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt | Lines 1-402 | Part 1/2 | 17976 bytes | sha256:3ef2d78eb820
+engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt | Lines 403-483 | Part 2/2 | 4124 bytes | sha256:3ef2d78eb820
+engine15/tests/Engine15I9ReadOnlyBasePlanAssemblyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I9ReadOnlyBasePlanAssemblyTest.kt | Lines 1-321 | Part 1/1 | 14638 bytes | sha256:2e5d890bdd50
+engine15/tests/Engine15IndependentDevelopmentRouteTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentDevelopmentRouteTest.kt | Lines 1-271 | Part 1/1 | 16702 bytes | sha256:24469ed5a2ac
+engine15/tests/Engine15IndependentPlanGeneratorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 1-310 | Part 1/3 | 17942 bytes | sha256:533c2c8852d3
+engine15/tests/Engine15IndependentPlanGeneratorTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 311-584 | Part 2/3 | 17931 bytes | sha256:533c2c8852d3
+engine15/tests/Engine15IndependentPlanGeneratorTest_part003.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt | Lines 585-922 | Part 3/3 | 16400 bytes | sha256:533c2c8852d3
+engine15/tests/Engine15M28CoachingAuditTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M28CoachingAuditTest.kt | Lines 1-371 | Part 1/2 | 17949 bytes | sha256:67db8dc85cfc
+engine15/tests/Engine15M28CoachingAuditTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M28CoachingAuditTest.kt | Lines 372-414 | Part 2/2 | 2307 bytes | sha256:67db8dc85cfc
+engine15/tests/Engine15M3AthleteBaselineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M3AthleteBaselineTest.kt | Lines 1-155 | Part 1/1 | 8551 bytes | sha256:18d1dd4f9747
+engine15/tests/Engine15M4BIndependentVolumePlannerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M4BIndependentVolumePlannerTest.kt | Lines 1-254 | Part 1/1 | 13371 bytes | sha256:8a1066b6b061
+engine15/tests/Engine15M4WeeklyVolumeSkeletonTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M4WeeklyVolumeSkeletonTest.kt | Lines 1-144 | Part 1/1 | 7215 bytes | sha256:0b30edcfd85f
+engine15/tests/Engine15M5QualityPreviewComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposerTest.kt | Lines 1-237 | Part 1/1 | 10627 bytes | sha256:2a65b124bf2d
+engine15/tests/Engine15M5TimedDistanceReconcilerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconcilerTest.kt | Lines 1-245 | Part 1/1 | 11485 bytes | sha256:9c255f397b91
+engine15/tests/Engine15M5WorkoutComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M5WorkoutComposerTest.kt | Lines 1-212 | Part 1/1 | 9487 bytes | sha256:f3033a5c08ce
+engine15/tests/Engine15M6IndependentCalendarTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentCalendarTest.kt | Lines 1-219 | Part 1/1 | 10042 bytes | sha256:2e61fc086813
+engine15/tests/Engine15M6IndependentInterferenceReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentInterferenceReviewTest.kt | Lines 1-258 | Part 1/1 | 11235 bytes | sha256:dc3b026b27d5
+engine15/tests/Engine15M6IndependentPeriodizationReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentPeriodizationReviewTest.kt | Lines 1-261 | Part 1/1 | 11333 bytes | sha256:b534d35fcc92
+engine15/tests/Engine15M6IndependentQualitySpacingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacingTest.kt | Lines 1-247 | Part 1/1 | 11041 bytes | sha256:161ab8534c11
+engine15/tests/Engine15MarathonTidEvaluatorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MarathonTidEvaluatorTest.kt | Lines 1-110 | Part 1/1 | 5853 bytes | sha256:b93136b3471f
+engine15/tests/Engine15MissedSuggestionSafetyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MissedSuggestionSafetyTest.kt | Lines 1-110 | Part 1/1 | 5967 bytes | sha256:904e1afaf052
+engine15/tests/Engine15MultiDisciplineStabilizationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15MultiDisciplineStabilizationTest.kt | Lines 1-202 | Part 1/1 | 8799 bytes | sha256:a84c4a3cf8b4
+engine15/tests/Engine15PaceZoneEstimatorTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PaceZoneEstimatorTest.kt | Lines 1-68 | Part 1/1 | 2797 bytes | sha256:3a020e8f949f
+engine15/tests/Engine15Phase2CoachingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Phase2CoachingTest.kt | Lines 1-239 | Part 1/1 | 14148 bytes | sha256:9ec730ecfc38
+engine15/tests/Engine15Phase3Track6Test_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Phase3Track6Test.kt | Lines 1-161 | Part 1/1 | 8150 bytes | sha256:84c4378fafe8
+engine15/tests/Engine15PhaseACoreTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PhaseACoreTest.kt | Lines 1-111 | Part 1/1 | 5451 bytes | sha256:7f5032d5f3c2
+engine15/tests/Engine15PlanAdaptationEngineTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt | Lines 1-335 | Part 1/2 | 17977 bytes | sha256:60241ec5f429
+engine15/tests/Engine15PlanAdaptationEngineTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt | Lines 336-395 | Part 2/2 | 4353 bytes | sha256:60241ec5f429
+engine15/tests/Engine15QualityFamilySelectionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityFamilySelectionTest.kt | Lines 1-229 | Part 1/1 | 13677 bytes | sha256:a6050ce45785
+engine15/tests/Engine15QualityProgressionPolicyTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicyTest.kt | Lines 1-217 | Part 1/1 | 10524 bytes | sha256:c4fb59186a86
+engine15/tests/Engine15QualityWorkoutDryRunTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt | Lines 1-297 | Part 1/2 | 17994 bytes | sha256:5e730e5b180a
+engine15/tests/Engine15QualityWorkoutDryRunTest_part002.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt | Lines 298-474 | Part 2/2 | 11156 bytes | sha256:5e730e5b180a
+engine15/tests/Engine15RunningDebriefAnalyzerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15RunningDebriefAnalyzerTest.kt | Lines 1-232 | Part 1/1 | 14006 bytes | sha256:028598f3500a
+engine15/tests/Engine15RunningPrescriptionSprintTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15RunningPrescriptionSprintTest.kt | Lines 1-228 | Part 1/1 | 13290 bytes | sha256:f9deaab49cf2
+engine15/tests/Engine15WeeklyReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WeeklyReviewTest.kt | Lines 1-90 | Part 1/1 | 6753 bytes | sha256:379aa4058652
+engine15/tests/Engine15WorkoutDetectionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WorkoutDetectionTest.kt | Lines 1-244 | Part 1/1 | 11236 bytes | sha256:0f5e25b5ff79
+engine15/tests/Engine15WorkoutDifficultyAdjusterTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjusterTest.kt | Lines 1-263 | Part 1/1 | 11939 bytes | sha256:1b8910560da8
+engine15/tests/FitActivityDecoderTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/FitActivityDecoderTest.kt | Lines 1-166 | Part 1/1 | 8220 bytes | sha256:8ccaf5edaa16
+engine15/tests/FitContainerReaderTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/FitContainerReaderTest.kt | Lines 1-101 | Part 1/1 | 4540 bytes | sha256:f0a5cb7dbd35
+engine15/tests/GarminActivityWorkoutsTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminActivityWorkoutsTest.kt | Lines 1-57 | Part 1/1 | 2614 bytes | sha256:8f15187f5849
+engine15/tests/GarminCloudBackupGatewayTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminCloudBackupGatewayTest.kt | Lines 1-93 | Part 1/1 | 4293 bytes | sha256:721a0fba71aa
+engine15/tests/GarminFitArchiveTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminFitArchiveTest.kt | Lines 1-41 | Part 1/1 | 1917 bytes | sha256:c57aa5361d4d
+engine15/tests/GarminFitWorkoutEncoderTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminFitWorkoutEncoderTest.kt | Lines 1-142 | Part 1/1 | 7612 bytes | sha256:a27eda1e6e8b
+engine15/tests/GarminGpsDetailTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminGpsDetailTest.kt | Lines 1-236 | Part 1/1 | 12154 bytes | sha256:cd92974d7fc0
+engine15/tests/GarminHeartRateZonesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminHeartRateZonesTest.kt | Lines 1-93 | Part 1/1 | 4588 bytes | sha256:b5df2a59932f
+engine15/tests/GarminHistoryImportTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminHistoryImportTest.kt | Lines 1-75 | Part 1/1 | 3962 bytes | sha256:ba3297cc79ff
+engine15/tests/GarminPersonalApiTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminPersonalApiTest.kt | Lines 1-175 | Part 1/1 | 9563 bytes | sha256:9f6c14224702
+engine15/tests/GarminPersonalSourceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/GarminPersonalSourceTest.kt | Lines 1-270 | Part 1/1 | 13382 bytes | sha256:9dcfdc21ffbb
+engine15/tests/HeartRateZoneAnalysisTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/HeartRateZoneAnalysisTest.kt | Lines 1-197 | Part 1/1 | 8016 bytes | sha256:e984363de922
+engine15/tests/HybridPlanBuilderTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/HybridPlanBuilderTest.kt | Lines 1-100 | Part 1/1 | 6255 bytes | sha256:e2281c5332d6
+engine15/tests/IndependentAdaptiveWeekTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentAdaptiveWeekTest.kt | Lines 1-69 | Part 1/1 | 4940 bytes | sha256:05206bf390b9
+engine15/tests/IndependentAndroidResearchBridgeTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentAndroidResearchBridgeTest.kt | Lines 1-141 | Part 1/1 | 6843 bytes | sha256:910ce37e55f1
+engine15/tests/IndependentCapacityProfilerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentCapacityProfilerTest.kt | Lines 1-128 | Part 1/1 | 6783 bytes | sha256:bd8190fc05ec
+engine15/tests/IndependentCoachingAcceptanceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentCoachingAcceptanceTest.kt | Lines 1-50 | Part 1/1 | 3940 bytes | sha256:0b8cb06c9cc3
+engine15/tests/IndependentCoachingComparisonTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentCoachingComparisonTest.kt | Lines 1-89 | Part 1/1 | 5873 bytes | sha256:7773f0791f15
+engine15/tests/IndependentCompletionAttributionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentCompletionAttributionTest.kt | Lines 1-226 | Part 1/1 | 9238 bytes | sha256:0b51db72653b
+engine15/tests/IndependentConstrainedMultiweekPlannerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentConstrainedMultiweekPlannerTest.kt | Lines 1-180 | Part 1/1 | 8283 bytes | sha256:306ab074cf6b
+engine15/tests/IndependentGoalAwareTrajectoryReplayTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentGoalAwareTrajectoryReplayTest.kt | Lines 1-240 | Part 1/1 | 10571 bytes | sha256:c8ae0ba8557d
+engine15/tests/IndependentIntervalGroupTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentIntervalGroupTest.kt | Lines 1-30 | Part 1/1 | 1935 bytes | sha256:21572b11cb10
+engine15/tests/IndependentLongitudinalShadowTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentLongitudinalShadowTest.kt | Lines 1-171 | Part 1/1 | 8267 bytes | sha256:5549517fb593
+engine15/tests/IndependentMileageFeasibilityTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentMileageFeasibilityTest.kt | Lines 1-177 | Part 1/1 | 7975 bytes | sha256:4af4912d14c2
+engine15/tests/IndependentMultiweekResponseTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentMultiweekResponseTest.kt | Lines 1-212 | Part 1/1 | 9361 bytes | sha256:05317ba8e111
+engine15/tests/IndependentMultiweekTrajectoryComparisonTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentMultiweekTrajectoryComparisonTest.kt | Lines 1-113 | Part 1/1 | 5526 bytes | sha256:2f72cb8b1f36
+engine15/tests/IndependentQualityDoseProgressionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualityDoseProgressionTest.kt | Lines 1-288 | Part 1/1 | 14278 bytes | sha256:6b2576817f8d
+engine15/tests/IndependentQualityExposureTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualityExposureTest.kt | Lines 1-146 | Part 1/1 | 7410 bytes | sha256:4586853d58ac
+engine15/tests/IndependentQualityFitnessAdapterTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualityFitnessAdapterTest.kt | Lines 1-199 | Part 1/1 | 10050 bytes | sha256:0264e0195122
+engine15/tests/IndependentQualityOverlayComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualityOverlayComposerTest.kt | Lines 1-217 | Part 1/1 | 8894 bytes | sha256:b02f8788a713
+engine15/tests/IndependentQualitySourceBindingTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualitySourceBindingTest.kt | Lines 1-178 | Part 1/1 | 8643 bytes | sha256:10cd23b9f873
+engine15/tests/IndependentQualitySpacingPlannerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualitySpacingPlannerTest.kt | Lines 1-164 | Part 1/1 | 7502 bytes | sha256:df089fdbbcae
+engine15/tests/IndependentQualityTemplatesTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentQualityTemplatesTest.kt | Lines 1-121 | Part 1/1 | 7108 bytes | sha256:7d27edb96627
+engine15/tests/IndependentResearchDraftTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentResearchDraftTest.kt | Lines 1-167 | Part 1/1 | 7850 bytes | sha256:c581d919519b
+engine15/tests/IndependentResearchScenarioRunnerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentResearchScenarioRunnerTest.kt | Lines 1-222 | Part 1/1 | 9823 bytes | sha256:7acbfc022505
+engine15/tests/IndependentRunWeekComposerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentRunWeekComposerTest.kt | Lines 1-160 | Part 1/1 | 7373 bytes | sha256:801a0c751d53
+engine15/tests/IndependentRunningHistoryTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentRunningHistoryTest.kt | Lines 1-115 | Part 1/1 | 5703 bytes | sha256:4274d81229e6
+engine15/tests/IndependentTimedQualityDistanceReconciliationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentTimedQualityDistanceReconciliationTest.kt | Lines 1-199 | Part 1/1 | 8910 bytes | sha256:12f7a14f8ff0
+engine15/tests/IndependentWeeklyEvidenceLedgerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentWeeklyEvidenceLedgerTest.kt | Lines 1-195 | Part 1/1 | 8442 bytes | sha256:e6c5ffed50ef
+engine15/tests/IndependentWeeklyMileagePlannerTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentWeeklyMileagePlannerTest.kt | Lines 1-142 | Part 1/1 | 6815 bytes | sha256:a7475a607d37
+engine15/tests/IndependentWeeklyProgramReviewTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentWeeklyProgramReviewTest.kt | Lines 1-294 | Part 1/1 | 14432 bytes | sha256:d846bf465e31
+engine15/tests/IndependentWorkoutCompositionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentWorkoutCompositionTest.kt | Lines 1-42 | Part 1/1 | 2994 bytes | sha256:0f476e35a5fa
+engine15/tests/IndependentWorkoutTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/IndependentWorkoutTest.kt | Lines 1-38 | Part 1/1 | 2470 bytes | sha256:713b5aea82cb
+engine15/tests/LocalPlanOwnershipTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/LocalPlanOwnershipTest.kt | Lines 1-41 | Part 1/1 | 2028 bytes | sha256:ced09d0de863
+engine15/tests/RunCoachNoteTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/RunCoachNoteTest.kt | Lines 1-24 | Part 1/1 | 1421 bytes | sha256:3d9bef397def
+engine15/tests/RunningWeekCoachTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/RunningWeekCoachTest.kt | Lines 1-29 | Part 1/1 | 1551 bytes | sha256:15756ab1bffa
+engine15/tests/TodayAdaptiveLoadTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/TodayAdaptiveLoadTest.kt | Lines 1-264 | Part 1/1 | 12908 bytes | sha256:fc8f16331df3
+engine15/tests/TodayDisciplineAnalyticsTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/TodayDisciplineAnalyticsTest.kt | Lines 1-128 | Part 1/1 | 6242 bytes | sha256:82c834fb58b1
+engine15/tests/TodayStartupTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/TodayStartupTest.kt | Lines 1-49 | Part 1/1 | 2428 bytes | sha256:f4aaee00a056
+engine15/tests/TracksideCoachingIntegrationTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/TracksideCoachingIntegrationTest.kt | Lines 1-120 | Part 1/1 | 7370 bytes | sha256:00dbff26264e
+engine15/tests/TracksideParityPlanStateTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/TracksideParityPlanStateTest.kt | Lines 1-126 | Part 1/1 | 5318 bytes | sha256:0bf7ccff549c
+engine15/tests/WorkoutEvidenceCardProjectionTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/WorkoutEvidenceCardProjectionTest.kt | Lines 1-108 | Part 1/1 | 4208 bytes | sha256:c34ef5b908be
+engine15/tests/WorkoutEvidenceTest_part001.txt | native-android/app/src/test/java/io/stridelab/privatealpha/WorkoutEvidenceTest.kt | Lines 1-96 | Part 1/1 | 5513 bytes | sha256:119ab372aba1

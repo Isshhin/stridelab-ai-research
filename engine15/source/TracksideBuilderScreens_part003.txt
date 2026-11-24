@@ -1,0 +1,106 @@
+FILE: TracksideBuilderScreens.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderScreens.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 3
+LINES: 778-877
+--------------------------------------------------
+    onConfirmNoRecentRunning: (() -> Unit)? = null,
+    progressStep: Int = 3
+) {
+    var benchmarkDialogOpen by remember { mutableStateOf(false) }
+    var chosenDistance by remember(benchmarkDistance) { mutableStateOf(benchmarkDistance) }
+
+    TracksideBuilderFrame(
+        eyebrow = "RUNNING / BASELINE",
+        headline = "Where are you\nstarting?",
+        description = "We fill in what we can from your recent runs. You can adjust either distance.",
+        onBack = onBack,
+        onContinue = onContinue,
+        descriptionBottomGap = 16,
+        contentTopPadding = 12,
+        headlineLineHeight = 34,
+        progressStep = progressStep,
+        progressLabel = "Baseline"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("EXPERIENCE LEVEL", fontSize = 10.sp, letterSpacing = 1.4.sp, color = PlanBuilderPalette.muted, fontWeight = FontWeight.Bold)
+            if (autoDetectedExperience) {
+                Text("Auto-detected from history", fontSize = 10.5.sp, color = limeAccent, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = surfaceCard,
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, outline)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Beginner", "Intermediate", "Advanced").forEachIndexed { i, label ->
+                    val active = experience == i
+                    Surface(
+                        modifier = Modifier.weight(1f).height(44.dp).testTag("builder-experience-$i"),
+                        onClick = { onExperience(i) },
+                        color = if (active) limeAccent else Color.Transparent,
+                        shape = RoundedCornerShape(11.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                label,
+                                fontSize = 12.sp,
+                                color = if (active) PlanBuilderPalette.accentOn else muted,
+                                fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        TracksideAbilityRange(
+            header = "TYPICAL WEEKLY VOLUME", title = "Typical weekly volume",
+            note = weeklySource, value = weeklyKm, maxValue = maxOf(120f, weeklyKm?.toFloat() ?: 0f), unit = "km / wk",
+            tag = "weekly", onValue = onWeeklyKm
+        )
+        Spacer(Modifier.height(12.dp))
+        TracksideAbilityRange(
+            header = "LONGEST RECENT RUN", title = "Longest run completed",
+            note = longestSource, value = longestKm, maxValue = maxOf(42f, longestKm?.toFloat() ?: 0f), unit = "km",
+            tag = "longest", onValue = onLongestKm
+        )
+        if (onConfirmNoRecentRunning != null) {
+            TextButton(onClick = onConfirmNoRecentRunning) { Text("I haven’t run recently") }
+        }
+        Spacer(Modifier.height(16.dp))
+        historyContent()
+        Text("RECENT PERFORMANCE  (OPTIONAL)", fontSize = 10.sp, letterSpacing = 1.4.sp, color = PlanBuilderPalette.muted, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        BenchmarkEntryCard(
+            title = "Race or time trial result",
+            subtitle = "Estimates accurate training pace zones",
+            benchmarkSeconds = benchmarkSeconds,
+            onClick = { benchmarkDialogOpen = true },
+            cardTag = "builder-ability-optional-card",
+            buttonTag = "builder-ability-add-result"
+        )
+        if (paceZones != null && (benchmarkSeconds != null || autoDetectedExperience)) {
+            Spacer(Modifier.height(10.dp))
+            ProvisionalPaceZoneStrip(paceZones)
+        }
+    }
+    if (benchmarkDialogOpen) {
+        BenchmarkTimeDialog(
+            distanceLabel = chosenDistance,
+            initialSeconds = benchmarkSeconds,
+            showDistancePicker = true,
+            selectedDistance = chosenDistance,
+            onSelectDistance = { chosenDistance = it },
+            onSave = { sec -> onSaveBenchmark?.invoke(chosenDistance, sec); benchmarkDialogOpen = false },
+            onDismiss = { benchmarkDialogOpen = false }
+        )
+    }
+}

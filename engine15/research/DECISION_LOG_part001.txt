@@ -1,11 +1,12 @@
+FILE: DECISION_LOG.md
 SOURCE: research/engine15-r0/DECISION_LOG.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-74
 --------------------------------------------------
-# StrideLab Engine 1.5 decision log ΓÇö R0 / Gate B
+# StrideLab Engine 1.5 decision log — R0 / Gate B
 
-## Decision 2026-11-16 / D-001 ΓÇö Diagnose before changing guardrails
+## Decision 2026-11-16 / D-001 — Diagnose before changing guardrails
 
 **Status:** Implemented as instrumented, unmerged research candidate. Test evidence pending.
 
@@ -36,17 +37,17 @@ Every proposed guardrail adjustment must document: (1) current source and ration
 
 Run `Engine15R0WorkloadLedgerTest` locally and review `executed-weekly-ledger.csv` and `executed-rule-events.csv`. When R0 evidence is available, decide whether the Engine 1.0 baseline boundary requires deeper internal instrumentation before Gate B authorizes M3/M4. No results are recorded or claimed before the test actually runs.
 
-## Decision 2026-11-17 / D-002 ΓÇö R0 executed readout and Gate B authorization
+## Decision 2026-11-17 / D-002 — R0 executed readout and Gate B authorization
 
 **Status:** R0 accepted on executed synthetic measurements; M3 contract implementation authorized; M4/M5 behavior changes NOT authorized.
 
-The user locally executed the R0 focused test (BUILD SUCCESSFUL, 37s) and supplied console displays of the CSV reports. For 75ΓåÆ80 km, Week 7's Engine 1.0 baseline measured 85.700 km, Engine 1.5 allocated 78.700 km, and the final Q2 mixed-unit estimate was 70.533 km. The 40% long-run and 20% quality-work safeguards made no selected-profile reduction. This does not prove the safety of relaxing any threshold. Full evidence readout: GATE_B_EXECUTED_READOUT_20261117.md.
+The user locally executed the R0 focused test (BUILD SUCCESSFUL, 37s) and supplied console displays of the CSV reports. For 75→80 km, Week 7's Engine 1.0 baseline measured 85.700 km, Engine 1.5 allocated 78.700 km, and the final Q2 mixed-unit estimate was 70.533 km. The 40% long-run and 20% quality-work safeguards made no selected-profile reduction. This does not prove the safety of relaxing any threshold. Full evidence readout: GATE_B_EXECUTED_READOUT_20261117.md.
 
 **Approved:** A provisional, source-aware M3 athlete baseline metadata interface. Reuse existing IndependentRunningHistory evidence with explicit complete-week proof. Preserve legacy plan JSON and actual Q2/Q3 prescriptions.
 
 **Not approved:** Making Engine 1.0's output a new target, loosening current progression/long-run/quality rules, raising total workload, auto-certifying Garmin records, or creating a second weekly workload planner.
 
-## Decision 2026-11-17 / D-003 ΓÇö M3 input contract and consumer
+## Decision 2026-11-17 / D-003 — M3 input contract and consumer
 
 **Status:** Code committed on a draft research branch; focused Kotlin tests pending.
 
@@ -56,7 +57,7 @@ PlanRequest receives optional recentMileageBasis and reportedPeakWeeklyKm metada
 
 **Approval test:** Exact generated-session parity against pre-M3 Q2/Q3 inputs, new and old serialization roundtrips, no automatic week-coverage promotion, explicit zero vs unknown vs peak-only, contradiction rejection by the typed profile, and no safety-policy mutations.
 
-## Decision 2026-11-17 / D-004 ΓÇö M4 Stage A parity migration, no relaxed limits
+## Decision 2026-11-17 / D-004 — M4 Stage A parity migration, no relaxed limits
 
 **Status:** Committed on draft branch; focused local validation pending.
 
@@ -66,7 +67,7 @@ Following the user's successful M3 Gradle result (BUILD SUCCESSFUL in 1m 47s), t
 
 **Not yet authorized:** independent M4 Stage B workload progression, removal of Engine 1.0's session-volume influence, using confidence to widen workload, reallocating Q2 differences or changing target approval. This stage is a migration with *unchanged training outputs*, not a fix to the 80 km target gap. Focused M4 test execution and Gate B comparison required before progressing.
 
-## Decision 2026-11-17 / D-005 ΓÇö Independent M4 Stage B shadow candidate
+## Decision 2026-11-17 / D-005 — Independent M4 Stage B shadow candidate
 
 **Status:** Implemented on draft branch; focused execution and Gate B candidate review pending.
 

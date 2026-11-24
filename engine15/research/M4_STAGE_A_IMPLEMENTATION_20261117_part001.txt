@@ -1,9 +1,10 @@
+FILE: M4_STAGE_A_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/M4_STAGE_A_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-31
 --------------------------------------------------
-# M4 Stage A ΓÇö Extract the weekly budget without changing coaching policy
+# M4 Stage A — Extract the weekly budget without changing coaching policy
 
 Date: 2026-11-17. Candidate branch: feature/engine15-m4-weekly-volume-skeleton-20261117. Stacked on M3 PR #111.
 
@@ -13,7 +14,7 @@ Date: 2026-11-17. Candidate branch: feature/engine15-m4-weekly-volume-skeleton-2
 - Moved the **exact legacy** `runningCeiling` formula to that module; `Engine15.runningCeiling` remains a delegating compatibility entry point.
 - Consolidated the existing per-week intersection (Engine 1.0 scheduled baseline, Engine 1.5 ceiling, 100 m flooring, and previous-delivered-week 80% recovery cap) in `existingWeekBudget`. Engine15RunningProgram delegates to it without changing dose, spacing, hard work or time-based support steps.
 - Existing R0 workload-ledger keys/stages remain so after-change diagnostics can be compared directly to user-executed R0.
-- Added **Engine15M4WeeklyVolumeSkeletonTest**: numerical current-equation matrix, predeclared 75ΓåÆ80 and 50ΓåÆ80 values, current recovery intersection, separate profile-availability states, confidence-not-a-multiplier, and frozen executed R0 plan/trace regression.
+- Added **Engine15M4WeeklyVolumeSkeletonTest**: numerical current-equation matrix, predeclared 75→80 and 50→80 values, current recovery intersection, separate profile-availability states, confidence-not-a-multiplier, and frozen executed R0 plan/trace regression.
 
 ## Explicit limitations
 
@@ -33,4 +34,4 @@ From `native-android`:
 
 If successful, compare baseline output to the R0 executed records stored locally. The R0 synthetic profile's expected allocated weeks are **67.5, 71.2, 75.0, 54.1, 71.2, 75.0, 78.7, 56.4 km**, with final Q2 mixed-unit estimated weeks **62.283, 64.673, 67.633, 54.1, 64.783, 67.773, 70.533, 56.4 km**.
 
-M4 Stage B then requires **predeclared alternate volume trajectories** for 75ΓåÆ80, 50ΓåÆ80, 30ΓåÆ35, novice, returning, three-day and fatigued runners. The approved alternative must explain what replaces the Engine 1.0 upstream baseline, how unverified data constrains the early envelope, which safety invariants are retained and how outputs compare to R0. This review must precede wiring the new independent planner into production workout generation.
+M4 Stage B then requires **predeclared alternate volume trajectories** for 75→80, 50→80, 30→35, novice, returning, three-day and fatigued runners. The approved alternative must explain what replaces the Engine 1.0 upstream baseline, how unverified data constrains the early envelope, which safety invariants are retained and how outputs compare to R0. This review must precede wiring the new independent planner into production workout generation.

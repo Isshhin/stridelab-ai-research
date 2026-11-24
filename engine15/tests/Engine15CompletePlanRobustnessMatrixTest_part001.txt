@@ -1,6 +1,7 @@
+FILE: Engine15CompletePlanRobustnessMatrixTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CompletePlanRobustnessMatrixTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-302
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -13,8 +14,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Batch 30 (Stage 4): Complete-plan robustness & scenario matrix across 8ΓÇô16-week
- * horizons, 2ΓÇô6 running days, all running goals, multi-discipline external interference,
+ * Batch 30 (Stage 4): Complete-plan robustness & scenario matrix across 8–16-week
+ * horizons, 2–6 running days, all running goals, multi-discipline external interference,
  * session locks, recovery/deload/taper weeks, tampering rejection, and snapshot round-trips.
  */
 class Engine15CompletePlanRobustnessMatrixTest {

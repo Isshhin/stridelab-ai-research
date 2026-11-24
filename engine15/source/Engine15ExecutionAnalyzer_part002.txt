@@ -1,26 +1,9 @@
+FILE: Engine15ExecutionAnalyzer.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 408-792
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 4
+LINES: 426-823
 --------------------------------------------------
-                referenceTargetMaxPace = maxPace,
-                observedPaceSecPerKm = observedWorkPace
-            )
-        }
-
-        if (minPace != null && observedWorkPace < minPace - 12.0) {
-            reasons += "WORK_PACE_TOO_FAST"
-            return GradingOutcome(
-                verdict = ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST,
-                paceBias = ExecutionPaceBias.TOO_FAST,
-                workAdherencePct = workAdherence,
-                qualityStimulusVerified = false,
-                referenceTargetMinPace = minPace,
-                referenceTargetMaxPace = maxPace,
-                observedPaceSecPerKm = observedWorkPace
-            )
-        }
-
         if (maxPace != null && observedWorkPace > maxPace + 8.0) {
             reasons += "WORK_PACE_MODERATELY_TOO_SLOW"
             return GradingOutcome(
@@ -388,3 +371,34 @@ LINES: 408-792
         activity: ActivityRecord,
         isLongFastFinish: Boolean
     ): List<MeasuredSlice> {
+        if (evidenceTier == ExecutionEvidenceTier.LAP_AND_RECORD) {
+            val stepLapsMap = mapLapsToSteps(steps, laps, workoutSteps)
+            if (stepLapsMap != null) {
+                return steps.indices.map { idx ->
+                    sliceFromLaps(stepLapsMap[idx].orEmpty(), timeline)
+                }
+            }
+            // Auto-laps (e.g., every 1 km) don't always align 1:1 with multi-step intervals;
+            // fall through to window extraction across laps/records while keeping LAP_AND_RECORD tier.
+            return measureStepsFromWindows(
+                steps = steps,
+                laps = laps,
+                timeline = timeline,
+                activity = activity,
+                isLongFastFinish = isLongFastFinish,
+                sourceTag = "LAP_AND_RECORD"
+            )
+        }
+        if (evidenceTier == ExecutionEvidenceTier.RECORD_WINDOW) {
+            return measureStepsFromWindows(
+                steps = steps,
+                laps = emptyList(),
+                timeline = timeline,
+                activity = activity,
+                isLongFastFinish = isLongFastFinish,
+                sourceTag = "RECORD_WINDOW"
+            )
+        }
+        // SUMMARY_ONLY fallback
+        val totalKm = activity.distanceM?.div(1000.0) ?: 0.0
+        val totalSec = (activity.movingTimeS ?: activity.durationS) ?: 0.0

@@ -1,18 +1,19 @@
+FILE: m10a-android-research-preview-20261115.md
 SOURCE: research/engine15/experiments/m10a-android-research-preview-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-61
 --------------------------------------------------
-# Engine 1.5 M10a ΓÇö Android read-only experimental research preview
+# Engine 1.5 M10a — Android read-only experimental research preview
 
 Date: 2026-11-15. Stacked on Engine 1.5 research PR #88. **M10 is not yet complete.** This is the first Android integration slice, not an activated coaching engine.
 
 ## Implementation
 
 The previously isolated M6a/M6b models are **now callable from the actual Android Plan Builder's Week Preview** through:
-- \`IndependentAndroidResearchBridge.preview(actual PlanRequest, explicitly entered constraints)\` ΓÇö a pure adapter, no fake PlanSnapshot or user owner.
-- \`IndependentAndroidResearchPreviewPanel\` ΓÇö a collapsed-by-default, optional real Compose panel inside \`TracksideWeekReview\` when the *pre-generation* request is visible. It is tagged for later Android automated UI tests and uses the existing AMOLED/dark plan-builder palette.
-- New \`IndependentAndroidResearchBridgeTest\` ΓÇö 11 JVM test methods covering real request mapping, explicit limits, mileage retention, fallback/deferral reasons, goal separation, pinned weekdays, no-quality mode and no saving.
+- \`IndependentAndroidResearchBridge.preview(actual PlanRequest, explicitly entered constraints)\` — a pure adapter, no fake PlanSnapshot or user owner.
+- \`IndependentAndroidResearchPreviewPanel\` — a collapsed-by-default, optional real Compose panel inside \`TracksideWeekReview\` when the *pre-generation* request is visible. It is tagged for later Android automated UI tests and uses the existing AMOLED/dark plan-builder palette.
+- New \`IndependentAndroidResearchBridgeTest\` — 11 JVM test methods covering real request mapping, explicit limits, mileage retention, fallback/deferral reasons, goal separation, pinned weekdays, no-quality mode and no saving.
 
 The preview requires users to **enter** running weekdays and mileage ceilings. The first UI iteration uses one entered per-day km cap applied across those weekdays; it does not pretend the app knows individual acceptable caps. It also requires starting weekly km, weekly ceiling, and for 3+ running days: previous long-run distance, maximum long run, and maximum increment. Source evidence is NOT authenticated; the data are simply assertions the user supplies for a hypothetical comparison.
 
@@ -63,4 +64,4 @@ Do not install the debug APK on a phone. The user specifically scheduled Android
 
 ## Final agreed sequence
 
-M10bΓÇôM10c remaining integration and owner/persistence design ΓåÆ **M10.1 Android automated/emulator regression tests** ΓåÆ **M10.5 Astra running-coach audit of actual Android-generated plans** ΓåÆ M10.6 fixes/retests ΓåÆ **M11 physical-phone installation and QA**. Experimental previews must be clearly labeled until evidence and safety qualification are satisfied.
+M10b–M10c remaining integration and owner/persistence design → **M10.1 Android automated/emulator regression tests** → **M10.5 Astra running-coach audit of actual Android-generated plans** → M10.6 fixes/retests → **M11 physical-phone installation and QA**. Experimental previews must be clearly labeled until evidence and safety qualification are satisfied.

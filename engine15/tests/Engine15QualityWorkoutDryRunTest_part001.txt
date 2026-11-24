@@ -1,7 +1,8 @@
+FILE: Engine15QualityWorkoutDryRunTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-280
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-297
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -283,3 +284,20 @@ class Engine15QualityWorkoutDryRunTest {
     @Test fun unavailableQualityWeekdayDefersWithoutCreatingADryRun() {
         val result = deferred(request().copy(qualityDays = setOf(6)))
         assertEquals("QUALITY_SLOT_UNAVAILABLE", result.qualitySelection!!.reasonCode)
+        assertNull(result.qualityDryRun)
+    }
+
+    @Test fun dryRunPreservesSelectionAndAuthorizationBoundaries() {
+        val result = deferred(request())
+        val dryRun = result.qualityDryRun!!
+
+        assertEquals(Engine15QualityFamilySelection.POLICY_ID, dryRun.selectionPolicyId)
+        assertEquals(Engine15QualityFamilySelection.POLICY_ID, result.qualitySelection!!.policyId)
+        assertTrue(dryRun.developmentOnly)
+        assertFalse(dryRun.sourceEvidenceVerified)
+        assertFalse(dryRun.templateAuthorized)
+        assertFalse(dryRun.doseAuthorized)
+        assertFalse(dryRun.intensityAuthorized)
+        assertFalse(dryRun.scheduled)
+        assertFalse(dryRun.includedInPlan)
+        assertFalse(dryRun.executable)

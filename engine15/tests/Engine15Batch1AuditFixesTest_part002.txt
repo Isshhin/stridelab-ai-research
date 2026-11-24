@@ -1,24 +1,9 @@
+FILE: Engine15Batch1AuditFixesTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 388-442
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 404-442
 --------------------------------------------------
-        assertTrue(previewDecision is Engine15IndependentPlanDecision.Deferred)
-        assertEquals("ATHLETE_BASELINE_TIME_ONLY", (previewDecision as Engine15IndependentPlanDecision.Deferred).reasonCode)
-
-        val plan = Engine15IndependentPlanGenerator.generateWithHistory(
-            req, owner, emptyList(), "batch1-zero-target-q", now
-        )
-        assertEquals("CONFIRMED_ZERO", plan.request.recentMileageBasis)
-        assertEquals(0.0, plan.request.weeklyKm, 1e-9)
-        assertTrue(plan.sessions.all { it.distanceKm == null && !it.quality })
-        Engine15IndependentPlanGenerator.validateSaved(plan)
-    }
-
-    @Test
-    fun peakWeekOnlyBasisIsNotPromotedToSelfReportedAverage() {
-        val contradictingPeak = runRequest(
-            weeklyKm = 60.0,
             longestKm = 18.0,
             recentMileageBasis = "PEAK_WEEK_ONLY"
         )

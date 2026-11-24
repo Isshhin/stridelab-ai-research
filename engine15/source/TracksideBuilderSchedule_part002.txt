@@ -1,0 +1,230 @@
+FILE: TracksideBuilderSchedule.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderSchedule.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 403-626
+--------------------------------------------------
+                            },
+                        shape = RoundedCornerShape(13.dp),
+                        color = if (preferred) PlanBuilderPalette.selected else PlanBuilderPalette.surface,
+                        border = BorderStroke(
+                            1.dp,
+                            if (preferred) PlanBuilderPalette.accent else PlanBuilderPalette.border
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                label,
+                                color = PlanBuilderPalette.text,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                modifier = Modifier.width(38.dp)
+                            )
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            preferred -> PlanBuilderPalette.accent
+                                            available -> StrideLabVisualPalette.easyTeal
+                                            else -> PlanBuilderPalette.disabled
+                                        }
+                                    )
+                            )
+                            Text(
+                                when {
+                                    preferred -> "Long run day"
+                                    available && fixedSessions > 0 -> "Available · $fixedSessions placed"
+                                    available -> "Available"
+                                    else -> "Rest day"
+                                },
+                                fontSize = 12.5.sp,
+                                color = if (available) PlanBuilderPalette.text else PlanBuilderPalette.muted,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                if (available) "Active" else "Off",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (preferred) PlanBuilderPalette.accent
+                                else if (available) StrideLabVisualPalette.easyTeal
+                                else PlanBuilderPalette.muted
+                            )
+                        }
+                    }
+                }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Adaptive Schedule Summary Card (zero restriction toggles)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = PlanBuilderPalette.surface,
+            border = BorderStroke(1.dp, PlanBuilderPalette.border)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TracksideFormLabel("ADAPTIVE SCHEDULE ENGINE")
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        total.toString(),
+                        fontSize = 32.sp,
+                        color = PlanBuilderPalette.text,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.testTag("builder-capacity-count")
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "sessions across $chosen days",
+                        fontSize = 12.5.sp,
+                        color = PlanBuilderPalette.secondary,
+                        modifier = Modifier
+                            .padding(bottom = 5.dp)
+                            .testTag("builder-capacity-days")
+                    )
+                }
+                Text(
+                    when {
+                        placementError != null -> placementError
+                        chosen == 0 -> "Select at least one available training day."
+                        total == 0 -> "Select at least one weekly workout."
+                        requiredDoubleDays > 0 || overlap ->
+                            "Adaptive stacking active — multi-discipline days receive automatic AM/PM recovery spacing."
+                        else -> "Balanced weekly cadence — recovery spacing runs automatically."
+                    },
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    color = when {
+                        !capacityFits -> StrideLabVisualPalette.highCoral
+                        requiredDoubleDays > 0 || overlap -> StrideLabVisualPalette.moderateAmber
+                        else -> PlanBuilderPalette.accent
+                    },
+                    modifier = Modifier.testTag("builder-capacity-status")
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        TracksideOtherDisciplineSlots(
+            request = request,
+            selectedDiscipline = selectedOtherDiscipline,
+            selectedSlot = selectedOtherSlot,
+            onSelectDiscipline = onSelectOtherDiscipline,
+            onSelectSlot = onSelectOtherSlot,
+            onAssignDay = onAssignOtherDay,
+            onClearSlot = onClearOtherSlot,
+            onAuto = onAutoOther,
+            onCount = onCountOther
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Preview every workout before activating your plan.",
+            color = PlanBuilderPalette.muted,
+            fontSize = 11.5.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.testTag("builder-generate-draft-note")
+        )
+
+        generationError?.let { msg ->
+            Spacer(Modifier.height(12.dp))
+            PlanBuilderErrorBanner(msg)
+        }
+
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .height(20.dp)
+                .testTag("builder-availability-coaching-clearance")
+        )
+    }
+
+    if (pendingRemovalDay in 1..7) {
+        val day = pendingRemovalDay
+        val count = byDay[day]?.size ?: 0
+        val label = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")[day - 1]
+        AlertDialog(
+            onDismissRequest = { pendingRemovalDay = 0 },
+            containerColor = PlanBuilderPalette.surface,
+            title = { Text("Change $label availability?", color = PlanBuilderPalette.text, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "$count placed workout(s) use $label. Making this day unavailable will let the coach reassign them automatically.",
+                    color = PlanBuilderPalette.secondary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemovePinnedDay(day)
+                        pendingRemovalDay = 0
+                    },
+                    modifier = Modifier.testTag("builder-confirm-remove-pinned-day")
+                ) { Text("Make unavailable", color = PlanBuilderPalette.accent, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemovalDay = 0 }) {
+                    Text("Cancel", color = PlanBuilderPalette.secondary)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+internal fun PlanBuilderErrorBanner(message: String) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("plan-form-error"),
+        color = StrideLabVisualPalette.highCoral.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, StrideLabVisualPalette.highCoral.copy(alpha = 0.55f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(StrideLabVisualPalette.highCoral)
+            )
+            Text(
+                text = message,
+                color = PlanBuilderPalette.text,
+                fontSize = 12.5.sp,
+                lineHeight = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TracksideFormLabel(s: String) {
+    Text(
+        s,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        color = PlanBuilderPalette.muted,
+        letterSpacing = 1.4.sp
+    )
+}

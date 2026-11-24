@@ -1,0 +1,65 @@
+FILE: LocalPlanRepositoryTest.kt
+SOURCE: native-android/app/src/androidTest/java/io/stridelab/privatealpha/LocalPlanRepositoryTest.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 330-388
+--------------------------------------------------
+        assertEquals(1, rawPlanCount(deviceOwner))
+        assertEquals(1, rawPlanCount(cloudOwner))
+        assertEquals(0, outboxCount(deviceOwner))
+        assertTrue(repo.signOut())
+        assertNull(repo.state.value.account)
+        assertEquals(listOf(devicePlan), repo.state.value.plans)
+        assertFalse(repo.state.value.plans.any { it.owner == cloudOwner })
+    }
+
+    @Test fun manualLocalBackupRestoreRequiresSameOriginalDeviceOwner() = runBlocking {
+        val deviceOwner = requireNotNull(repo.state.value.localPlanOwner)
+        val incoming = Engine15IndependentPlanGenerator.generateWithHistory(request(), deviceOwner, emptyList(), "synthetic-local-import", exerciseLibrary = library()).copy(status = "approved")
+        val file = JSONObject().put("schemaVersion", 1)
+            .put("plans", JSONArray().put(incoming.encode())).toString()
+        assertTrue(repo.restorePlans(file))
+        assertEquals(incoming, repo.state.value.plans.single())
+        assertEquals(0, outboxCount(deviceOwner))
+        val foreign = Engine15IndependentPlanGenerator.generateWithHistory(request(), cloudOwner, emptyList(), "synthetic-foreign-import", exerciseLibrary = library())
+        val foreignFile = JSONObject().put("schemaVersion", 1)
+            .put("plans", JSONArray().put(foreign.encode())).toString()
+        assertFalse(repo.restorePlans(foreignFile))
+        assertEquals(listOf(incoming), repo.state.value.plans)
+        assertEquals(0, outboxCount(deviceOwner))
+    }
+
+    @Test fun opaqueLocalRecordCannotBeOverwrittenByManualRestore() = runBlocking {
+        val deviceOwner = requireNotNull(repo.state.value.localPlanOwner)
+        val protected = Engine15IndependentPlanGenerator.generateWithHistory(request(), deviceOwner, emptyList(), "synthetic-opaque-local", exerciseLibrary = library())
+        val raw = protected.encode().put("schemaVersion", 999).toString()
+        TrainingStore(context, databaseName).use { localStore ->
+            localStore.applyRemotePage(
+                deviceOwner, "plan",
+                listOf(TrainingStore.RemoteRecord(protected.id, raw, null)),
+                null, System.currentTimeMillis()
+            )
+        }
+        repo.close()
+        open()
+        assertTrue(repo.state.value.plans.isEmpty())
+        val backup = JSONObject().put("schemaVersion", 1)
+            .put("plans", JSONArray().put(protected.encode())).toString()
+        assertFalse(repo.restorePlans(backup))
+        assertTrue(repo.state.value.plans.isEmpty())
+        assertEquals(0, outboxCount(deviceOwner))
+        TrainingStore(context, databaseName).use { localStore ->
+            assertEquals(raw, localStore.get(deviceOwner, "plan", protected.id).payload)
+        }
+    }
+
+    private class FakeGateway : TrainingGateway {
+        var owner = "synthetic-m10b-cloud-athlete"
+        override fun signIn(email: String, password: String): NativeSession =
+            NativeSession(owner, "synthetic-token", "synthetic-refresh", Long.MAX_VALUE)
+        override fun refresh(session: NativeSession): NativeSession = session
+        override fun verify(session: NativeSession) = Unit
+        override fun activities(session: NativeSession, before: ActivityRecord?): JSONArray = JSONArray()
+        override fun signOut(session: NativeSession) = Unit
+    }
+}

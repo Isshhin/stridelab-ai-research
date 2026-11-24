@@ -1,7 +1,8 @@
+FILE: Engine15QualityProgressionPolicy.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-340
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 5
+LINES: 1-354
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -341,5 +342,19 @@ internal object Engine15QualityProgressionPolicy {
     /**
      * Computes the 50/50 Auto-Detected Workout + Historical Fitness quality work anchor (in seconds).
      * Seeds new plans from recent volume and provisional quality evidence.
-     * Saved plans replay the persisted anchor without reading todayΓÇÖs history.
+     * Saved plans replay the persisted anchor without reading today’s history.
      */
+    fun computeAdaptiveExposureAnchorSeconds(
+        request: PlanRequest,
+        family: IndependentQualityFamily,
+        activities: List<ActivityRecord> = emptyList(),
+        plans: List<PlanSnapshot> = emptyList(),
+        detections: List<Engine15DetectedWorkout> = emptyList(),
+        now: Instant = Instant.now()
+    ): Int {
+        val cutoff = now.minusSeconds(56L * 86_400)
+        val recentActivities = activities.filter { it.startedAt in cutoff..now }
+        val zones = Engine15PaceZoneEstimator.estimate(request, activities = recentActivities)
+        val effectiveWeeklyKm = maxOf(
+            request.weeklyKm,
+            automaticRunningBaseline(recentActivities, now = now, plans = plans)?.weeklyKm ?: 0.0

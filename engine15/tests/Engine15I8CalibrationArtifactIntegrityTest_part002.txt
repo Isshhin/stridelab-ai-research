@@ -1,25 +1,9 @@
+FILE: Engine15I8CalibrationArtifactIntegrityTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 386-483
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 403-483
 --------------------------------------------------
-        deferred("ARTIFACT_BYTES_MISSING", bytes = byteArrayOf())
-        deferred("ARTIFACT_BYTES_TOO_LARGE", bytes = ByteArray(16_385) { 65 })
-    }
-
-    @Test fun changedBytesWithoutMatchingDigestMustBeRejectedFirst() {
-        val altered = originalBytes().copyOf()
-        altered[altered.lastIndex - 1] = '9'.code.toByte()
-        deferred("ARTIFACT_SHA256_MISMATCH", bytes = altered)
-    }
-
-    @Test fun invalidStrictUtf8CannotBeDecodedEvenWithMatchingDigest() {
-        val raw = byteArrayOf(0xC3.toByte(), 0x28.toByte())
-        deferred("ARTIFACT_UTF8_INVALID", bytes = raw,
-            candidate = claim().copy(artifactSha256Claim = hex(raw)))
-    }
-
-    @Test fun canonicalLineEndingsAndNoBomAreRequiredEvenIfHashMatches() {
         val crlf = String(originalBytes(), StandardCharsets.UTF_8)
             .replace("\n", "\r\n").toByteArray(StandardCharsets.UTF_8)
         deferred("ARTIFACT_SCHEMA_NOT_CANONICAL", bytes = crlf,

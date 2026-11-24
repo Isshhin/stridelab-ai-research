@@ -1,16 +1,9 @@
+FILE: Engine15StaticMultiDisciplinePlanner.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15StaticMultiDisciplinePlanner.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 255-397
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 263-397
 --------------------------------------------------
-                            2 -> {
-                                if (sameDay.size >= 2) continue
-                                if (sameDay.any { !isComplementaryPair(candidate, it) }) continue
-                                if (request.timeBudgetEnabled && sameDay.sumOf { it.effectiveMinutes } + candidate.effectiveMinutes > request.dailyMinutes) continue
-                                if ((placed + weekPlaced).any { it.date != date && Engine15IndependentPlanGenerator.conflict(candidate, it) }) continue
-                            }
-                            else -> {
-                                if (sameDay.size >= 2) continue
                                 if (request.timeBudgetEnabled && sameDay.sumOf { it.effectiveMinutes } + candidate.effectiveMinutes > request.dailyMinutes) continue
                             }
                         }
@@ -73,7 +66,7 @@ LINES: 255-397
                 it.id != session.id && it.date != session.date && Engine15IndependentPlanGenerator.conflict(session, it)
             }
             val note = buildList {
-                if (peers.isNotEmpty()) add("Stacked day (${peers.joinToString { it.discipline.uppercase() }}): separate AM/PM (4ΓÇô6h gap) and prioritize running first.")
+                if (peers.isNotEmpty()) add("Stacked day (${peers.joinToString { it.discipline.uppercase() }}): separate AM/PM (4–6h gap) and prioritize running first.")
                 if (tightSpacing) add("Back-to-back training load: keep effort controlled and prioritize sleep and hydration.")
             }.joinToString(" ")
             if (note.isNotBlank() && !session.reason.contains(note)) {

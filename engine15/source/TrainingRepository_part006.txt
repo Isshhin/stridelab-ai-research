@@ -1,8 +1,10 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 6
-LINES: 1492-1802
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 6 / 8
+LINES: 1565-1889
 --------------------------------------------------
+    /** Cloud backup requires StrideLab sign-in; Garmin itself remains local. */
     internal suspend fun backupGarminCloud(maxRecords: Int = 12): Int =
         withContext(Dispatchers.IO) {
             require(maxRecords in 1..24)
@@ -118,7 +120,7 @@ LINES: 1492-1802
      * only after FIT checksum, source, dates, GPS and account have been checked.
      */
     internal suspend fun loadGarminGps(id:String,source:GarminPersonalSource) =
-        operation("Loading recorded Garmin activityΓÇª") {
+        operation("Loading recorded Garmin activity…") {
             mutable.value = mutable.value.copy(garminRecordingLoad = GarminRecordingLoad(id))
             try {
                 val account = source.accountId
@@ -314,3 +316,16 @@ LINES: 1492-1802
             null, null, null
         ).use { cursor ->
             while (cursor.moveToNext()) {
+                runCatching {
+                    val decoded = PlanAdaptationProposal.decode(JSONObject(cursor.getString(1)), owner)
+                    require(cursor.getString(0) == adaptationProposalRecordId(decoded.proposalId))
+                    decoded
+                }.onSuccess { prop ->
+                    if (prop.status == AdaptationProposalStatus.PENDING && !today.isAfter(prop.expiresAtDate)) {
+                        pendingProposals[prop.planId] = prop
+                    }
+                }
+            }
+        }
+        val revisionsByPlan = LinkedHashMap<String, MutableList<PlanAdaptationRevision>>()
+        store.readableDatabase.query(

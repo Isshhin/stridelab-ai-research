@@ -1,24 +1,9 @@
+FILE: Engine15TimeOnlyRunWalkBuilder.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15TimeOnlyRunWalkBuilder.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 339-362
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 355-362
 --------------------------------------------------
-                    stepIntent = if (isRecovery) RunningStepIntent.RECOVERY else RunningStepIntent.AEROBIC_EASY
-                )
-                if (r < template.reps && template.walkMin > 0) {
-                    out += RunningStepV2(
-                        purpose = "RECOVERY",
-                        effort = "Relaxed recovery walk",
-                        seconds = (template.walkMin * 60).coerceIn(30, 1800),
-                        stepIntent = RunningStepIntent.RECOVERY
-                    )
-                }
-            }
-        }
-        out += RunningStepV2(
-            purpose = "COOL_DOWN",
-            effort = "Easy walk cool-down",
-            seconds = (template.cooldownMin * 60).coerceIn(60, 1800),
             stepIntent = RunningStepIntent.COOLDOWN
         )
         return out

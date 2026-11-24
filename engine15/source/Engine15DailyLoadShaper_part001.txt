@@ -1,7 +1,8 @@
+FILE: Engine15DailyLoadShaper.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-348
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-369
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -18,7 +19,7 @@ import kotlin.math.roundToInt
  * Replaces flat equal division of non-long weekly mileage with hard/easy polarity:
  * days immediately following a quality or long run (or sandwiched between two
  * hard/long sessions) become shorter Recovery runs, while quality sessions and
- * fresher mid-week aerobic days carry proportionally more volume ΓÇö strictly
+ * fresher mid-week aerobic days carry proportionally more volume — strictly
  * preserving each week's exact M4B mileage budget and safety ceilings.
  */
 internal object Engine15DailyLoadShaper {
@@ -351,3 +352,24 @@ internal object Engine15DailyLoadShaper {
 
     /**
      * Bounded iterative water-filling over weights followed by largest-remainder tenths
+     * rounding so every slot lies in [minTenths, maxTenthsByIndex[i]] and the sum matches
+     * [targetSum] to exact 0.1 km precision.
+     */
+    private fun allocateWeightedTenths(
+        sessions: List<PlannedSession>,
+        weights: List<Double>,
+        targetSum: Int,
+        minTenthsByIndex: IntArray,
+        maxTenthsByIndex: IntArray
+    ): IntArray {
+        val n = sessions.size
+        val result = IntArray(n)
+        val locked = BooleanArray(n)
+        var remaining = targetSum
+
+        while (true) {
+            val freeIndices = (0 until n).filter { !locked[it] }
+            if (freeIndices.isEmpty()) break
+            val weightSum = freeIndices.sumOf { weights[it] }.coerceAtLeast(1e-9)
+            var worstIdx = -1
+            var worstClamp = 0

@@ -1,11 +1,12 @@
+FILE: I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-16
 --------------------------------------------------
-# Engine 1.5 I9 ΓÇö Read-only base running plan assembly
+# Engine 1.5 I9 — Read-only base running plan assembly
 
-2026-11-17. Branch `feature/engine15-i9-readonly-base-plan-assembly-20261117`, stacked on I8 PR #128. User Q3 validation passed the selected 22-class I8/I1ΓÇôI7/M3ΓÇôM6/Q2/Q3/R0 regression in 25 seconds. Preflight frozen in `I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117.md`.
+2026-11-17. Branch `feature/engine15-i9-readonly-base-plan-assembly-20261117`, stacked on I8 PR #128. User Q3 validation passed the selected 22-class I8/I1–I7/M3–M6/Q2/Q3/R0 regression in 25 seconds. Preflight frozen in `I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117.md`.
 
 ## Delivered
 - New `Engine15I9ReadOnlyBasePlanAssembly.assemble(M4B.Result, I9 input)` recomputes M6D and, through M6C/M6A/M5A, all original weekly mileage, exposure, calendar, external session and periodization checks.
@@ -15,7 +16,7 @@ LINES: 1-16
 - All authority indicators remain false: qualityIncluded, externalCalendarAuthenticated, sourceEvidenceVerified, coachingDoseApproved, executable, authorizedForPlanMutation, authorizedForProduction. `calendarArithmeticReconciled=true` is only a read-only structural statement, not athlete safety approval.
 
 ## Tests (synthetic, not run)
-Nine test methods: eight-week 75ΓåÆ80 km six-day plan, 48 dated runs and M6D expected deload; all typed workout identity and distance precision; base-only acknowledgement and nonempty quality hard deferral; missing external calendar; blocked Sunday LONG/non-Monday start; same-day external workout conflict; upper-body on free Thursday retained only in audit metadata; M4B tampering; deterministic unchanged recovery and checkpoint.
+Nine test methods: eight-week 75→80 km six-day plan, 48 dated runs and M6D expected deload; all typed workout identity and distance precision; base-only acknowledgement and nonempty quality hard deferral; missing external calendar; blocked Sunday LONG/non-Monday start; same-day external workout conflict; upper-body on free Thursday retained only in audit metadata; M4B tampering; deterministic unchanged recovery and checkpoint.
 
 ## Validation
-I9 source and 9 test methods committed, **not yet locally compiled/run**. Q3 checkout must fetch I9 and run focused I9 with M6D/M6C/M6B/M6A/M5/M4 plus I8ΓÇôI1 and Q2/Q3/R0 selected regressions. A passing gate permits considering a later read-only UI preview adapter only; it is not authorization to generate workouts or retire Engine 1.0. Real intensity/issuer and full athlete eligibility remain explicitly unresolved.
+I9 source and 9 test methods committed, **not yet locally compiled/run**. Q3 checkout must fetch I9 and run focused I9 with M6D/M6C/M6B/M6A/M5/M4 plus I8–I1 and Q2/Q3/R0 selected regressions. A passing gate permits considering a later read-only UI preview adapter only; it is not authorization to generate workouts or retire Engine 1.0. Real intensity/issuer and full athlete eligibility remain explicitly unresolved.

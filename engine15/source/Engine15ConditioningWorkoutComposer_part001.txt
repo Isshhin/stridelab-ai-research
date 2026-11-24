@@ -1,6 +1,7 @@
+FILE: Engine15ConditioningWorkoutComposer.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ConditioningWorkoutComposer.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-129
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -22,7 +23,7 @@ internal object Engine15ConditioningWorkoutComposer {
             request.qualityCount != 0 || (request.timeBudgetEnabled && request.minutes !in 15..120) ||
             request.disciplineGoals.keys.any { it != "cond" } || request.weeklySlots.keys.any { it != "cond" } ||
             request.lockedSessionDays.keys.any { !Regex(".*-w([1-9][0-9]*)-cond(0|[1-9][0-9]*)$").matches(it) })
-            throw PlanConstraint("CONDITIONING_REQUEST_UNSUPPORTED: Choose one to three low-impact conditioning sessions, valid weekdays and a 15ΓÇô120 minute session limit.")
+            throw PlanConstraint("CONDITIONING_REQUEST_UNSUPPORTED: Choose one to three low-impact conditioning sessions, valid weekdays and a 15–120 minute session limit.")
         if (request.limitations.isNotBlank() || request.recoveryNotes.isNotBlank())
             throw PlanConstraint("CONDITIONING_NOTES_REQUIRE_REVIEW: Free-text limitations or recovery notes need coach review before generation.")
         if (EXERCISE_ID in request.excluded)
@@ -64,7 +65,7 @@ internal object Engine15ConditioningWorkoutComposer {
                         } == true
                     } ?: "$id-w${weekIndex + 1}-cond$slot"
                     add(PlannedSession(
-                        id = sessionId, date = date, discipline = "cond", title = "Conditioning ┬╖ low impact",
+                        id = sessionId, date = date, discipline = "cond", title = "Conditioning · low impact",
                         minutes = minutes, distanceKm = null, kind = "conditioning", lower = true,
                         exercises = listOf(ExercisePrescription(
                             id = exercise.id, name = exercise.name, sets = 1, seconds = minutes * 60, rest = 0,

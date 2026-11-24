@@ -1,7 +1,8 @@
+FILE: Engine15CoachingAcceptanceTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-382
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 4
+LINES: 1-392
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -385,3 +386,13 @@ class Engine15CoachingAcceptanceTest {
         plansByName["Intermediate_10K"]?.let { p10k ->
             val weeklyKm = (0 until p10k.request.weeks).map { w -> weekSessions(p10k, w).sumOf { it.distanceKm ?: 0.0 } }
             val peakKm = weeklyKm.maxOrNull() ?: 0.0
+            if (peakKm < 42.0) failures += "[Intermediate_10K] peak weekly km too low ($peakKm < 42.0)"
+            if (weeklyKm[8] <= weeklyKm[9]) failures += "[Intermediate_10K] W9 (${weeklyKm[8]}) should exceed W10 taper (${weeklyKm[9]})"
+        }
+
+        // 5. Beginner_5K & Advanced_5K final taper week
+        for (k in listOf("Beginner_5K", "Advanced_5K")) {
+            plansByName[k]?.let { p5k ->
+                val weeklyKm = (0 until p5k.request.weeks).map { w -> weekSessions(p5k, w).sumOf { it.distanceKm ?: 0.0 } }
+                val peakKm = weeklyKm.maxOrNull() ?: 0.0
+                if (weeklyKm.last() >= peakKm * 0.90) {

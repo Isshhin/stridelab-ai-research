@@ -1,11 +1,12 @@
+FILE: I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-23
 --------------------------------------------------
-# I8 ΓÇö Calibration Artifact Byte Integrity (Preflight)
+# I8 — Calibration Artifact Byte Integrity (Preflight)
 
-Frozen 2026-11-17, stacked on I7 PR #127. User's selected 21-class I7/I6/I5/I4/I3/I2/I1/M3ΓÇôM6/Q2/Q3/R0 Gradle run passed (28 seconds). I8 is SHADOW ONLY, no prescription authority.
+Frozen 2026-11-17, stacked on I7 PR #127. User's selected 21-class I7/I6/I5/I4/I3/I2/I1/M3–M6/Q2/Q3/R0 Gradle run passed (28 seconds). I8 is SHADOW ONLY, no prescription authority.
 
 ## Gap
 I7 checks whether a caller-provided SHA-256 string has the right format. It does not read artifact bytes, recompute a digest, or check that the actual artifact contents agree with claimed athlete/date/test family/threshold metadata. A format-valid hash string is not proof of a test.
@@ -25,4 +26,4 @@ I7 checks whether a caller-provided SHA-256 string has the right format. It does
 - Upstream I7 invalid origins, unreviewed M5B and I6 failed source data defer unchanged; repeated evaluation is deterministic.
 
 ## Validation
-Run I8 focused tests and I7/I6/I5/I4/I3/source-binding/I2/I1/M3ΓÇôM6/Q2/Q3/R0 selected JVM regressions in user Q3 checkout. Next genuine blocker: verify the actual issuer, test protocol, subject consent and source provenance; a matching self-provided digest and canonical record do not do that.
+Run I8 focused tests and I7/I6/I5/I4/I3/source-binding/I2/I1/M3–M6/Q2/Q3/R0 selected JVM regressions in user Q3 checkout. Next genuine blocker: verify the actual issuer, test protocol, subject consent and source provenance; a matching self-provided digest and canonical record do not do that.

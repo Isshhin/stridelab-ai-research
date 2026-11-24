@@ -1,0 +1,425 @@
+FILE: StrideLabUnifiedTrainingTimeline.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/StrideLabUnifiedTrainingTimeline.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 4
+LINES: 673-1091
+--------------------------------------------------
+                        if ((day.date == today || focusedNoPlanDate == day.date) && !hasActivePlans && !state.initializing) {
+                            if (day.hasEntries) {
+                                TextButton(onClick = onBuild, modifier = Modifier.heightIn(min = 48.dp)) {
+                                    Text("Create training plan", color = TimelineStyle.secondary)
+                                }
+                            } else {
+                                TimelinePromptCard(
+                                    title = "Your training starts here.",
+                                    description = "Create a personalized training plan around your goals and schedule.",
+                                    action = "Create training plan",
+                                    onAction = onBuild
+                                )
+                            }
+                        }
+                    }
+                }
+                if (hasActivePlans) item(key = "training-create-plan") {
+                    OutlinedButton(
+                        onClick = onBuild,
+                        border = BorderStroke(1.dp, StrideLabSurfaceTokens.hairline),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("training-create-plan")
+                    ) {
+                        Text("Create another plan", color = TimelineStyle.ink)
+                    }
+                }
+                for (paused in pausedPlans) item(key = "manage-paused-${paused.id}") {
+                    OutlinedButton(
+                        onClick = { onManage(paused.id, focusedDate) },
+                        modifier = Modifier.fillMaxWidth().testTag("training-manage-paused-${paused.id}")
+                    ) { Text("Review paused plan · ${paused.name ?: paused.request.goal}") }
+                }
+                val reviewPlans = approved.filter { plan -> scopedPlans.any { it.id == plan.id } }
+                trainingCoachingItems(state, reviewPlans, actions) { reviewedAdaptation = it }
+                trainingBackupItems(state, actions)
+            }
+        }
+    }
+    state.pendingAdaptationProposals[reviewedAdaptation]?.let { proposal ->
+        AdaptationProposalSheet(
+            proposal = proposal, busy = state.busy,
+            onDismiss = { reviewedAdaptation = null },
+            onApply = actions.approveAdaptationProposal,
+            onDismissProposal = actions.dismissAdaptationProposal
+        )
+    }
+}
+
+@Composable
+private fun TimelineDateRail(
+    date: LocalDate,
+    today: LocalDate,
+    weekday: DateTimeFormatter,
+    reduceMotion: Boolean
+) {
+    val isToday = date == today
+    val liquid = remember(date) { Animatable(0f) }
+    LaunchedEffect(isToday, reduceMotion) {
+        if (isToday) {
+            if (reduceMotion) liquid.snapTo(1f)
+            else liquid.animateTo(
+                1f,
+                spring(
+                    dampingRatio = .64f,
+                    stiffness = TracksideLiquidMotion.STIFFNESS
+                )
+            )
+        }
+    }
+    Column(
+        Modifier
+            .width(42.dp)
+            .semantics {
+                contentDescription = date.format(
+                    DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.getDefault())
+                ) + if (isToday) ", current date" else ""
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(
+            date.format(weekday).uppercase(Locale.getDefault()),
+            color = if (isToday) TimelineStyle.lime else TimelineStyle.secondary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            if (isToday) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1f + (1f - liquid.value) * .19f
+                            scaleY = 1f - (1f - liquid.value) * .11f
+                        }
+                        .clip(CircleShape)
+                        .background(TimelineStyle.lime)
+                        .testTag("timeline-current-date-liquid")
+                )
+            } else {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(TimelineStyle.card)
+                )
+            }
+            Text(
+                date.dayOfMonth.toString().padStart(2, '0'),
+                color = if (isToday) PlanBuilderPalette.accentOn else TimelineStyle.ink,
+                fontSize = 17.5.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineNoPlanWeekStrip(
+    today: LocalDate,
+    weekAnchor: LocalDate,
+    focusedDate: LocalDate?,
+    recordedDates: Set<LocalDate>,
+    customDates: Set<LocalDate>,
+    reduceMotion: Boolean,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onShowAll: () -> Unit
+) {
+    val weekStart = remember(weekAnchor) { tracksideCalendarMonday(weekAnchor) }
+    val todayWeekStart = remember(today) { tracksideCalendarMonday(today) }
+    val fmtMonth = remember { DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()) }
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = TimelineStyle.card,
+        border = BorderStroke(1.dp, TimelineStyle.border),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onPreviousWeek)
+                        .testTag("training-week-prev"),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = TimelineStyle.cardRaised,
+                        border = BorderStroke(1.dp, TimelineStyle.border),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("‹", color = TimelineStyle.lime, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        "TRAINING WEEK",
+                        fontSize = 10.sp,
+                        letterSpacing = 1.2.sp,
+                        color = TimelineStyle.muted,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${weekStart.format(fmtMonth)} – ${weekStart.plusDays(6).format(fmtMonth)}",
+                        color = TimelineStyle.ink,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        style = TabularTextStyle,
+                        maxLines = 1
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onNextWeek)
+                        .testTag("training-week-next"),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = TimelineStyle.cardRaised,
+                        border = BorderStroke(1.dp, TimelineStyle.border),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("›", color = TimelineStyle.lime, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val letters = listOf("M", "T", "W", "T", "F", "S", "S")
+                (0L..6L).forEach { offset ->
+                    val day = weekStart.plusDays(offset)
+                    val isSelected = day == focusedDate
+                    val isToday = day == today
+                    val hasLog = day in recordedDates
+                    val hasCustom = day in customDates
+                    val bg by animateColorAsState(
+                        when {
+                            isSelected -> StrideLabVisualPalette.limeTint
+                            isToday -> TimelineStyle.cardRaised
+                            else -> Color.Transparent
+                        },
+                        tween(if (reduceMotion) 0 else 160),
+                        label = "noplan-day-$offset"
+                    )
+                    Surface(
+                        onClick = { onSelectDate(day) },
+                        shape = RoundedCornerShape(11.dp),
+                        color = bg,
+                        border = BorderStroke(
+                            1.dp,
+                            when {
+                                isSelected -> TimelineStyle.lime
+                                isToday -> TimelineStyle.border
+                                else -> Color.Transparent
+                            }
+                        ),
+                        modifier = Modifier.weight(1f).testTag("calendar-day-$day")
+                            .semantics {
+                                contentDescription = "$day" + if (hasCustom) ", custom workout scheduled" else ""
+                            }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 7.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                letters[offset.toInt()],
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected || isToday) TimelineStyle.lime else TimelineStyle.muted
+                            )
+                            Text(
+                                day.dayOfMonth.toString(),
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (isSelected) TimelineStyle.lime else TimelineStyle.ink
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Box(Modifier.size(5.dp).clip(CircleShape)
+                                    .background(if (hasLog) TimelineStyle.lime else Color.Transparent))
+                                if (hasCustom) Box(Modifier.size(5.dp).clip(CircleShape)
+                                    .background(StrideLabVisualPalette.easyTeal))
+                            }
+                        }
+                    }
+                }
+            }
+            if (focusedDate != null || weekStart != todayWeekStart) {
+                StrideLabHairline()
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        onClick = onShowAll,
+                        shape = RoundedCornerShape(100.dp),
+                        color = TimelineStyle.cardRaised,
+                        border = BorderStroke(1.dp, TimelineStyle.border),
+                        modifier = Modifier
+                            .heightIn(min = 36.dp)
+                            .testTag("training-return-today")
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                if (focusedDate != null) "Show week" else "Return to Today",
+                                color = TimelineStyle.lime,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelinePromptCard(
+    title: String,
+    description: String,
+    action: String,
+    onAction: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("training-create-plan-card"),
+        shape = RoundedCornerShape(18.dp),
+        color = TimelineStyle.card,
+        border = BorderStroke(1.dp, TimelineStyle.border)
+    ) {
+        Column(
+            Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painterResource(R.drawable.trackside_figma_calendar),
+                    contentDescription = null,
+                    tint = TimelineStyle.lime,
+                    modifier = Modifier.size(21.dp)
+                )
+                Spacer(Modifier.width(9.dp))
+                Text(
+                    title,
+                    color = TimelineStyle.ink,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 15.sp,
+                    lineHeight = 19.sp
+                )
+            }
+            Text(
+                description,
+                color = TimelineStyle.secondary,
+                fontSize = 12.5.sp,
+                lineHeight = 17.sp
+            )
+            Surface(
+                onClick = onAction,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("training-create-plan")
+                    .semantics { contentDescription = action },
+                shape = RoundedCornerShape(14.dp),
+                color = TimelineStyle.lime
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        action,
+                        color = PlanBuilderPalette.accentOn,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 13.5.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Recorded-only visual labels. Missing values remain absent, not estimated. */
+internal fun timelineRecordedMetrics(activity: ActivityRecord): Pair<String, String> {
+    val hasDistance = activityHasDisplayDistance(activity)
+    val duration = activityDisplayDurationSeconds(activity)
+    val stationary = activityUsesStationaryDetail(activity)
+    val primary = when {
+        stationary && duration != null -> ActivityRecord.duration(duration)
+        hasDistance -> activity.distanceLabel
+        duration != null -> ActivityRecord.duration(duration)
+        stationary -> "Recorded workout"
+        else -> "Completed activity"
+    }
+    val secondary = buildList {
+        if (hasDistance && duration != null) add(ActivityRecord.duration(duration))
+        if (activity.supportsPace) {
+            if (activity.recordedPace != null) add(activity.paceLabel)
+            else if (activity.garminMovingPaceSPerKm != null) add(activity.detailPaceLabel)
+        }
+        activity.averageHr?.takeIf { it.isFinite() && it > 0 }?.let {
+            add("${it.roundToInt()} bpm")
+        }
+    }.joinToString(" · ")
+    return primary to secondary
+}
+
+@Composable
+private fun TimelineRecordedCard(
+    activity: ActivityRecord,
+    cachedDetail: ActivityDetail?,
+    onClick: () -> Unit
+) {
+    val type = activity.type.lowercase(Locale.ROOT)
+    val isRun = DashboardSummary.isRun(activity)
+    val kind = when {
+        isRun -> "Running"
+        "walk" in type -> "Walking"
+        "strength" in type || "weight" in type -> "Strength"
+        "calisthenics" in type -> "Calisthenics"
+        "cycle" in type || "bike" in type -> "Cycling"
+        else -> "Activity"
+    }
+    val accent = when (kind) {
+        "Running", "Walking" -> TimelineStyle.lime
+        "Strength" -> StrideLabVisualPalette.strengthCoral
+        "Calisthenics" -> StrideLabVisualPalette.calisthenicsViolet
+        else -> StrideLabVisualPalette.conditioningSky
+    }
+    val icon = when (kind) {
+        "Running", "Walking" -> R.drawable.trackside_discipline_running
+        "Strength" -> R.drawable.trackside_discipline_strength

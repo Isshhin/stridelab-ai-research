@@ -1,6 +1,7 @@
+FILE: m106-history-weekly-review-20261115.md
 SOURCE: research/engine15/experiments/m106-history-weekly-review-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-54
 --------------------------------------------------
 # M10.6 follow-up: observed patterns and approval-first review
@@ -47,7 +48,7 @@ The [individualized training trial](https://pubmed.ncbi.nlm.nih.gov/35975912/) s
 
 Weekly mileage still depends on the reported baseline; imported-history coverage needs explicit confirmation. Positive-response progression, race-specific readiness and longer-than-16-week feasibility remain incomplete. Workout logs do not establish completed interval work, so a reported 3 x 3 km threshold session is not automatically reproduced or progressed. General-fatigue check-ins are persisted as review audit records, not a physiological longitudinal model. Threshold/quality dose remains conservative. This candidate is not equivalent to Runna/Garmin and does not prove real-world effectiveness.
 
-## Recommended UI work ΓÇö not implemented
+## Recommended UI work — not implemented
 
 1. **Weekly coach review:** a compact upcoming-week before/after list, total changes, reasons, uncertainty, and one approve action. Maintenance reviews must also be saveable. Refresh stale reviews rather than applying them.
 2. **Post-run check-in:** existing effort plus completion difficulty and discomfort, with optional unanswered states. Keep actual distance/time distinct from prescribed targets and show any linked activity source.

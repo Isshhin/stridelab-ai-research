@@ -1,0 +1,43 @@
+FILE: PlanBuilder.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 4
+LINES: 1041-1077
+--------------------------------------------------
+    "Calisthenics foundation","Pull-up progression","Push-up progression","Core strength and control","Handstand foundations"->p.calDays>0
+    "Conditioning"->p.conditioningDays>0
+    else->Engine1Engines.discipline(goal)?.let { p.disciplineSessionCount(it) > 0 } == true
+} }
+
+/** Repairs `longDay` and `qualityDays` against available `days`, preserving user pins when manual. */
+internal fun sanitizeRunningScheduleDays(p: PlanRequest): PlanRequest {
+    if (p.runDays <= 0) return p
+    val safeLongDay = if (p.longDay in p.days) p.longDay else (p.days.maxOrNull() ?: p.longDay)
+    if (p.qualityCount <= 0) return p.copy(longDay = safeLongDay, qualityDays = emptySet())
+    val manualSlots = p.weeklySlots["run"]
+    if (manualSlots != null) {
+        val pinnedQuality = manualSlots.drop(1).take(p.qualityCount)
+            .filter { it in p.days && it != safeLongDay }
+            .toSet()
+        return p.copy(longDay = safeLongDay, qualityDays = pinnedQuality)
+    }
+    val valid = p.qualityDays.filter { it in p.days && it != safeLongDay }.toMutableList()
+    if (valid.size < p.qualityCount) {
+        fun circularDist(a: Int, b: Int) = minOf(kotlin.math.abs(a - b), 7 - kotlin.math.abs(a - b))
+        val remaining = p.days.filter { it != safeLongDay && it !in valid }
+            .sortedWith(
+                compareByDescending<Int> { circularDist(it, safeLongDay) }.thenBy { it }
+            )
+        for (c in remaining) {
+            if (valid.size >= p.qualityCount) break
+            if (circularDist(c, safeLongDay) >= 2 && valid.all { circularDist(c, it) >= 2 }) {
+                valid.add(c)
+            }
+        }
+        for (c in remaining) {
+            if (valid.size >= p.qualityCount) break
+            if (c !in valid) valid.add(c)
+        }
+    }
+    return p.copy(longDay = safeLongDay, qualityDays = valid.take(p.qualityCount).toSet())
+}

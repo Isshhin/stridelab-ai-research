@@ -1,23 +1,11 @@
+FILE: Engine15WorkoutDifficultyAdjuster.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 321-669
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 3
+LINES: 334-704
 --------------------------------------------------
-                        ceil(finalSteps.sumOf { it.meters ?: 0 } * pace * 0.86 / 60_000.0).toInt()
-                    ).coerceAtLeast(10)
-                return base.copy(
-                    minutes = newMinutes,
-                    distanceKm = newTotalMeters / 1000.0,
-                    steps = finalSteps.map { step ->
-                        val timeText = step.seconds?.let { s ->
-                            when {
-                                s % 60 == 0 -> "${s / 60} min"
-                                s > 60 -> "${s / 60}m ${s % 60}s"
-                                else -> "${s}s"
-                            }
-                        } ?: "${step.meters} m (${formatMetersAsKm(step.meters ?: 0)})"
                         val eqText = formatMetersAsKm(step.meters ?: step.distanceEquivalentMeters ?: 0)
-                        "$timeText ${step.purpose.lowercase().replace('_', ' ')} ┬╖ $eqText ┬╖ ${step.effort}"
+                        "$timeText ${step.purpose.lowercase().replace('_', ' ')} · $eqText · ${step.effort}"
                     },
                     reason = appendNote(
                         base.reason,
@@ -44,7 +32,7 @@ LINES: 321-669
                     distanceKm = null,
                     steps = assembledTemplate.map { step ->
                         val extent = step.seconds?.let { "${it / 60} min" } ?: formatMetersAsKm(step.meters ?: 0)
-                        "$extent ${step.purpose.lowercase().replace('_', ' ')} ┬╖ ${step.effort}"
+                        "$extent ${step.purpose.lowercase().replace('_', ' ')} · ${step.effort}"
                     },
                     reason = appendNote(
                         base.reason,
@@ -81,7 +69,7 @@ LINES: 321-669
             minutes = finalMinutes,
             distanceKm = newTotalMeters / 1000.0,
             steps = newSegments.mapIndexed { i, step ->
-                "${i + 1}. ${formatMetersAsKm(step.meters)} ${step.purpose.lowercase().replace('_', ' ')} ΓÇö ${step.effort}."
+                "${i + 1}. ${formatMetersAsKm(step.meters)} ${step.purpose.lowercase().replace('_', ' ')} — ${step.effort}."
             },
             reason = appendNote(
                 base.reason,
@@ -247,7 +235,7 @@ LINES: 321-669
         val updatedSteps = newRx?.mixedSegments?.mapIndexed { idx, step ->
             val sec = step.seconds ?: 60
             val durText = if (sec % 60 == 0) "${sec / 60} min" else "$sec s"
-            "${idx + 1}. $durText ${step.purpose.lowercase().replace('_', ' ')} ΓÇö ${step.effort}"
+            "${idx + 1}. $durText ${step.purpose.lowercase().replace('_', ' ')} — ${step.effort}"
         } ?: listOf("$newMinutes min time-based run/walk at easy conversational effort")
         return base.copy(
             minutes = newMinutes,
@@ -310,7 +298,7 @@ LINES: 321-669
             val rirCue = when (targetStep) {
                 -2 -> "Target easy technique effort (4+ reps in reserve; lighten load if needed)."
                 -1 -> "Target controlled moderate effort (3 reps in reserve)."
-                1 -> "Target challenging effort (1ΓÇô2 reps in reserve with clean form)."
+                1 -> "Target challenging effort (1–2 reps in reserve with clean form)."
                 else -> "Target progressive overload effort (1 rep in reserve; add a small load increment or controlled pause if form is crisp)."
             }
             val updatedCue = if (ex.cue.isBlank()) rirCue else "${ex.cue.trimEnd()} $rirCue"
@@ -352,3 +340,38 @@ LINES: 321-669
         var newMinutes = (base.minutes * mult).roundToInt().coerceIn(minOf(10, base.minutes), minOf(90, maxMin))
         if (targetStep < 0 && newMinutes >= base.minutes && base.minutes > 10) {
             newMinutes = (base.minutes - 2).coerceAtLeast(10)
+        } else if (targetStep > 0 && newMinutes <= base.minutes && maxMin >= base.minutes + 2) {
+            newMinutes = (base.minutes + 2).coerceAtMost(maxMin)
+        }
+        val mainMinutes = (newMinutes - 10).coerceAtLeast(2)
+        val warmupMinutes = if (newMinutes >= 12) 5 else 2
+        val cooldownMinutes = (newMinutes - warmupMinutes - mainMinutes).coerceAtLeast(1)
+        val adjustedExercises = base.exercises.map { ex ->
+            ex.copy(seconds = newMinutes * 60)
+        }
+        return base.copy(
+            minutes = newMinutes,
+            exercises = adjustedExercises,
+            steps = listOf(
+                "$warmupMinutes min easy walking or marching",
+                "$mainMinutes min comfortable low-impact conditioning; take breaks to stay conversational",
+                "$cooldownMinutes min easy walking or marching"
+            ),
+            reason = appendNote(
+                base.reason,
+                "Adjusted to ${labelFor(targetStep)}: scaled total conditioning duration to $newMinutes min."
+            ),
+            difficultyStep = targetStep,
+            difficultyBaseline = baseline
+        )
+    }
+
+    private fun distributePositiveInts(
+        targetSum: Int,
+        weights: List<Double>,
+        minEach: Int = 1
+    ): IntArray {
+        val n = weights.size
+        require(n > 0 && targetSum >= n * minEach)
+        val result = IntArray(n) { minEach }
+        val pool = targetSum - n * minEach

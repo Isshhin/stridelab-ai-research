@@ -1,0 +1,430 @@
+FILE: TodayAdaptiveDashboard.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 4
+LINES: 406-829
+--------------------------------------------------
+                    activityId = act.id,
+                    planId = null,
+                    sessionId = null,
+                    sortInstant = act.startedAt,
+                    isRun = isRun
+                )
+            }
+
+        evidence.confirmed(rawHistory, now).forEach { conf ->
+            val disc = TodayDiscipline.fromLog(conf.discipline) ?: TodayDiscipline.RUNNING
+            val session = sessionsByKey[conf.planId to conf.sessionId]
+            val isRun = disc == TodayDiscipline.RUNNING
+            val distKm = conf.distanceM?.takeIf { it.isFinite() && it > 0.0 }?.div(1000.0)
+            val detailTitle = when {
+                isRun && distKm != null -> String.format(Locale.US, "%.2f km", distKm)
+                session != null && session.effectiveTitle.isNotBlank() -> session.effectiveTitle
+                else -> "Completed"
+            }
+            val durStr = conf.durationSeconds?.takeIf { it.isFinite() && it > 0.0 }?.let {
+                if (isRun) ActivityRecord.duration(it) else formatMinutesLabel(it)
+            }
+            val focusNote = if (!isRun) {
+                session?.steps?.firstOrNull()?.takeIf { it.isNotBlank() }
+            } else {
+                null
+            }
+            val subtitle = listOfNotNull(durStr, focusNote).joinToString(" • ")
+
+            rows += TodayRecentRow(
+                id = "log:${conf.planId}:${conf.sessionId}",
+                discipline = disc,
+                typeLabel = disc.title,
+                detailTitle = detailTitle,
+                subtitle = subtitle,
+                activityId = null,
+                planId = conf.planId,
+                sessionId = conf.sessionId,
+                sortInstant = conf.date.atStartOfDay(zone).toInstant(),
+                isRun = isRun
+            )
+        }
+
+        return rows
+            .distinctBy { it.id }
+            .sortedWith(compareByDescending<TodayRecentRow> { it.sortInstant }.thenBy { it.id })
+            .take(limit)
+    }
+}
+
+private fun formatMinutesLabel(seconds: Double): String {
+    val mins = (seconds / 60.0).roundToInt().coerceAtLeast(1)
+    return "$mins min"
+}
+
+private fun formatOverviewRunKm(km: Double): String {
+    if (!km.isFinite() || km <= 0.0) return "0.0"
+    return String.format(Locale.US, "%.1f", km)
+}
+
+private fun formatCompactKm(km: Double): String {
+    val rounded = (km * 10.0).roundToInt() / 10.0
+    return if (abs(rounded - rounded.roundToInt()) < 0.05) {
+        "${rounded.roundToInt()}"
+    } else {
+        String.format(Locale.US, "%.1f", rounded)
+    }
+}
+
+private fun sessionZoneLabel(session: PlannedSession): String? {
+    val family = session.runningPrescription?.family?.lowercase(Locale.ROOT).orEmpty()
+    val kind = session.kind.lowercase(Locale.ROOT)
+    val title = session.effectiveTitle.lowercase(Locale.ROOT)
+    return when {
+        "vo2" in family || "interval" in kind || "vo2" in title -> "Zone 4–5"
+        "threshold" in family || "tempo" in kind || "threshold" in title -> "Zone 3–4"
+        "marathon" in family || "steady" in title -> "Zone 2–3"
+        "recovery" in kind || "recovery" in title -> "Zone 1–2"
+        else -> "Zone 2"
+    }
+}
+
+private val DATE_CONTEXT_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.ENGLISH)
+
+@Composable
+internal fun TodayDateContextHeader(
+    selectedDate: LocalDate,
+    todayDate: LocalDate,
+    onReturnToToday: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = selectedDate.format(DATE_CONTEXT_FORMATTER),
+            color = TodayAdaptivePalette.text,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        if (selectedDate != todayDate) {
+            Spacer(Modifier.width(10.dp))
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable(onClick = onReturnToToday)
+                    .testTag("today-return-to-today"),
+                shape = RoundedCornerShape(999.dp),
+                color = TodayAdaptivePalette.card,
+                border = BorderStroke(1.dp, TodayAdaptivePalette.border)
+            ) {
+                Text(
+                    text = "Return to Today",
+                    color = TodayAdaptivePalette.textSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun TodayDailySessionItem.recordedActivity(): ActivityRecord? = when (this) {
+    is TodayDailySessionItem.Recorded -> activity
+    is TodayDailySessionItem.Planned -> linkedActivity.takeIf { isCompleted }
+    is TodayDailySessionItem.ConfirmedLog -> null
+}
+
+@Composable
+internal fun TodayDailyTrainingCard(
+    selectedDate: LocalDate,
+    todayDate: LocalDate,
+    dailyState: TodayDailyTrainingState,
+    cachedDetails: Map<String, ActivityDetail>,
+    hasPrimaryHeroTag: Boolean = true,
+    onOpenWorkout: (String, String) -> Unit,
+    onOpenActivityDetail: (String) -> Unit,
+    onOpenTraining: () -> Unit
+) {
+    val cardTitle = if (selectedDate == todayDate) {
+        "Today's Training"
+    } else {
+        "${selectedDate.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.ENGLISH)}'s Training"
+    }
+
+    val cardModifier = if (hasPrimaryHeroTag) {
+        Modifier.fillMaxWidth().testTag("today-hero")
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
+    val onlyItem = (dailyState as? TodayDailyTrainingState.Sessions)?.items?.singleOrNull()
+    val onlyActivity = onlyItem?.recordedActivity()
+    if (onlyItem != null && onlyActivity != null) {
+        Surface(cardModifier, shape = RoundedCornerShape(18.dp), color = TodayAdaptivePalette.card,
+            border = BorderStroke(1.dp, TodayAdaptivePalette.border)) {
+            RecordedDailySessionRow(
+                TodayDailySessionItem.Recorded(onlyActivity, onlyItem.discipline),
+                cachedDetails[onlyActivity.id], hasPrimaryHeroTag, onOpenActivityDetail,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+            )
+        }
+        return
+    }
+
+    Surface(
+        modifier = cardModifier,
+        shape = RoundedCornerShape(18.dp),
+        color = TodayAdaptivePalette.card,
+        border = BorderStroke(1.dp, TodayAdaptivePalette.border)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (dailyState !is TodayDailyTrainingState.Sessions || dailyState.items.any { it.recordedActivity() == null }) Text(
+                text = cardTitle,
+                color = TodayAdaptivePalette.textSecondary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            when (dailyState) {
+                is TodayDailyTrainingState.Sessions -> {
+                    val primaryCtaKey = dailyState.items
+                        .firstOrNull { it is TodayDailySessionItem.Planned }
+                        ?.stableKey
+                        ?: dailyState.items.firstOrNull()?.stableKey
+
+                    dailyState.items.forEachIndexed { index, item ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                color = TodayAdaptivePalette.divider,
+                                thickness = 1.dp
+                            )
+                        }
+                        val useHeroActionTag = hasPrimaryHeroTag && item.stableKey == primaryCtaKey
+                        val recorded = item.recordedActivity()
+                        if (recorded != null) {
+                            RecordedDailySessionRow(
+                                TodayDailySessionItem.Recorded(recorded, item.discipline),
+                                cachedDetails[recorded.id], useHeroActionTag, onOpenActivityDetail
+                            )
+                        } else when (item) {
+                            is TodayDailySessionItem.Planned -> {
+                                PlannedDailySessionRow(item, useHeroActionTag, onOpenWorkout)
+                            }
+                            is TodayDailySessionItem.Recorded -> Unit // Rendered above.
+                            is TodayDailySessionItem.ConfirmedLog -> {
+                                ConfirmedLogDailySessionRow(
+                                    item = item,
+                                    useHeroActionTag = useHeroActionTag,
+                                    onOpenWorkout = onOpenWorkout
+                                )
+                            }
+                        }
+                    }
+
+                    if (!dailyState.hasActivePlan && selectedDate == todayDate) {
+                        HorizontalDivider(color = TodayAdaptivePalette.divider, thickness = 1.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onOpenTraining)
+                                .padding(top = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Ready for structured running targets?",
+                                color = TodayAdaptivePalette.textMuted,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Build a Running Plan",
+                                color = TodayAdaptivePalette.runningLime,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                TodayDailyTrainingState.RestDay -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("today-rest-day"),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Rest & recovery day",
+                            color = TodayAdaptivePalette.text,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "No sessions scheduled for this date. Prioritize recovery and mobility.",
+                            color = TodayAdaptivePalette.textSecondary,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+
+                TodayDailyTrainingState.NoPlanCompanion -> {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Companion training mode",
+                                color = TodayAdaptivePalette.text,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Track multisport sessions freely or generate a weekly training plan tailored to your goals.",
+                                color = TodayAdaptivePalette.textSecondary,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Text(
+                                text = "Build a Training Plan",
+                                color = TodayAdaptivePalette.runningLime,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .then(
+                                        if (hasPrimaryHeroTag) Modifier.testTag("today-workout-action")
+                                        else Modifier
+                                    )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(onClick = onOpenTraining)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlannedDailySessionRow(
+    item: TodayDailySessionItem.Planned,
+    useHeroActionTag: Boolean,
+    onOpenWorkout: (String, String) -> Unit
+) {
+    val session = item.session
+    val accent = TodayAdaptivePalette.accentFor(item.discipline)
+    val metadata = if (item.discipline == TodayDiscipline.RUNNING) {
+        val dist = session.distanceKm?.takeIf { it.isFinite() && it > 0.0 }?.let { "${formatCompactKm(it)} km" }
+        val zone = sessionZoneLabel(session)
+        val dur = session.effectiveMinutes.takeIf { it > 0 }?.let { "$it min" }
+        listOfNotNull(dist, zone, dur).joinToString(" • ")
+    } else {
+        val dur = session.effectiveMinutes.takeIf { it > 0 }?.let { "$it min" }
+        val disc = item.discipline.title
+        listOfNotNull(disc, dur).joinToString(" • ")
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (useHeroActionTag) Modifier.testTag("today-workout-action") else Modifier)
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(14.dp),
+                highlightBorderColor = accent,
+                onClick = { onOpenWorkout(item.planId, session.id) }
+            )
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (item.isCompleted) TodayAdaptivePalette.doneBadgeBg else accent
+                ) {
+                    Text(
+                        text = when {
+                            item.isCompleted -> "DONE"
+                            session.linkedActivityId != null -> "LINK CONFLICT"
+                            else -> "PLAN"
+                        },
+                        color = if (item.isCompleted) TodayAdaptivePalette.doneBadgeText else TodayAdaptivePalette.bg,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.6.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+
+                Text(
+                    text = session.effectiveTitle,
+                    color = TodayAdaptivePalette.text,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (metadata.isNotBlank()) {
+                    Text(
+                        text = metadata,
+                        color = TodayAdaptivePalette.textSecondary,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (!item.isCompleted && item.discipline == TodayDiscipline.RUNNING) {
+                TodaySessionIntensityBars(
+                    session = session,
+                    isQuality = item.isQualityWorkout,
+                    modifier = Modifier
+                        .width(106.dp)
+                        .height(34.dp)
+                )
+            }
+        }
+
+    }
+}
+
+@Composable
+private fun RecordedDailySessionRow(
+    item: TodayDailySessionItem.Recorded,
+    cachedDetail: ActivityDetail?,
+    useHeroActionTag: Boolean,
+    onOpenActivityDetail: (String) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(vertical = 4.dp)
+) {
+    val act = item.activity

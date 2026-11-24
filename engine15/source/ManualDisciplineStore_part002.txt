@@ -1,0 +1,119 @@
+FILE: ManualDisciplineStore.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/ManualDisciplineStore.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 384-496
+--------------------------------------------------
+            val after = ManualWorkoutTemplateCodec.encode(template)
+            val changed = writableDatabase.update("manual_templates", ContentValues().apply {
+                put("name", template.name)
+                put("payload", after)
+            }, "owner=? AND record_id=? AND payload=?", arrayOf(template.owner, template.id, before))
+            require(changed == 1) { "This template changed. Reopen it before saving." }
+        }
+
+    suspend fun listTemplates(owner: String): List<ManualWorkoutTemplate> = withContext(Dispatchers.IO) {
+        RecordPolicy.identifier(owner)
+        val records = mutableListOf<ManualWorkoutTemplate>()
+        readableDatabase.query("manual_templates", arrayOf("payload"), "owner=?",
+            arrayOf(owner), null, null, "name COLLATE NOCASE,record_id").use { cursor ->
+            while(cursor.moveToNext()) records += ManualWorkoutTemplateCodec.decode(
+                cursor.getString(0),owner)
+        }
+        records
+    }
+
+    suspend fun deleteTemplate(owner: String, id: String): Boolean = withContext(Dispatchers.IO) {
+        RecordPolicy.identifier(owner)
+        RecordPolicy.identifier(id)
+        writableDatabase.delete("manual_templates", "owner=? AND record_id=?",
+            arrayOf(owner,id)) > 0
+    }
+
+    suspend fun export(owner: String): String =
+        ManualDisciplineArchive.export(owner, list(owner), listTemplates(owner), listFreeform(owner), listSchedules(owner))
+
+    suspend fun delete(owner: String, id: String): Boolean = withContext(Dispatchers.IO) {
+        RecordPolicy.identifier(owner)
+        RecordPolicy.identifier(id)
+        writableDatabase.delete("sessions", "owner=? AND record_id=?", arrayOf(owner,id)) > 0
+    }
+
+    /** Transactional, insert-only recovery: duplicates with altered data abort everything. */
+    suspend fun restore(owner: String, raw: String): Int = withContext(Dispatchers.IO) {
+        val archive = ManualDisciplineArchive.import(raw, owner)
+        val records = archive.sessions
+        val db = writableDatabase
+        var additions = 0
+        db.beginTransaction()
+        try {
+            for (row in records) {
+                val incoming = ManualDisciplineCodec.encode(row)
+                val old = db.query("sessions", arrayOf("payload"),
+                    "owner=? AND record_id=?", arrayOf(owner,row.id),
+                    null,null,null).use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                }
+                if (old != null) {
+                    require(old == incoming) {
+                        "A saved manual session has this ID but different contents. No records changed."
+                    }
+                    continue
+                }
+                val values = ContentValues().apply {
+                    put("owner", owner); put("record_id", row.id)
+                    put("performed_on", row.performedOn.toString()); put("payload", incoming)
+                }
+                db.insertOrThrow("sessions", null, values)
+                additions++
+            }
+            for (form in archive.templates) {
+                val incoming = ManualWorkoutTemplateCodec.encode(form)
+                val old = db.query("manual_templates", arrayOf("payload"),
+                    "owner=? AND record_id=?", arrayOf(owner,form.id),
+                    null,null,null).use { cursor ->
+                    if(cursor.moveToFirst()) cursor.getString(0) else null
+                }
+                if(old != null) {
+                    require(old == incoming) {
+                        "A template with this ID has different contents; no records changed."
+                    }
+                    continue
+                }
+                db.insertOrThrow("manual_templates",null,ContentValues().apply {
+                    put("owner",owner);put("record_id",form.id)
+                    put("name",form.name);put("payload",incoming)
+                })
+                additions++
+            }
+            for (schedule in archive.schedules) {
+                val payload = CustomScheduleCodec.encode(schedule)
+                val current = db.schedulePayload(owner, schedule.id)
+                if (current != null) {
+                    require(current == payload) { "A schedule with this ID has different contents. No records changed." }
+                    continue
+                }
+                db.insertSchedule(schedule, payload)
+                additions++
+            }
+            for (row in archive.freeform) {
+                val existing = db.findFreeform(owner, row.id)
+                if (existing != null) {
+                    require(existing.sameWorkout(row)) { "This workout ID already has different contents." }
+                    if (existing == row || existing.isComplete && !row.isComplete) continue
+                    require(!existing.isComplete) { "A completed workout has different contents. No records changed." }
+                    if (!row.isComplete && existing.modifiedAt > row.modifiedAt) continue
+                    require(row.modifiedAt > existing.modifiedAt) {
+                        "This workout conflicts with a saved draft. No records changed."
+                    }
+                }
+                db.writeFreeform(row, FreeformCodec.encode(row), updating = existing != null)
+                additions++
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        additions
+    }
+}

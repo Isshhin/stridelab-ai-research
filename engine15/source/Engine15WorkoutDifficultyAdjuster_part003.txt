@@ -1,43 +1,9 @@
+FILE: Engine15WorkoutDifficultyAdjuster.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 670-752
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 3
+LINES: 705-752
 --------------------------------------------------
-        } else if (targetStep > 0 && newMinutes <= base.minutes && maxMin >= base.minutes + 2) {
-            newMinutes = (base.minutes + 2).coerceAtMost(maxMin)
-        }
-        val mainMinutes = (newMinutes - 10).coerceAtLeast(2)
-        val warmupMinutes = if (newMinutes >= 12) 5 else 2
-        val cooldownMinutes = (newMinutes - warmupMinutes - mainMinutes).coerceAtLeast(1)
-        val adjustedExercises = base.exercises.map { ex ->
-            ex.copy(seconds = newMinutes * 60)
-        }
-        return base.copy(
-            minutes = newMinutes,
-            exercises = adjustedExercises,
-            steps = listOf(
-                "$warmupMinutes min easy walking or marching",
-                "$mainMinutes min comfortable low-impact conditioning; take breaks to stay conversational",
-                "$cooldownMinutes min easy walking or marching"
-            ),
-            reason = appendNote(
-                base.reason,
-                "Adjusted to ${labelFor(targetStep)}: scaled total conditioning duration to $newMinutes min."
-            ),
-            difficultyStep = targetStep,
-            difficultyBaseline = baseline
-        )
-    }
-
-    private fun distributePositiveInts(
-        targetSum: Int,
-        weights: List<Double>,
-        minEach: Int = 1
-    ): IntArray {
-        val n = weights.size
-        require(n > 0 && targetSum >= n * minEach)
-        val result = IntArray(n) { minEach }
-        val pool = targetSum - n * minEach
         if (pool == 0) return result
         val weightSum = weights.sum().coerceAtLeast(1e-9)
         val fractions = DoubleArray(n)

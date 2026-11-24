@@ -1,0 +1,307 @@
+FILE: NativeMainActivity.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/NativeMainActivity.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 4
+LINES: 602-902
+--------------------------------------------------
+                    val discipline = ManualDiscipline.entries.firstOrNull { it.name == disciplineName }
+                    val board = freeformBoard
+                    if (discipline != null && freeformOwner != null && freeformAccess != null && board != null) {
+                        key(freeformOwner, state.loginGeneration, discipline) {
+                            val initial = remember(freeformOwner, discipline) {
+                                FreeformWorkout.start(freeformOwner, discipline, LocalDate.now(), System.currentTimeMillis())
+                            }
+                            FreeformEditor(
+                                initial = initial, board = board, access = freeformAccess, persisted = false,
+                                update = { freeformBoard = (freeformBoard ?: FreeformBoard()).updated(it) },
+                                remove = { freeformBoard = freeformBoard?.without(it) },
+                                leave = { nav.popBackStack() },
+                                saved = { completedId ->
+                                    nav.navigate("freeform/history/freeform/${android.net.Uri.encode(completedId)}") {
+                                        popUpTo(destination.id) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
+                        }
+                    } else {
+                        FreeformHistoryDetail(null, null, board == null && freeformReadError == null) { nav.popBackStack() }
+                    }
+                }
+                composable("freeform/edit/{id}") { destination ->
+                    val id = destination.arguments?.getString("id")
+                    val board = freeformBoard
+                    val workout = board?.workouts?.firstOrNull { it.id == id }
+                    if (workout != null && !workout.isComplete && freeformAccess != null) {
+                        key(freeformOwner, state.loginGeneration) {
+                            FreeformEditor(
+                                initial = workout, board = board, access = freeformAccess, persisted = true,
+                                update = { freeformBoard = (freeformBoard ?: FreeformBoard()).updated(it) },
+                                remove = { freeformBoard = freeformBoard?.without(it) },
+                                leave = { nav.popBackStack() },
+                                saved = { completedId ->
+                                    nav.navigate("freeform/history/freeform/${android.net.Uri.encode(completedId)}") {
+                                        popUpTo(destination.id) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
+                        }
+                    } else {
+                        FreeformHistoryDetail(workout, null, board == null && freeformReadError == null) { nav.popBackStack() }
+                    }
+                }
+                composable("freeform/history/{kind}/{id}") { destination ->
+                    val id = destination.arguments?.getString("id")
+                    val legacy = destination.arguments?.getString("kind") == "legacy"
+                    FreeformHistoryDetail(
+                        workout = if (!legacy) freeformBoard?.workouts?.firstOrNull { it.id == id && it.isComplete } else null,
+                        legacy = if (legacy) freeformBoard?.legacy?.firstOrNull { it.id == id } else null,
+                        loading = freeformBoard == null && freeformReadError == null,
+                        onSaveAsTemplate = if (!legacy && id != null && freeformAccess != null) {
+                            { nav.navigate("freeform/template/from/${android.net.Uri.encode(id)}") }
+                        } else null,
+                        onRepeatWorkout = if (!legacy && id != null && freeformAccess != null) {
+                            { nav.navigate("freeform/schedule/history/${android.net.Uri.encode(id)}") }
+                        } else null,
+                        back = { nav.popBackStack() }
+                    )
+                }
+                composable("manage/{planId}/{date}") { back ->
+                    val planId = back.arguments?.getString("planId") ?: ""
+                    val plan = state.plans.firstOrNull { it.id == planId }
+                    val selected = runCatching { java.time.LocalDate.parse(back.arguments?.getString("date")) }
+                        .getOrDefault(java.time.LocalDate.now())
+                    TracksideManagePlanScreen(
+                        plan = plan, selected = selected, busy = state.busy,
+                        actions = actions.planning,
+                        onBack = {
+                            if (!nav.popBackStack()) {
+                                nav.openTabRoot("training")
+                            }
+                        },
+                        onBuildDraft = { nav.navigate("builder/all") },
+                        onWorkout = { sessionId ->
+                            nav.navigate("workout/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}")
+                        },
+                        onReviewMove = { sessionId, date ->
+                            nav.navigate("review-move/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}/$date")
+                        }
+                    )
+                }
+                composable("builder/{discipline}") { builder ->
+                    key(state.account ?: state.localPlanOwner, state.loginGeneration) {
+                        PlanBuilder(
+                            state, actions.planning, builder.arguments?.getString("discipline") ?: "all",
+                            onDone = { nav.openTabRoot("training") },
+                            onSignIn = { nav.navigate("auth") },
+                            historySuggestion = remember(evidence, evidenceDate) {
+                                evidence?.let { suggestedHistoryBaseline(it, evidenceDate) }
+                            },
+                            onPreview = { planId, sessionId ->
+                                state.blueprintDraft(planId)?.let { draft ->
+                                    val plan = android.net.Uri.encode(planId)
+                                    val session = android.net.Uri.encode(sessionId)
+                                    val generatedAt = android.net.Uri.encode(draft.createdAt.toString())
+                                    nav.navigate("blueprint-workout/$plan/$session/$generatedAt/${state.loginGeneration}")
+                                }
+                            }
+                        )
+                    }
+                }
+                composable(blueprintWorkoutRoute) { entry ->
+                    val args = entry.arguments
+                    BlueprintWorkoutScreen(
+                        state, args?.getString("planId").orEmpty(), args?.getString("sessionId").orEmpty(),
+                        args?.getString("generatedAt").orEmpty(),
+                        args?.getString("loginGeneration")?.toLongOrNull() ?: -1L,
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+                composable("move/{planId}/{sessionId}") { back ->
+                    val planId = back.arguments?.getString("planId") ?: ""
+                    val sessionId = back.arguments?.getString("sessionId") ?: ""
+                    val plan = (state.displayedPlanPreview?.takeIf { it.id == planId } ?: state.plans.firstOrNull { it.id == planId })
+                    val session = plan?.sessions?.firstOrNull { it.id == sessionId }
+                    if (plan == null || session == null) {
+                        Screen("Workout unavailable", "TRAINING", compactTitle = true) {
+                            item { TextButton(onClick = { nav.popBackStack() }) { Text("Back") } }
+                        }
+                    } else {
+                        StrideLabUnifiedTrainingTimeline(
+                            state, groupedActivities, actions.planning,
+                            onBuild = { nav.navigate("builder/all") },
+                            onOpenWorkout = { id, sId -> nav.openWorkout(id, sId) },
+                            onOpenActivity = { id -> nav.openActivity(id) },
+                            onManage = { id, date ->
+                                nav.navigate("manage/${android.net.Uri.encode(id)}/$date")
+                            }
+                        )
+                        TracksideParityMoveWorkoutSheet(
+                            plan = plan, session = session,
+                            actions = actions.planning,
+                            onDismiss = { nav.popBackStack() },
+                            onReviewDestination = { date ->
+                                nav.navigate("review-move/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}/$date")
+                            }
+                        )
+                    }
+                }
+                composable("review-move/{planId}/{sessionId}/{date}") { back ->
+                    val planId = back.arguments?.getString("planId") ?: ""
+                    val sessionId = back.arguments?.getString("sessionId") ?: ""
+                    val date = runCatching {
+                        java.time.LocalDate.parse(back.arguments?.getString("date"))
+                    }.getOrNull()
+                    val plan = state.plans.firstOrNull { it.id == planId }
+                    if (plan == null || date == null) {
+                        Screen("Review unavailable", "TRAINING", compactTitle = true) {
+                            item { TextButton(onClick = { nav.popBackStack() }) { Text("Back") } }
+                        }
+                    } else {
+                        TracksideParityReviewChanges(
+                            plan = plan,
+                            proposal = TracksideChangeProposal(
+                                TracksideChangeKind.MOVE,
+                                sessionId = sessionId,
+                                destination = date
+                            ),
+                            otherPlans = state.plans,
+                            busy = state.busy,
+                            onBack = { nav.popBackStack() },
+                            onRegenerateDraft = { nav.navigate("builder/all") },
+                            onApply = { checked ->
+                                checked.destination?.let {
+                                    actions.planning.move(plan.id, plan.revision, checked.sessionId, it)
+                                    nav.openTabRoot("training")
+                                }
+                            }
+                        )
+                    }
+                }
+                composable("missed/{planId}/{sessionId}") { back ->
+                    val planId = back.arguments?.getString("planId") ?: ""
+                    val sessionId = back.arguments?.getString("sessionId") ?: ""
+                    val plan = state.plans.firstOrNull { it.id == planId }
+                    val session = plan?.sessions?.firstOrNull { it.id == sessionId }
+                    TracksideParityMissedWorkoutFlow(
+                        plan = plan,
+                        session = session,
+                        otherPlans = state.plans,
+                        busy = state.busy,
+                        actions = actions.planning,
+                        onBack = { nav.popBackStack() },
+                        onBuildDraft = { nav.navigate("builder/all") }
+                    )
+                }
+                composable("workout/{planId}/{sessionId}") { workout ->
+                    val planId = workout.arguments?.getString("planId") ?: ""
+                    val sessionId = workout.arguments?.getString("sessionId") ?: ""
+                    WorkoutScreen(
+                        state, planId, sessionId, actions.planning,
+                        onBack = { nav.popBackStack() },
+                        onMissed = {
+                            nav.navigate("missed/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}")
+                        },
+                        onMove = {
+                            nav.navigate("move/${android.net.Uri.encode(planId)}/${android.net.Uri.encode(sessionId)}")
+                        }
+                    )
+                }
+                composable("settings") { /* Retained tab surface. */ }
+                // Old restored route: return to More rather than opening a page.
+                composable("more/garmin") {
+                    LaunchedEffect(Unit) { nav.openTabRoot("settings") }
+                }
+                // Older installations can still restore the retired route safely.
+                composable("more/data") {
+                    LaunchedEffect(Unit) { nav.openTabRoot("settings") }
+                }
+                composable("more/offline-maps") {
+                    TracksideOfflineMapsScreen(onBack = { nav.popBackStack() })
+                }
+                composable("more/activity-backup") {
+                    val export = actions.exportLocalArchive
+                    val restore = actions.restoreLocalArchive
+                    if(export != null && restore != null && state.localGarminOwner != null) {
+                        LocalActivityArchiveScreen(
+                            cloudAvailable = state.account != null && !state.needsSignIn,
+                            onBack = { nav.popBackStack() },
+                            onExport = export,
+                            onRestore = restore
+                        )
+                    } else Screen("Activity backup", "OFFLINE RECOVERY") {
+                        item { Text("Archive storage is initializing. Try again shortly.") }
+                    }
+                }
+                composable("more/preferences") {
+                    TracksideMoreDetailDestination(MorePage.Preferences, nav, state)
+                }
+                composable("more/about") {
+                    TracksideMoreDetailDestination(MorePage.About, nav, state)
+                }
+                composable("auth") {
+                    val initialGeneration = rememberSaveable { state.loginGeneration }
+                    LaunchedEffect(state.loginGeneration, state.busy, state.needsSignIn) {
+                        if (state.account != null && !state.busy &&
+                            !state.needsSignIn && state.loginGeneration > initialGeneration
+                        ) nav.popBackStack()
+                    }
+                    TracksideAuthScreen(
+                        page = TracksideAuthPage.SignIn,
+                        busy = state.busy,
+                        feedback = state.message,
+                        onBack = { nav.popBackStack() },
+                        onSignIn = actions.signIn,
+                        onSignUp = actions.signUp,
+                        onReset = actions.requestPasswordReset,
+                        onSignInPage = {},
+                        onSignUpPage = { nav.navigate("auth/signup") },
+                        onResetPage = { nav.navigate("auth/reset") }
+                    )
+                }
+                composable("auth/signup") {
+                    TracksideAuthScreen(
+                        page = TracksideAuthPage.SignUp,
+                        busy = state.busy,
+                        feedback = state.message,
+                        onBack = { nav.popBackStack() },
+                        onSignIn = actions.signIn,
+                        onSignUp = actions.signUp,
+                        onReset = actions.requestPasswordReset,
+                        onSignInPage = { nav.popBackStack() },
+                        onSignUpPage = {},
+                        onResetPage = { nav.navigate("auth/reset") }
+                    )
+                }
+                composable("auth/reset") {
+                    TracksideAuthScreen(
+                        page = TracksideAuthPage.Reset,
+                        busy = state.busy,
+                        feedback = state.message,
+                        onBack = { nav.popBackStack() },
+                        onSignIn = actions.signIn,
+                        onSignUp = actions.signUp,
+                        onReset = actions.requestPasswordReset,
+                        onSignInPage = { nav.popBackStack() },
+                        onSignUpPage = { nav.navigate("auth/signup") },
+                        onResetPage = {}
+                    )
+                }
+            }
+            PersistentTabSurface(active = visibleRoot == null || visibleRoot == "home") {
+                StrideLabTodayScreen(
+                    state = state,
+                    visibleActivities = visibleActivities,
+                    online = online,
+                    onOpenTraining = { nav.openTabRoot("training") },
+                    onOpenActivity = { onDockTab("activities") },
+                    onOpenWorkout = { planId, sessionId -> nav.openWorkout(planId, sessionId) },
+                    onOpenActivityDetail = { id -> nav.openActivity(id) },
+                    onOpenMore = { nav.openTabRoot("settings") },
+                    onSignIn = { nav.navigate("auth") },
+                    actions = actions.planning,
+                    freeformBoard = freeformBoard
+                )
+            }
+            PersistentTabSurface(active = visibleRoot == "activities") {

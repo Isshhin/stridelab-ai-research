@@ -1,22 +1,9 @@
+FILE: Engine15I1IntegratedShadowMatrixTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I1IntegratedShadowMatrixTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 354-405
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 368-405
 --------------------------------------------------
-    @Test fun deterministicGridEmitsCompleteSyntheticAcceptanceLedger() {
-        val lines = mutableListOf(
-            "synthetic_case,decision,reason,proposed_peak_km,target_budget_gap_km,week_count"
-        )
-        var tested=0
-        var accept=0
-        var defer=0
-        for (weekly in listOf(10.0,20.0,30.0,50.0,75.0,100.0))
-            for (days in listOf(2,3,4,6))
-                for (ratio in listOf(0.6,1.2,2.0))
-                    for (returning in listOf(false,true)) {
-                        val id = "i1-" + tested.toString().padStart(3,'0')
-                        val longest = max(1.0,weekly / days * ratio)
-                        val weeks = listOf(4,8,12)[tested % 3]
                         val target = minOf(120.0,max(weekly+5.0,80.0))
                         val s = source(typical=weekly,target=target,
                             longest=longest,days=days,weeks=weeks,

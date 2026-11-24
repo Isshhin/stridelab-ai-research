@@ -1,7 +1,8 @@
+FILE: Engine15QualityFamilySelection.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-262
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-272
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -136,7 +137,7 @@ internal object Engine15QualityFamilySelection {
                 explanation = "The requested running goal is outside the current Engine 1.5 goal contract.")
         if (request.experience !in 0..2)
             return result(Engine15QualitySelectionDecision.UNSUPPORTED, reason = "RUNNER_EXPERIENCE_UNSUPPORTED",
-                explanation = "The request uses an experience value outside the supported 0ΓÇô2 contract.")
+                explanation = "The request uses an experience value outside the supported 0–2 contract.")
         if (request.runningRecoveryHold)
             return result(Engine15QualitySelectionDecision.DEFERRED, reason = "QUALITY_RECOVERY_REVIEW_REQUIRED",
                 explanation = "An active running recovery hold requires a separate quality eligibility review.")
@@ -265,3 +266,13 @@ internal object Engine15QualityFamilySelection {
                     }
                     else -> when (request.goal) {
                         "Improve 5K" -> IndependentQualityFamily.INTERVALS
+                        "Improve 10K", "Half marathon", "General fitness" -> IndependentQualityFamily.THRESHOLD
+                        "Marathon" -> IndependentQualityFamily.TEMPO
+                        "Aerobic foundation" -> IndependentQualityFamily.FARTLEK
+                        else -> return result(Engine15QualitySelectionDecision.UNSUPPORTED, reason = "RUNNING_GOAL_UNSUPPORTED",
+                            explanation = "The goal has no family mapping in the bounded selection matrix.", athlete = athlete)
+                    }
+                }
+            } else {
+                if (request.returning) IndependentQualityFamily.TEMPO else when (request.goal) {
+                    "Improve 5K" -> if (request.experience == 2)

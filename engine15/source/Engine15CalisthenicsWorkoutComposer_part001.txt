@@ -1,6 +1,7 @@
+FILE: Engine15CalisthenicsWorkoutComposer.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15CalisthenicsWorkoutComposer.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-186
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -111,7 +112,7 @@ internal object Engine15CalisthenicsWorkoutComposer {
                         } == true
                     } ?: "$id-w${weekIndex + 1}-cal$slot"
                     add(PlannedSession(
-                        id = sessionId, date = date, discipline = "cal", title = "Calisthenics ┬╖ ${goal.lowercase()}",
+                        id = sessionId, date = date, discipline = "cal", title = "Calisthenics · ${goal.lowercase()}",
                         minutes = minutes, distanceKm = null, kind = "calisthenics", lower = false,
                         exercises = exercises,
                         steps = listOf("5 min comfortable warm-up", "Use only the listed controlled variation; do not advance automatically", "3 min comfortable finish"),

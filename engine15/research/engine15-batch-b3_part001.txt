@@ -1,9 +1,10 @@
+FILE: engine15-batch-b3.md
 SOURCE: docs/engine15-batch-b3.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-27
 --------------------------------------------------
-# Engine 1.5 Batch B3 ΓÇö deterministic interference-aware scheduling
+# Engine 1.5 Batch B3 — deterministic interference-aware scheduling
 
 **Candidate:** `feature/engine15-versioned-foundation-20261103`, draft PR #37. Not merged, not active in Trackside or production.
 

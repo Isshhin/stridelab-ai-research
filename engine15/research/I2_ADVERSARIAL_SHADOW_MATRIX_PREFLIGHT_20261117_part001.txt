@@ -1,9 +1,10 @@
+FILE: I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-22
 --------------------------------------------------
-# Engine 1.5 ΓÇö I2 Adversarial Shadow Matrix Preflight
+# Engine 1.5 — I2 Adversarial Shadow Matrix Preflight
 
 Frozen 2026-11-17 before implementing I2 tests. Stacked on I1 draft PR #121 at commit `73421afe`. The user reports I1 `BUILD SUCCESSFUL in 21s`, 144 scenarios: 127 ACCEPT, 17 DEFER. All 17 I1 sweep deferrals were `UPSTREAM_CALENDAR_BASE_TWO_DAY_EXPOSURE_CONFLICT`. This is a useful feasibility outcome but leaves the *sweep's* rejection variety narrow. I1's separate focused tests covered more cases; I2 must additionally make those failures countable in an explicit ledger.
 

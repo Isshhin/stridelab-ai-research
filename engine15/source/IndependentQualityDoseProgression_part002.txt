@@ -1,16 +1,9 @@
+FILE: IndependentQualityDoseProgression.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityDoseProgression.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 304-342
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 312-342
 --------------------------------------------------
-        if (total > weeklyCeiling)
-            return defer("WEEKLY_QUALITY_WORK_CEILING_EXCEEDED",
-                "Combined proposed work doses exceed the independently supplied weekly ceiling.")
-        val recentWeeks = request.completeQualityWeekMondays.filter {
-            ChronoUnit.DAYS.between(it, request.planningMonday) in 7L..LOOKBACK_DAYS
-        }.sortedDescending().take(2)
-        if (recentWeeks.size != 2 || recentWeeks[0] != request.planningMonday.minusWeeks(1) || recentWeeks[1].plusWeeks(1) != recentWeeks[0])
-            return defer("QUALITY_WEEK_COVERAGE_UNKNOWN",
                 "Two consecutive recent complete quality weeks must be explicitly reviewed; two sessions do not establish weekly exposure.")
         for (monday in recentWeeks) {
             val history = request.observedHistory.filter { it.performedOn in monday..monday.plusDays(6) }

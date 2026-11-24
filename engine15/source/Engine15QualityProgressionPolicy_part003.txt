@@ -1,35 +1,9 @@
+FILE: Engine15QualityProgressionPolicy.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 617-886
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 5
+LINES: 644-928
 --------------------------------------------------
-                Engine15WorkoutArchetype.BROKEN_TEMPO,
-                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
-            )
-            request.goal == "Half marathon" -> if (request.experience == 1) listOf(
-                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
-                Engine15WorkoutArchetype.BROKEN_TEMPO,
-                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
-                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
-            ) else listOf(
-                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
-                Engine15WorkoutArchetype.BROKEN_TEMPO,
-                Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID,
-                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
-                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
-            )
-            request.goal == "Marathon" -> if (request.experience == 1) listOf(
-                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
-                Engine15WorkoutArchetype.BROKEN_TEMPO,
-                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
-                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
-            ) else listOf(
-                Engine15WorkoutArchetype.BROKEN_TEMPO,
-                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
-                Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
-                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
-            )
-            request.goal == "Aerobic foundation" -> listOf(
                 Engine15WorkoutArchetype.AEROBIC_FARTLEK,
                 Engine15WorkoutArchetype.SHORT_HILL_SPRINTS,
                 Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
@@ -273,3 +247,45 @@ LINES: 617-886
         primaryFamily: IndependentQualityFamily,
         phase: Engine15MacroPhase
     ): List<Engine15WorkoutArchetype> {
+        val fallbackPool = adaptiveArchetypeRotation(request, primaryFamily)
+        if (request.preferredQualityExplicit) return fallbackPool
+        if (request.experience == 0 || request.returning) return fallbackPool
+
+        val raw = when (phase) {
+            Engine15MacroPhase.BASE -> when (request.goal) {
+                "Improve 5K", "Aerobic foundation" -> listOf(
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+                else -> listOf(
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS
+                )
+            }
+            Engine15MacroPhase.BUILD -> when (request.goal) {
+                "Improve 5K" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO
+                )
+                "Improve 10K" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+                "Half marathon" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+                "Marathon" -> listOf(
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,

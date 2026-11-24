@@ -1,14 +1,51 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 648-931
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 8
+LINES: 674-978
 --------------------------------------------------
+        mutable.value=mutable.value.copy(plans=all,workoutDrafts=mutable.value.workoutDrafts.filterValues { validDraft(it,all) },
+            workoutExecutionOutcomes = outcomes)
+    }
+    /**
+     * Unlike a PlanSnapshot, a research review is saved only under kind=exercise
+     * and never added to the cloud outbox, executable calendar or plan list.
+     * Recompute inside the serialized repository operation: never trust a
+     * client-supplied preview as proof that limits were checked.
+     */
+    suspend fun saveResearchReview(
+        request: PlanRequest,
+        constraints: IndependentAndroidPreviewConstraints
+    ) = operation("Saving non-executable research comparison…") {
+        val owner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
+        if(mutable.value.researchDrafts.size >= 20)
+            throw PlanConstraint("Research comparison limit reached. Existing reviews were retained.")
+        val preview=when (val result =
+            IndependentAndroidResearchBridge.preview(request,constraints)) {
+            is IndependentAndroidPreviewDecision.Deferred ->
+                throw PlanConstraint("Research comparison held: " + result.ruleId + ". " + result.explanation)
+            is IndependentAndroidPreviewDecision.ReadOnly -> result
+        }
+        val draft=IndependentResearchDraft.fromPreview(
+            owner,request,preview,constraints
+        )
+        val raw=draft.encode().toString()
+        RecordPolicy.record(owner,"exercise",draft.recordId,raw)
+        // Deliberate local cache write for both signed-in and signed-out
+        // profiles. Cloud account selection does NOT authorize upload.
+        store.applyRemotePage(
+            owner,"exercise",listOf(
+                TrainingStore.RemoteRecord(draft.recordId,raw,null)
+            ),null,System.currentTimeMillis()
+        )
+        mutable.value=mutable.value.copy(
+            researchDrafts=(mutable.value.researchDrafts+draft)
                 .sortedByDescending { it.createdAt },
             message="Research comparison saved privately on this device. No workouts or approved plan changed."
         )
     }
 
-    suspend fun generatePlan(request:PlanRequest,engine:PlanGenerationEngine?=null) = operation("Building your planΓÇª") {
+    suspend fun generatePlan(request:PlanRequest,engine:PlanGenerationEngine?=null) = operation("Building your plan…") {
         val owner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
         val state=mutable.value
         val selected=engine ?: Engine15IndependentPlanGenerator
@@ -73,7 +110,7 @@ LINES: 648-931
     }
 
     suspend fun generateHybridPlan(requests: List<HybridTrackRequest>) =
-        operation("Building your training tracksΓÇª") {
+        operation("Building your training tracks…") {
             val state = mutable.value
             val owner = LocalPlanOwnership.activeOwner(state.account, localPlanOwner)
             mutable.value = state.copy(planPreview = null, planPreviewSupportReview = null, hybridPlanPreview = null)
@@ -82,7 +119,7 @@ LINES: 648-931
             mutable.value = mutable.value.copy(hybridPlanPreview = result)
         }
 
-    suspend fun approveHybridPlan(previewId: String) = operation("Activating your training tracksΓÇª") {
+    suspend fun approveHybridPlan(previewId: String) = operation("Activating your training tracks…") {
         val state = mutable.value
         val owner = LocalPlanOwnership.activeOwner(state.account, localPlanOwner)
         val preview = state.hybridPlanPreview?.takeIf { it.id == previewId }
@@ -97,7 +134,7 @@ LINES: 648-931
         )
         reconcileActivityMatchesAndAnalysis()
     }
-    suspend fun changePlan(id:String,revision:Int,action:(PlanSnapshot)->PlanSnapshot) = operation("Saving your planΓÇª") {
+    suspend fun changePlan(id:String,revision:Int,action:(PlanSnapshot)->PlanSnapshot) = operation("Saving your plan…") {
         val activeOwner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
         val plan=mutable.value.plans.find { it.id==id && it.owner==activeOwner }
             ?: throw PlanConstraint("This plan is unavailable for the current local profile or account.")
@@ -152,7 +189,7 @@ LINES: 648-931
         }
     }
     suspend fun approveAdaptationProposal(planId: String, proposalId: String): Boolean =
-        operation("Applying approved plan adaptationΓÇª") {
+        operation("Applying approved plan adaptation…") {
             val current = mutable.value
             val plan = current.plans.find { it.id == planId }
                 ?: throw PlanConstraint("This plan is unavailable.")
@@ -187,7 +224,7 @@ LINES: 648-931
             reconcileActivityMatchesAndAnalysis()
         }
     suspend fun dismissAdaptationProposal(planId: String, proposalId: String): Boolean =
-        operation("Dismissing adaptation suggestionΓÇª") {
+        operation("Dismissing adaptation suggestion…") {
             val current = mutable.value
             val proposal = current.pendingAdaptationProposals[planId]
                 ?.takeIf { it.proposalId == proposalId }
@@ -213,7 +250,7 @@ LINES: 648-931
             )
         }
     suspend fun revertLastAdaptation(planId: String): Boolean =
-        operation("Reverting last adaptationΓÇª") {
+        operation("Reverting last adaptation…") {
             val current = mutable.value
             val plan = current.plans.find { it.id == planId }
                 ?: throw PlanConstraint("This plan is unavailable.")
@@ -258,7 +295,7 @@ LINES: 648-931
         }
     }
 
-    suspend fun approvePlan(id: String, revision: Int) = operation("Activating your planΓÇª") {
+    suspend fun approvePlan(id: String, revision: Int) = operation("Activating your plan…") {
         val current = mutable.value
         val owner = LocalPlanOwnership.activeOwner(current.account, localPlanOwner)
         val plan = (current.planPreview?.takeIf { it.id == id } ?: current.plans.find { it.id == id })
@@ -272,18 +309,3 @@ LINES: 648-931
             }
             if (latest?.blocked == true) throw PlanConstraint("No safe option for the fixed support schedule.")
             latest?.candidate ?: plan
-        } else plan
-        val approved = PlanOperations.approve(reviewed, current.plans)
-        savePlan(approved.copy(revision = plan.revision + 1))
-        if (current.planPreview?.id == id) mutable.value = mutable.value.copy(planPreview = null)
-        reconcileActivityMatchesAndAnalysis()
-    }
-    suspend fun pausePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="paused") }
-    suspend fun archivePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="archived") }
-    suspend fun deletePlan(id:String,revision:Int)=operation("Deleting planΓÇª") {
-        val activeOwner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
-        val plan=mutable.value.plans.find { it.id==id && it.owner==activeOwner }
-            ?: throw PlanConstraint("This plan is unavailable for the current local profile or account.")
-        if(plan.revision!=revision)throw PlanConstraint("The saved plan changed. Reopen it before deleting.")
-        store.deleteRecord(activeOwner,"plan",plan.id)
-        val staleDrafts=mutable.value.workoutDrafts.filter { (_,draft) -> draft.planId==plan.id && draft.owner==activeOwner }

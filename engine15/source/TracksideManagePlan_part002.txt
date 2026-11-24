@@ -1,0 +1,130 @@
+FILE: TracksideManagePlan.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideManagePlan.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 357-480
+--------------------------------------------------
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = StrideLabVisualPalette.lime
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().height(104.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                days.forEach { day ->
+                    val hasLong = day.sessions.any { it.kind == "long" }
+                    val hasQuality = day.sessions.any { it.kind == "quality" }
+                    val barColor = when {
+                        hasLong -> StrideLabVisualPalette.lime
+                        hasQuality -> StrideLabVisualPalette.moderateAmber
+                        else -> StrideLabVisualPalette.easyTeal
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.76f)
+                                .height(82.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(StrideLabVisualPalette.surfaceRaised),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            if (day.plannedMinutes > 0) {
+                                val height = (day.plannedMinutes.toFloat() / high * 82f).coerceAtLeast(8f)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(height.dp)
+                                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(StrideLabVisualPalette.barGradient(barColor))
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(2.5.dp)
+                                            .align(Alignment.TopCenter)
+                                            .background(barColor)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            day.date.dayOfWeek.name.take(3),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (day.plannedMinutes > 0) StrideLabVisualPalette.secondary else StrideLabVisualPalette.muted,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TracksideManageAction(
+    title: String,
+    subtitle: String,
+    iconRes: Int,
+    accent: Color,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = StrideLabVisualPalette.surface,
+        border = BorderStroke(1.dp, StrideLabVisualPalette.border)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 66.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    title,
+                    fontSize = 14.sp,
+                    color = StrideLabVisualPalette.ink,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    subtitle,
+                    fontSize = 11.5.sp,
+                    color = StrideLabVisualPalette.secondary,
+                    maxLines = 3
+                )
+            }
+            Text("›", color = StrideLabVisualPalette.muted, fontSize = 20.sp)
+        }
+    }
+}

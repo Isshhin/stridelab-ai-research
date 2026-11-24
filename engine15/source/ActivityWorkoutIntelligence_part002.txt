@@ -1,0 +1,119 @@
+FILE: ActivityWorkoutIntelligence.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/ActivityWorkoutIntelligence.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 334-446
+--------------------------------------------------
+            val elapsed = matched.mapNotNull { it.first.seconds }.sum()
+            val distances = matched.map { it.first.distance }
+            val meters = if (distances.all { it != null }) distances.filterNotNull().sum()
+                else null
+            summary += purpose.lowercase().replaceFirstChar { it.uppercase() } +
+                " recorded: " + matched.size + " lap(s), " +
+                ActivityRecord.duration(elapsed) +
+                (meters?.let {
+                    ", " + String.format(java.util.Locale.ROOT, "%.0f m", it)
+                } ?: ", distance unavailable") + "."
+            if (plannedMeters != null && meters != null) {
+                val difference = meters - plannedMeters
+                summary += purpose.lowercase().replaceFirstChar { it.uppercase() } +
+                    " distance difference: " +
+                    String.format(java.util.Locale.ROOT, "%+.0f m", difference) +
+                    " compared with " + plannedMeters + " planned m."
+            }
+            if (plannedSeconds != null) {
+                summary += purpose.lowercase().replaceFirstChar { it.uppercase() } +
+                    " duration difference: " +
+                    String.format(java.util.Locale.ROOT, "%+.0f s",
+                        elapsed - plannedSeconds) +
+                    " compared with " + plannedSeconds + " planned s."
+            }
+        }
+        fun plannedDistance(purpose: String): Int? =
+            if (prescription.mixedSegments != null) {
+                val rows = prescription.mixedSegments.filter { it.purpose == purpose }
+                if (rows.isEmpty() || rows.any { it.meters == null }) null
+                else rows.sumOf { it.meters!! }
+            } else {
+                val rows = prescription.segments.filter { it.purpose == purpose }
+                rows.takeIf { it.isNotEmpty() }?.sumOf { it.meters }
+            }
+        fun plannedTime(purpose: String): Int? {
+            val rows = prescription.mixedSegments?.filter { it.purpose == purpose }
+                ?: return null
+            return if (rows.isNotEmpty() && rows.all { it.seconds != null })
+                rows.sumOf { it.seconds!! } else null
+        }
+        describeMeasured("WORK", plannedDistance("WORK"), plannedTime("WORK"))
+        describeMeasured("RECOVERY", plannedDistance("RECOVERY"), plannedTime("RECOVERY"))
+        val countsMatch = expectedWork == actualWork && expectedRecovery == actualRecovery
+        val plannedWorkOrder = plannedPurposes.filter { it == "WORK" || it == "RECOVERY" }
+        val actualWorkOrder = executed.mapNotNull { it.second.role }
+            .filter { it == "WORK" || it == "RECOVERY" }
+        val orderMatches = plannedWorkOrder == actualWorkOrder
+        summary += "Planned " + expectedWork + " work / " + expectedRecovery +
+            " recovery step(s); observed FIT laps " + actualWork +
+            " work / " + actualRecovery + " recovery step(s)."
+        if (countsMatch && !orderMatches) summary +=
+            "Work/recovery counts match, but their recorded order differs from the plan."
+        summary += "Only labelled FIT laps are compared. Missing warm-up, cool-down or repeated segments cannot be assumed completed."
+        summary += "Matching recorded amounts do not verify prescribed pace, HR targets, or workout quality."
+        return ActivityWorkoutAdherence(
+            when {
+                !countsMatch -> "STEP_COUNTS_DIFFER"
+                !orderMatches -> "STEP_ORDER_DIFFERS"
+                else -> "STEP_COUNTS_MATCH"
+            }, summary, actualWork, actualRecovery
+        )
+    }
+
+    internal fun completedRunLinks(
+        plans: List<PlanSnapshot>,
+        allowedOwners: Set<String>
+    ): List<Pair<PlanSnapshot, PlannedSession>> = plans.asSequence()
+        .filter { it.owner in allowedOwners && it.status in setOf("approved", "paused") &&
+            Engine1Engines.supports(it.engineVersion, it.policyId) }
+        .flatMap { plan -> plan.sessions.asSequence()
+            .filter { it.discipline == "run" && it.status == "completed" &&
+                it.linkedActivityId != null }
+            .map { plan to it }
+        }.toList()
+}
+
+/** A user-entered activity label, stored separately from immutable imported activity data. */
+internal data class UserActivityWorkoutLabel(
+    val kind: ActivityWorkoutKind,
+    val qualitySubtype: ActivityQualitySubtype? = null
+) {
+    init {
+        require(kind != ActivityWorkoutKind.UNKNOWN)
+        require(qualitySubtype == null || kind == ActivityWorkoutKind.QUALITY_RUN)
+    }
+
+    val label: String get() = qualitySubtype?.let { "${kind.label} · ${it.label}" } ?: kind.label
+}
+
+internal object UserActivityWorkoutLabelCodec {
+    private const val VERSION = 1
+
+    fun encode(label: UserActivityWorkoutLabel): String = JSONObject()
+        .put("version", VERSION)
+        .put("kind", label.kind.name)
+        .put("qualitySubtype", label.qualitySubtype?.name)
+        .put("provenance", "USER_REPORTED")
+        .toString()
+
+    fun decode(raw: String): UserActivityWorkoutLabel? = runCatching {
+        val json = JSONObject(raw)
+        require(json.getInt("version") == VERSION)
+        require(json.getString("provenance") == "USER_REPORTED")
+        val kind = ActivityWorkoutKind.valueOf(json.getString("kind"))
+        val subtype = if (json.isNull("qualitySubtype")) null
+            else ActivityQualitySubtype.valueOf(json.getString("qualitySubtype"))
+        UserActivityWorkoutLabel(kind, subtype)
+    }.getOrNull()
+}
+
+internal fun activityCorrectionOwner(activityId: String, state: TrainingState): String? =
+    if (activityId in state.localGarminIds) state.localGarminOwner
+    else state.account ?: state.localPlanOwner

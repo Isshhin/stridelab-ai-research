@@ -1,7 +1,8 @@
+FILE: Engine15IndependentPlanGenerator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-315
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 6
+LINES: 1-326
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -56,7 +57,7 @@ internal sealed interface Engine15IndependentPlanDecision {
 }
 
 /**
- * Assembles the reviewed independent M3ΓÇôM6 running path into app workout
+ * Assembles the reviewed independent M3–M6 running path into app workout
  * contracts. Coach-generated quality and unresolved inputs defer.
  */
 internal object Engine15IndependentPlanGenerator : PlanGenerationEngine {
@@ -318,3 +319,14 @@ internal object Engine15IndependentPlanGenerator : PlanGenerationEngine {
                 id = id, owner = owner, engineVersion = version,
                 policyId = ENGINE15_INDEPENDENT_CALISTHENICS_POLICY, createdAt = now,
                 request = scheduledRequest, sessions = sessions,
+                explanations = listOf(
+                    "Independent Engine 1.5 calisthenics plan; no legacy generator or coaching validator was used.",
+                    "The selected goal and skill levels set the movement, repetition or hold targets and recovery periods.",
+                    "This is a draft. Review each exercise, equipment requirement, schedule and repetition/hold target before explicit approval."
+                ),
+                name = "Engine 1.5 independent calisthenics plan"
+            )
+        }
+        if (request.runDays == 0 && request.strengthDays > 0) {
+            Engine15StrengthWorkoutComposer.validateRequest(request)
+            val library = exerciseLibrary ?: throw PlanConstraint(

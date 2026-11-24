@@ -1,6 +1,7 @@
+FILE: next-week-review-20261115.md
 SOURCE: research/engine15/experiments/next-week-review-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
 LINES: 1-121
 --------------------------------------------------
 # Independent coaching assessment and next-week experiment
@@ -10,14 +11,14 @@ Branch: `research/evidence-responsive-coaching-20261115`. Synthetic research onl
 
 ## Verdict and source assessment
 
-The main limitation is the decision process, not the exact build percentage. The research pipeline has useful typed distance/time and provenance boundaries but no evidence-driven feedback loop connecting successive weeks. Production Engine15 is a different path and must not be described as using M3ΓÇôM5a.
+The main limitation is the decision process, not the exact build percentage. The research pipeline has useful typed distance/time and provenance boundaries but no evidence-driven feedback loop connecting successive weeks. Production Engine15 is a different path and must not be described as using M3–M5a.
 
-1. **High ΓÇö open-loop volume planning.** `IndependentWeeklyMileagePlanner.generate` uses starting load, ceiling, target and week index. It does not observe completion, interruptions or tolerance. Its recovery week is periodic; the following build returns to a pre-recovery anchor. Identical approved inputs yield identical plans despite divergent recent histories. Production `Engine15.runningCeiling` also depends on manual recent mileage and week index. `Engine15Feedback` does provide conservative next-session suggestions from explicit feedback; it is not a weekly adaptive generator.
-2. **High ΓÇö allocate then reject.** M4 fixes a share/even distribution before `IndependentMileageFeasibility` checks per-day ceilings. A feasible alternative can exist: 60 km across six days with a 5 km Monday ceiling fails the original allocation but fits other supplied limits. The new allocator demonstrates this without silently reducing the target.
-3. **High ΓÇö asserted evidence is not verified evidence.** M3 distinguishes missing weeks from zero and rejects conflicting same-ID records. It cannot resolve duplicates with distinct provider IDs or authenticate completeness. M4's approved values and the experiment's TOLERATED response are caller assertions, never trust credentials. In M5a, a boolean and nonblank review reference satisfy a syntactic preview gate; the preview correctly remains nonexecutable. No new authorization route was added.
-4. **High ΓÇö quality distance remains unresolved.** M5a's timed overlays are alternatives, not additions to base kilometers. `distanceReconciled=false` is correct. Production Engine15's descriptive quality steps and stored distance should not be mistaken for source-verified threshold intensity or measured workout distance.
-5. **High ΓÇö incomplete training intent.** Neither this next-week experiment nor M4 models race deadlines, phases, illness, strength fatigue or a recovery decision grounded in feedback. Production includes some goal/return/taper rules; these are not an individualized longitudinal model. This experiment preserves mileage-target semantics and does not claim to solve race preparation.
-6. **Product discrepancy ΓÇö signed-out builder.** `PlanBuilder` immediately returns a sign-in screen when `state.account==null`; this conflicts with the requested core signed-out functionality. The navigation route calls that builder directly. Runtime/account-state reachability remains unverified. Correcting ownership and persistence requires a separate functional change, not removing a UI guard blindly.
+1. **High — open-loop volume planning.** `IndependentWeeklyMileagePlanner.generate` uses starting load, ceiling, target and week index. It does not observe completion, interruptions or tolerance. Its recovery week is periodic; the following build returns to a pre-recovery anchor. Identical approved inputs yield identical plans despite divergent recent histories. Production `Engine15.runningCeiling` also depends on manual recent mileage and week index. `Engine15Feedback` does provide conservative next-session suggestions from explicit feedback; it is not a weekly adaptive generator.
+2. **High — allocate then reject.** M4 fixes a share/even distribution before `IndependentMileageFeasibility` checks per-day ceilings. A feasible alternative can exist: 60 km across six days with a 5 km Monday ceiling fails the original allocation but fits other supplied limits. The new allocator demonstrates this without silently reducing the target.
+3. **High — asserted evidence is not verified evidence.** M3 distinguishes missing weeks from zero and rejects conflicting same-ID records. It cannot resolve duplicates with distinct provider IDs or authenticate completeness. M4's approved values and the experiment's TOLERATED response are caller assertions, never trust credentials. In M5a, a boolean and nonblank review reference satisfy a syntactic preview gate; the preview correctly remains nonexecutable. No new authorization route was added.
+4. **High — quality distance remains unresolved.** M5a's timed overlays are alternatives, not additions to base kilometers. `distanceReconciled=false` is correct. Production Engine15's descriptive quality steps and stored distance should not be mistaken for source-verified threshold intensity or measured workout distance.
+5. **High — incomplete training intent.** Neither this next-week experiment nor M4 models race deadlines, phases, illness, strength fatigue or a recovery decision grounded in feedback. Production includes some goal/return/taper rules; these are not an individualized longitudinal model. This experiment preserves mileage-target semantics and does not claim to solve race preparation.
+6. **Product discrepancy — signed-out builder.** `PlanBuilder` immediately returns a sign-in screen when `state.account==null`; this conflicts with the requested core signed-out functionality. The navigation route calls that builder directly. Runtime/account-state reachability remains unverified. Correcting ownership and persistence requires a separate functional change, not removing a UI guard blindly.
 
 ## Research basis and alternatives
 
@@ -44,7 +45,7 @@ Scope: one new internal production-source file (unreferenced by runtime callers)
 
 ## Comparative results
 
-Run `IndependentCoachingComparisonTest`: 14 named scenarios ├ù baseline, constraint-only, responsive = 42 results. Both alternatives receive the same available scenario evidence; baseline deliberately cannot consume response/history, exposing its current API limitation. These are **one-week** comparisons, not a longitudinal trial. `next-week-comparison-20261115.csv` contains every result.
+Run `IndependentCoachingComparisonTest`: 14 named scenarios × baseline, constraint-only, responsive = 42 results. Both alternatives receive the same available scenario evidence; baseline deliberately cannot consume response/history, exposing its current API limitation. These are **one-week** comparisons, not a longitudinal trial. `next-week-comparison-20261115.csv` contains every result.
 
 | Outcome | Baseline M4 | Constraint-only | Responsive |
 |---|---:|---:|---:|
@@ -57,7 +58,7 @@ The original pipeline would defer its two conflicting candidates downstream; thi
 
 For repeated 30 km completions with a 60 km asserted start and 80 km goal, baseline and constraint-only emit 60 km; responsive emits 30 km. Stable 60/60 yields 60. A 60/100 spike does not raise the candidate. A lower 30 km target is respected by all variants. The repeat-envelope metric is an experimental definition, **not an injury-risk metric**.
 
-**Counterexamples:** after a deliberate 60ΓåÆ40 km recovery week, responsive emits 40 where baseline emits 60. Without recovery intent and tolerance evidence, it cannot identify an appropriate rebuild. Stable athletes cannot progress above the repeat envelope, and absent feedback may cause unnecessary review. Two available days can concentrate 60 km into 30+30 under loose supplied limits: feasibility is not safety. An authenticated per-session history envelope is still missing. Race-goal changes and multi-discipline recovery are not tested by this comparison. No superiority claim across the full requested scenario space is warranted.
+**Counterexamples:** after a deliberate 60→40 km recovery week, responsive emits 40 where baseline emits 60. Without recovery intent and tolerance evidence, it cannot identify an appropriate rebuild. Stable athletes cannot progress above the repeat envelope, and absent feedback may cause unnecessary review. Two available days can concentrate 60 km into 30+30 under loose supplied limits: feasibility is not safety. An authenticated per-session history envelope is still missing. Race-goal changes and multi-discipline recovery are not tested by this comparison. No superiority claim across the full requested scenario space is warranted.
 
 ## Quality time/distance decision
 
@@ -123,3 +124,4 @@ The 95% completed/75% markedly missed/105% excess cutoffs are exploratory **clas
 
 
 ### Local test failure and recovery-overrun ordering correction
+

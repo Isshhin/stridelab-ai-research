@@ -1,0 +1,60 @@
+FILE: TracksideStrengthSetup.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideStrengthSetup.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 413-466
+--------------------------------------------------
+        headline = "What equipment\ndo you have?",
+        description = "StrideLab matches every exercise to your available gear.",
+        ctaLabel = "Save gear",
+        onBack = onBack,
+        onContinue = { onSave(selectedIds.associateWith { 1 }) },
+        descriptionBottomGap = 14,
+        contentTopPadding = 12,
+        headlineLineHeight = 34
+    ) {
+        val selected = selectedIds.size
+        Text(
+            "$selected of ${list.size} selected",
+            color = PlanBuilderPalette.accent,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(12.dp))
+        list.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                pair.forEach { (id, label) ->
+                    val active = id in selectedIds
+                    Surface(
+                        onClick = {
+                            selectedIds = ArrayList(if (active) selectedIds - id else selectedIds + id)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(74.dp)
+                            .testTag("builder-strength-equipment-$id"),
+                        color = if (active) strCoral.copy(alpha = 0.18f) else PlanBuilderPalette.surface,
+                        shape = RoundedCornerShape(15.dp),
+                        border = BorderStroke(
+                            if (active) 1.5.dp else 1.dp,
+                            if (active) strCoral else PlanBuilderPalette.border
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                label,
+                                color = if (active) strCoral else PlanBuilderPalette.secondary,
+                                fontSize = 13.5.sp,
+                                fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+        }
+    }
+}

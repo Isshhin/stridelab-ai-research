@@ -1,0 +1,60 @@
+FILE: PlanOperations.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/PlanOperations.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 215-268
+--------------------------------------------------
+            s.id==next?.id && target.date>=LocalDate.now().minusDays(7) && reason in setOf("Fatigue","Soreness","Illness") -> s.copy(suggestion=SessionSuggestion(if(reason=="Illness") 0 else maxOf(10,(s.minutes*.7).toInt()),"After your reported $reason: consider ${if(reason=="Illness") "rest" else "an easier, shorter session or rest"}. No catch-up volume is added. This is a suggestion awaiting your choice, not a diagnosis."))
+            else -> s
+        } })
+    }
+    fun runResponse(plan:PlanSnapshot,sessionId:String,effort:Int?,difficulty:String?,discomfort:String?,performedOn:LocalDate?,now:Instant=Instant.now()):PlanSnapshot {
+        compatible(plan)
+        val session=plan.sessions.singleOrNull { it.id==sessionId } ?: throw PlanConstraint("This workout is unavailable.")
+        if(plan.engineVersion!=ENGINE15_VERSION || plan.status !in setOf("approved","paused") || session.discipline!="run" || session.status!="completed")
+            throw PlanConstraint("Post-run feedback requires a completed Engine 1.5 run.")
+        if(effort!=null && effort !in 1..10 || performedOn!=null && performedOn>now.atZone(java.time.ZoneId.systemDefault()).toLocalDate())
+            throw PlanConstraint("Check the reported effort and actual workout date.")
+        if(session.logRevision==Int.MAX_VALUE)throw PlanConstraint("This feedback record needs review before editing.")
+        val response=WorkoutLog(now,effort=effort,performedOn=performedOn,completionDifficulty=difficulty,discomfort=discomfort)
+        return plan.copy(sessions=plan.sessions.map { if(it.id==sessionId)it.copy(runResponse=response,logRevision=it.logRevision+1) else it })
+    }
+    fun acceptSuggestion(plan:PlanSnapshot,sessionId:String):PlanSnapshot {
+        compatible(plan)
+        return plan.copy(sessions=plan.sessions.map { s ->
+        if(s.id!=sessionId || s.suggestion==null || s.status!="planned" || s.log!=null) s else if(s.suggestion.minutes==0) s.copy(status="skipped",missedReason="Recovery rest chosen",suggestion=s.suggestion.copy(accepted=true)) else s.copy(suggestion=s.suggestion.copy(accepted=true))
+    })
+    }
+    fun feedback(plan:PlanSnapshot,category:String,text:String,sessionId:String?=null,now:Instant=Instant.now()):PlanSnapshot {
+        compatible(plan)
+        if(category !in setOf("Plan quality","Inappropriate prescription","Workout quality","Usability") || text.trim().length !in 3..2000)throw PlanConstraint("Choose a feedback category and enter 3–2000 characters.")
+        if(sessionId!=null && plan.sessions.none { it.id==sessionId })throw PlanConstraint("Feedback workout is unavailable.")
+        return plan.copy(feedback=plan.feedback+PlanFeedback(UUID.randomUUID().toString(),now,category,text.trim(),sessionId))
+    }
+
+    fun adjustDifficulty(plan:PlanSnapshot,sessionId:String,delta:Int):PlanSnapshot {
+        compatible(plan)
+        if(plan.status !in setOf("draft","approved","paused"))
+            throw PlanConstraint("Only draft, approved, or paused workouts can be adjusted.")
+        val session=plan.sessions.firstOrNull { it.id==sessionId }
+            ?: throw PlanConstraint("Workout is no longer available.")
+        if(session.status !in setOf("planned","in_progress"))
+            throw PlanConstraint("Only a planned or active workout can have its difficulty adjusted.")
+        val targetStep=if(delta==0) 0 else (session.difficultyStep+delta).coerceIn(-2,2)
+        if(targetStep==session.difficultyStep)return plan
+        val adjusted=Engine15WorkoutDifficultyAdjuster.adjust(session,plan.request,targetStep).copy(suggestion=null)
+        session.log?.let { WorkoutLogValidation.validate(adjusted,it) }
+        if(PlanScheduleValidation.isMultiPolicy(plan.policyId) &&
+            (plan.policyId!=ENGINE15_INDEPENDENT_COMBINED_POLICY || plan.request.timeBudgetEnabled)) {
+            val sameDayOther=plan.sessions.filter {
+                it.id!=sessionId && it.date==adjusted.date && it.status !in setOf("missed","skipped","unassigned")
+            }.sumOf { it.effectiveMinutes }
+            if(sameDayOther+adjusted.effectiveMinutes>plan.request.dailyMinutes)
+                throw PlanConstraint("Making this workout harder would exceed your ${plan.request.dailyMinutes}-minute daily time budget.")
+        }
+        val updated=plan.copy(sessions=plan.sessions.map { if(it.id==sessionId) adjusted else it })
+        if(plan.engineVersion==ENGINE15_VERSION && plan.status=="approved")
+            PlanScheduleValidation.validatePlan(updated)
+        return updated
+    }
+}

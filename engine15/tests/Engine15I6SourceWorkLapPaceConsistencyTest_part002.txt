@@ -1,24 +1,9 @@
+FILE: Engine15I6SourceWorkLapPaceConsistencyTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I6SourceWorkLapPaceConsistencyTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 404-458
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 420-458
 --------------------------------------------------
-    @Test fun I5DistanceAndI4HrAndI3SourceDeferralsCannotBypassI6() {
-        val six=source(recent=75.0,target=80.0,longest=20.0,days=6)
-        val q=request(slot=2)
-        deferred("UPSTREAM_ALLOCATION_ABOVE_ASSERTED_MAXIMUM",
-            s=six,q=q,ranges=configuration(six,q))
-        val missingHr=evidence(change = { items ->
-            listOf(items[0].copy(
-                detail=requireNotNull(items[0].detail).copy(
-                    samples=requireNotNull(items[0].detail).samples.map {
-                        if (it.seconds in 900.0..1140.0)
-                            it.copy(hr=null) else it
-                    })
-            ),items[1])
-        })
-        deferred("UPSTREAM_I4_INSUFFICIENT_WORK_LAP_HR_COVERAGE",
-            record=missingHr)
         val duplicate=evidence(change = { items ->
             listOf(items[0],items[1].copy(lapClaim=items[1].lapClaim.copy(
                 evidence=items[1].lapClaim.evidence.copy(

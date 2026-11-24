@@ -1,9 +1,10 @@
+FILE: engine15-q2-mixed-unit-cooldown-20261116.md
 SOURCE: research/engine15-q2-mixed-unit-cooldown-20261116.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-37
 --------------------------------------------------
-# Engine 1.5 Q2 ΓÇö versioned mixed-unit prescriptions and bounded cool-down
+# Engine 1.5 Q2 — versioned mixed-unit prescriptions and bounded cool-down
 
 **Status: implemented as a draft candidate, not yet built or verified on Android.** This branch is stacked on research Q1 PR #103, which was based on UI PR #102. Neither parent branch is merged or changed by Q2.
 
@@ -11,7 +12,7 @@ LINES: 1-37
 
 - Existing version-1 `RunningSegment` and distance-only prescription serialization remain intact for historical plans and existing workout backups.
 - A nested version-2 `RunningPrescription` uses `RunningStepV2` with **one executable extent per step**, `meters` or `seconds`, and rejects unknown future versions and invalid mixed extents.
-- Newly generated quality workouts retain existing Engine 1.5 **WORK and RECOVERY distance doses** (Q3 will address conservative dose selection), replacing legacy distance warm-up/cool-down with **10ΓÇô12 min warm-up and 8 min or minimum 5 min cool-down**.
+- Newly generated quality workouts retain existing Engine 1.5 **WORK and RECOVERY distance doses** (Q3 will address conservative dose selection), replacing legacy distance warm-up/cool-down with **10–12 min warm-up and 8 min or minimum 5 min cool-down**.
 - Remainder distance is **not** added to cool-down, hidden in easy running, or automatically redistributed. If minimum support steps cannot fit the original session-distance allowance and (where explicitly enabled) time allowance, quality is withheld and an easy alternative is used.
 - Mixed workouts have `PlannedSession.distanceKm=null` because the total is not an exact distance prescription. A separate `RunningPrescription.estimatedDistanceKm` is a **planning-pace administrative estimate**, not measured performance or a runnable distance target.
 - The original long-run 40% and work-distance 20% guardrails are rechecked on the smaller estimated delivered week; no work-dose increase is authorized by Q2.

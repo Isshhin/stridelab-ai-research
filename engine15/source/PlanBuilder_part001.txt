@@ -1,0 +1,346 @@
+FILE: PlanBuilder.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 4
+LINES: 1-340
+--------------------------------------------------
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+package io.stridelab.privatealpha
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import org.json.JSONObject
+
+@Composable
+internal fun PlanBuilder(
+    state: TrainingState,
+    actions: PlanActions,
+    discipline: String = "all",
+    onDone: () -> Unit,
+    onSignIn: () -> Unit,
+    historySuggestion: HistoryBaselineSuggestion? = null,
+    onPreview: (String, String) -> Unit
+) {
+    // Signed-out plans are persisted under an isolated on-device owner.
+    // Cloud sign-in remains optional for backup; generating does not need it.
+    val athletePlans = remember(state.plans, state.account, state.localPlanOwner) {
+        state.plans.filter { it.owner == (state.account ?: state.localPlanOwner) }
+    }
+    val observedBaseline=remember(state.activities,athletePlans) {
+        runningPlanHistory(state.activities, athletePlans)
+    }
+    val detectedExperience=remember(state.activities,state.plans) {
+        automaticRunningExperience(state.activities,plans=athletePlans)
+    }
+    val historicalEasyPace=remember(state.activities) {
+        Engine15PaceZoneEstimator.inferHistoricalEasyPaceSecondsPerKm(state.activities, 360.0)
+    }
+    val initial=remember {
+        val baseline=PlanRequest(
+            experience=detectedExperience ?: 0, planningPace=historicalEasyPace,
+            recentMileageBasis="UNKNOWN", qualityCount=1, qualityDays=setOf(2),
+            days=setOf(1,2,3,4,5,7), longDay=7
+        )
+        when(discipline) {
+            "run" -> sanitizeRunningScheduleDays(baseline.copy(
+                runDays=3,strengthDays=0,calDays=0,conditioningDays=0,
+                qualityCount=if(baseline.qualityCount>0) baseline.qualityCount else 1,
+                weeklySlots=emptyMap(),disciplineGoals=emptyMap()
+            ))
+            "str" -> baseline.copy(
+                goal="General strength",runDays=0,strengthDays=2,
+                calDays=0,conditioningDays=0,qualityCount=0,
+                qualityDays=emptySet(),weeklySlots=emptyMap(),
+                disciplineGoals=emptyMap()
+            )
+            "cal" -> baseline.copy(
+                goal="Calisthenics foundation",runDays=0,strengthDays=0,
+                calDays=2,conditioningDays=0,qualityCount=0,
+                qualityDays=emptySet(),weeklySlots=emptyMap(),
+                disciplineGoals=emptyMap()
+            )
+            "plyo", "iso" -> chooseStrengthTrack(
+                baseline.copy(runDays=0, qualityCount=0, qualityDays=emptySet()), discipline, deselect=false
+            )
+            "cond" -> baseline.copy(
+                goal="Conditioning", runDays=0, conditioningDays=1, qualityCount=0, qualityDays=emptySet()
+            )
+            else -> if (state.plans.any { it.status == "approved" }) baseline.copy(
+                runDays = 0, strengthDays = 0, calDays = 0, conditioningDays = 0,
+                qualityCount = 0, qualityDays = emptySet(), weeklySlots = emptyMap(),
+                disciplineGoals = emptyMap(), lockedSessionDays = emptyMap()
+            ) else baseline
+        }.let(::sanitizeRunningScheduleDays).copy(timeBudgetEnabled=false)
+    }
+    var encoded by rememberSaveable { mutableStateOf(initial.encode().toString()) }
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    val configured=remember(encoded) { PlanRequest.decode(JSONObject(encoded)) }
+    var gearOverride by rememberSaveable { mutableStateOf<String?>(null) }
+    var extraResistance by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    val gear = remember(gearOverride, state.savedEquipment, athletePlans, configured) {
+        gearOverride?.let { PlanRequest.decode(JSONObject(it)).equipment }
+            ?: builderEquipmentFor(state, configured.copy(equipment = initial.equipment))
+    }
+    var longestOverride by rememberSaveable { mutableStateOf<Double?>(null) }
+    var experienceOverride by rememberSaveable { mutableStateOf<Int?>(null) }
+    val input=observedBaseline.applyTo(configured).let { request ->
+        request.copy(
+            longestKm = longestOverride ?: request.longestKm,
+            experience = experienceOverride ?: detectedExperience ?: request.experience,
+            planningPace = historicalEasyPace,
+            equipment = gear
+        )
+    }
+    val trackCount = HybridPlanBuilder.split(input, extraResistance.toSet()).size
+    val isHybrid = trackCount > 1
+    fun edit(p:PlanRequest) {
+        // Keep derived fields live as imports arrive while the builder is open.
+        val saved = if (p.recentMileageBasis == "RECORDED_PARTIAL")
+            p.copy(weeklyKm=0.0, recentMileageBasis="UNKNOWN") else p
+        encoded=saved.copy(longestKm=0.0).encode().toString()
+    }
+    var targetKm by rememberSaveable { mutableStateOf((initial.targetWeeklyKm ?: initial.weeklyKm).toString()) };var targetSupplied by rememberSaveable { mutableStateOf(initial.targetWeeklyKm != null) }
+    var peakWeekKm by rememberSaveable {
+        mutableStateOf(initial.reportedPeakWeeklyKm?.toString() ?: "")
+    }
+    var start by rememberSaveable { mutableStateOf(maxOf(initial.start,LocalDate.now()).toString()) }
+    var weeks by rememberSaveable { mutableStateOf(initial.weeks.toString()) };var minutes by rememberSaveable { mutableStateOf(initial.minutes.toString()) };var dailyMinutes by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var awaiting by rememberSaveable { mutableStateOf(false) }
+    var beforeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var previewId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingApprovalId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingTracks by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    var previewTrack by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(state.busy,state.plans,state.planPreview,state.hybridPlanPreview,state.message) {
+        if(awaiting && !state.busy) {
+            val newest=state.planPreview
+            val batch = state.hybridPlanPreview
+            if(batch != null && batch.id != beforeId) {
+                previewId = batch.id
+                previewTrack = batch.drafts.first().first
+                step = 4
+                error = null
+                awaiting = false
+            } else if(newest!=null && newest.id!=beforeId && newest.status=="draft") {
+                previewId=newest.id
+                step=4
+                error=null
+                awaiting=false
+            } else if(state.message!=null) {
+                // The scheduler may reject conflicts after request validation.
+                // Keep the athlete in review with the actual recovery reason.
+                error=coachBuilderError(state.message)
+                awaiting=false
+            }
+        }
+        val target=pendingApprovalId
+        if(target!=null && !state.busy) {
+            val ids = pendingTracks.ifEmpty { listOf(target) }
+            if(ids.all { id -> state.plans.any { it.id == id && it.status == "approved" } }) {
+                pendingApprovalId=null
+                pendingTracks = arrayListOf()
+                error=null
+                onDone()
+            } else if(state.message!=null) {
+                error=coachBuilderError(state.message)
+                pendingApprovalId=null
+                pendingTracks = arrayListOf()
+            }
+        }
+    }
+    fun request():PlanRequest=try {
+        val peak=peakWeekKm.trim().takeIf { it.isNotEmpty() }?.toDouble()
+        if(peak!=null && (!peak.isFinite() || peak !in 0.0..120.0))
+            throw PlanConstraint("Enter a valid recent peak between 0 and 120 km/week.")
+        if(input.recentMileageBasis=="PEAK_WEEK_ONLY" && (peak==null || peak<=0.0))
+            throw PlanConstraint("Enter your peak weekly mileage, or select Unknown if you cannot estimate it.")
+        val dailyLimit = if (isHybrid) hybridDailyLimit(dailyMinutes) else null
+        input.copy(
+            start=LocalDate.parse(start),weeks=weeks.toInt(),minutes=minutes.toInt(),
+            dailyMinutes=dailyLimit ?: input.dailyMinutes,
+            targetWeeklyKm=if(targetSupplied) targetKm.toDouble() else null,
+            reportedPeakWeeklyKm=peak,timeBudgetEnabled=dailyLimit != null
+        )
+    } catch(e:PlanConstraint) { throw e }
+      catch(e:Exception) {
+        throw PlanConstraint("Enter valid dates, plan length and mileage targets.")
+    }
+    var previewWeek by rememberSaveable { mutableIntStateOf(0) }
+    var runningSubPage by rememberSaveable { mutableIntStateOf(0) }
+    var scheduleSubPage by rememberSaveable { mutableIntStateOf(0) }
+    var runningSelectedSlot by rememberSaveable { mutableIntStateOf(0) }
+    var otherSelectedDiscipline by rememberSaveable { mutableStateOf("str") }
+    var otherSelectedSlot by rememberSaveable { mutableIntStateOf(0) }
+    var runningCustom by rememberSaveable { mutableStateOf(false) }
+    var desiredQualityCount by rememberSaveable { mutableIntStateOf(initial.qualityCount) }
+    var qualityPreference by rememberSaveable {
+        mutableStateOf(initial.preferredQuality)
+    }
+    var advancedQualityCsv by rememberSaveable {
+        mutableStateOf(
+            (initial.allowedQualityTypes.ifEmpty {
+                setOf("Threshold","Tempo")
+            }).sorted().joinToString("|")
+        )
+    }
+    val advancedQualityTypes = advancedQualityCsv.split('|').filter { it.isNotBlank() }.toSet()
+    var advancedBackPage by rememberSaveable { mutableIntStateOf(0) }
+    var guidedFocus by rememberSaveable { mutableStateOf("10K") }
+    var editingAbilityFromGuided by rememberSaveable { mutableStateOf(false) }
+    var crossTrainingGoals by rememberSaveable { mutableStateOf(false) }
+    var strengthGoalSaved by rememberSaveable { mutableStateOf(false) }
+    var strengthSetupSaved by rememberSaveable { mutableStateOf(false) }
+    var strengthSelectedSlot by rememberSaveable { mutableIntStateOf(0) }
+    var crossGoalsSaved by rememberSaveable { mutableStateOf(false) }
+    var caliSelectedSlot by rememberSaveable { mutableIntStateOf(0) }
+    var strengthGoalLabel by rememberSaveable {
+        mutableStateOf(when(Engine1Engines.goal(initial,"str")) {
+            "Muscle development" -> "Build Muscle"
+            "Strength endurance" -> "Maintain Fitness"
+            in Engine15DisciplineProgression.goals.getValue("str") -> Engine1Engines.goal(initial, "str")
+            else -> "Build Strength"
+        })
+    }
+    var runningRoute by rememberSaveable { mutableStateOf(if(initial.trainYourWay) "custom" else "race") }
+    var raceIntent by rememberSaveable { mutableStateOf("pr") }
+    var raceDistance by rememberSaveable { mutableStateOf(when(input.goal) {
+        "Improve 10K" -> "10K"
+        "Half marathon" -> "21K"
+        "Marathon" -> "42K"
+        else -> "5K"
+    }) }
+    val batch = state.hybridPlanPreview?.takeIf { it.id == previewId }
+    val preview = batch?.drafts?.firstOrNull { it.first == previewTrack }?.second
+        ?: batch?.drafts?.firstOrNull()?.second ?: state.displayedPlanPreview?.takeIf { it.id == previewId }
+    androidx.activity.compose.BackHandler(enabled = step == 4 && !state.busy) {
+        actions.discardPlanPreview()
+        step = 2
+        scheduleSubPage = 0
+    }
+    if (step == 3 || (step == 4 && preview == null && !awaiting && pendingApprovalId == null)) {
+        LaunchedEffect(Unit) {
+            scheduleSubPage = 0
+            step = 2
+        }
+        return
+    }
+    val stageKey = when {
+        step == 4 && preview != null -> 40
+        step == 0 -> 0
+        step == 1 && input.runDays > 0 && !crossTrainingGoals -> when (runningSubPage) {
+            0 -> 10
+            1 -> 11
+            5 -> 12
+            3 -> if (runningRoute == "custom") 14 else 13
+            2 -> if (runningRoute == "custom") 13 else 14
+            else -> 15
+        }
+        step == 1 && (input.runDays == 0 || crossTrainingGoals) -> when {
+            input.strengthDays > 0 && !strengthGoalSaved && strengthTrack(input) == "str" -> 20
+            input.strengthDays > 0 && !strengthSetupSaved -> 21
+            input.calDays > 0 && crossGoalsSaved -> 23
+            else -> 22
+        }
+        step == 2 -> 30
+        else -> 50
+    }
+    AnimatedContent(
+        targetState = stageKey,
+        transitionSpec = {
+            val forward = targetState >= initialState
+            val enterSlide = slideInHorizontally(animationSpec = tween(220)) { if (forward) it / 6 else -it / 6 }
+            val exitSlide = slideOutHorizontally(animationSpec = tween(180)) { if (forward) -it / 6 else it / 6 }
+            (enterSlide + fadeIn(tween(200))) togetherWith (exitSlide + fadeOut(tween(160)))
+        },
+        label = "plan-builder-stage"
+    ) { activeStage ->
+        when (activeStage) {
+            40 -> {
+                val activePreview = preview ?: return@AnimatedContent
+                val controls: (@Composable () -> Unit)? = if (batch != null) {
+                    { HybridBlueprintControls(batch, previewTrack, previewWeek) { previewTrack = it } }
+                } else null
+                TracksideWeekReview(
+                    request = activePreview.request,
+                    plan = activePreview,
+                    busy = state.busy || awaiting || pendingApprovalId != null,
+                    onBack = {
+                        actions.discardPlanPreview()
+                        step = 2
+                        scheduleSubPage = 0
+                    },
+                    onContinue = {
+                        if (!state.busy && pendingApprovalId == null) {
+                            error = null
+                            pendingApprovalId = batch?.id ?: activePreview.id
+                            if (batch != null) {
+                                pendingTracks = ArrayList(batch.drafts.map { it.second.id })
+                                actions.approveHybrid(batch.id)
+                            } else actions.approve(activePreview.id, activePreview.revision)
+                        }
+                    },
+                    onOpenSession = { sessionId -> onPreview(activePreview.id, sessionId) },
+                    weekIndex = previewWeek,
+                    onWeekChange = { previewWeek = it },
+                    error = error,
+                    supportReview = state.planPreviewSupportReview?.takeIf { it.candidate.id == activePreview.id },
+                    recoveryNote = if (state.planPreviewSupportReview == null)
+                        PlanScheduleValidation.crossPlanRecoveryNote(activePreview, state.plans) else null,
+                    onChooseGoalOption = { chosen ->
+                        error = null; beforeId = batch?.id ?: state.planPreview?.id; awaiting = true
+                        val revised = if (batch != null) chosen.copy(
+                            strengthDays = input.strengthDays, calDays = input.calDays,
+                            conditioningDays = input.conditioningDays,
+                            disciplineGoals = input.disciplineGoals + ("run" to chosen.goal),
+                            weeklySlots = input.weeklySlots.filterKeys { it != "run" } + chosen.weeklySlots
+                        ) else chosen
+                        weeks = revised.weeks.toString(); targetKm = revised.targetWeeklyKm.toString(); targetSupplied = true; edit(revised)
+                        if (batch != null) actions.generateHybrid(HybridPlanBuilder.split(revised, extraResistance.toSet())) else actions.generate(revised)
+                    },
+                    activities = state.activities,
+                    activationLabel = batch?.let { "Activate ${it.drafts.size} tracks" } ?: "Activate Plan",
+                    trackControls = controls
+                )
+            }
+            0 -> TracksideDisciplineScreen(
+            request = input,
+            onToggle = { d ->
+                val active = when(d) {
+                    "run" -> input.runDays > 0
+                    "str", "plyo", "iso" -> d in extraResistance ||
+                        input.strengthDays > 0 && strengthTrack(input) == d
+                    "cal" -> input.calDays > 0
+                    else -> input.conditioningDays > 0
+                }
+                val toggled=when(d) {
+                    "run" -> {
+                        if (active) {
+                            desiredQualityCount = 0
+                            input.copy(runDays=0, qualityCount=0, qualityDays=emptySet())
+                        } else {
+                            desiredQualityCount = 1
+                            sanitizeRunningScheduleDays(input.copy(runDays=3, qualityCount=1))
+                        }
+                    }
+                    "str", "plyo", "iso" -> {
+                        val primary = strengthTrack(input)

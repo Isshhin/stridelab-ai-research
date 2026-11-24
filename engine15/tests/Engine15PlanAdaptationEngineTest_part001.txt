@@ -1,7 +1,8 @@
+FILE: Engine15PlanAdaptationEngineTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-318
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-335
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -321,3 +322,20 @@ class Engine15PlanAdaptationEngineTest {
         val wkDiff = prop.diff.weekDiffs.first()
         assertEquals("RECOVERY", wkDiff.phaseAfter)
         assertTrue(wkDiff.plannedKmAfter <= wkDiff.plannedKmBefore * 0.85)
+        assertEquals(0, wkDiff.qualityCountAfter)
+    }
+
+    @Test
+    fun preSurfaceInvariantGateRejectsTamperedCandidateAndContractsRoundTrip() {
+        val asOf = startMonday.plusDays(27)
+        val (plan, _, matches) = markFirstWeeksCompletedAndBuildActivities(generateApprovedPlan(), asOf)
+        val linkedIds = matches.values.mapNotNull { it.plannedSessionId }.toSet()
+
+        // Mutate a past completed session illegally -> gate MUST reject!
+        val illegalPastEdit = plan.copy(
+            sessions = plan.sessions.mapIndexed { idx, s ->
+                if (idx == 0) s.copy(minutes = s.minutes + 20) else s
+            }
+        )
+        val outcome = Engine15PlanAdaptationEngine.validateCandidatePlan(
+            originalPlan = plan,

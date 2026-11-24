@@ -1,26 +1,9 @@
+FILE: Engine15PaceZoneEstimator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 351-492
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 369-492
 --------------------------------------------------
-            RunningStepIntent.WARMUP,
-            RunningStepIntent.COOLDOWN,
-            RunningStepIntent.RECOVERY -> z1Low to z2High
-            RunningStepIntent.AEROBIC_EASY -> (z1High + 1) to z2High
-            RunningStepIntent.STEADY,
-            RunningStepIntent.TEMPO -> (z2High + 1) to z3High
-            RunningStepIntent.THRESHOLD,
-            RunningStepIntent.RACE_PACE -> (z3High + 1) to z4High
-            RunningStepIntent.VO2_INTERVAL,
-            RunningStepIntent.HILL,
-            RunningStepIntent.STRIDE -> (z3High + 1) to z5High
-        }
-        val minBpm = rawMin.coerceIn(60, 230)
-        val maxBpm = rawMax.coerceIn(minBpm, 230)
-        return minBpm to maxBpm
-    }
-
-    /**
      * Automatically computes reconciled whole-meter per-segment equivalents for
      * every loading-week alternative in a quality dry-run so they sum to each
      * slot's exact easy-run kilometer budget without warping WORK-segment pace

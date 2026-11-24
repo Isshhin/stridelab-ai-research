@@ -1,9 +1,10 @@
+FILE: m10.1-android-validation-20261115.md
 SOURCE: research/engine15/experiments/m10.1-android-validation-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-78
 --------------------------------------------------
-# Engine 1.5 M10.1 ΓÇö Android validation
+# Engine 1.5 M10.1 — Android validation
 
 Date: 2026-11-15. Validates M10d commit `872d6f0d` on `integration/engine15-m10d-android-reconciliation-20261115`. M10.1 is **PARTIALLY VALIDATED** because four pre-existing responsive-layout geometry checks fail on both M10d and the exact M10c parent.
 
@@ -19,15 +20,15 @@ Date: 2026-11-15. Validates M10d commit `872d6f0d` on `integration/engine15-m10d
 
 Commands were run from `native-android` with JDK 21, Gradle 8.13, local Android SDK, and the disposable `codex-engine15-clean-20261113` Android 15 / API 35 AVD.
 
-- `:app:testDebugUnitTest` ΓÇö **710 tests, 90 suites; 710 passed, 0 failed, 0 skipped**.
-- `:app:assembleDebug` ΓÇö BUILD SUCCESSFUL.
-- `:app:assembleDebugAndroidTest` ΓÇö BUILD SUCCESSFUL; instrumentation source compiled.
-- Focused runtime set: `IndependentResearchDraftRepositoryTest`, `TracksideEngineBuilderIntegrationTest`, the three M10d responsive-review scenarios, and `PlanBuilderRouteRestorationTest` ΓÇö **13 passed, 0 failed, 0 skipped**.
-- Full M10 instrumentation set (those repository/builder tests plus all of `TracksideResponsiveQaTest` and route-restoration coverage) ΓÇö **38 executed, 34 passed, 4 failed, 0 skipped**.
-- `git diff --check` ΓÇö clean after final newline correction.
+- `:app:testDebugUnitTest` — **710 tests, 90 suites; 710 passed, 0 failed, 0 skipped**.
+- `:app:assembleDebug` — BUILD SUCCESSFUL.
+- `:app:assembleDebugAndroidTest` — BUILD SUCCESSFUL; instrumentation source compiled.
+- Focused runtime set: `IndependentResearchDraftRepositoryTest`, `TracksideEngineBuilderIntegrationTest`, the three M10d responsive-review scenarios, and `PlanBuilderRouteRestorationTest` — **13 passed, 0 failed, 0 skipped**.
+- Full M10 instrumentation set (those repository/builder tests plus all of `TracksideResponsiveQaTest` and route-restoration coverage) — **38 executed, 34 passed, 4 failed, 0 skipped**.
+- `git diff --check` — clean after final newline correction.
 - Hosted workflow on pushed head `fcbf2008da0c1857f7065747a17e84a62a63939e`: run [43692814444](https://github.com/Isshhin/stridelab-development/actions/runs/43692814444) completed FAILED. `android-unit` and `offline-library` failed after 1 second with zero steps; GitHub returned no failed-job logs. It did not execute tests, so local results remain the only executed test evidence.
 
-The four failures are `runningGoalSelectionMatchesApprovedFigmaAtCurrentViewport`, `runningAbilityMatchesFigmaAndRemainsInteractiveAtCurrentViewport`, `disciplineSelectionMatchesApprovedFigmaAtCurrentViewport`, and `runningWeekMatchesFigmaAndKeepsWeekdayEditingUsable`. All four were rerun at the same 412├ù950 dp reference viewport on a detached, untouched M10c parent worktree and all four failed there with the same geometry assertions. Their implementation files were not changed by M10d. Assertions were preserved; these are pre-existing layout/test-reference mismatches, not M10d regressions.
+The four failures are `runningGoalSelectionMatchesApprovedFigmaAtCurrentViewport`, `runningAbilityMatchesFigmaAndRemainsInteractiveAtCurrentViewport`, `disciplineSelectionMatchesApprovedFigmaAtCurrentViewport`, and `runningWeekMatchesFigmaAndKeepsWeekdayEditingUsable`. All four were rerun at the same 412×950 dp reference viewport on a detached, untouched M10c parent worktree and all four failed there with the same geometry assertions. Their implementation files were not changed by M10d. Assertions were preserved; these are pre-existing layout/test-reference mismatches, not M10d regressions.
 
 The 13 passing runtime scenarios cover the new M10 boundaries: production generation/approval/offline reopening; explicit preview-only research selection; mode-state restoration; non-executable saved review reopening; same-owner mixed backup restore; foreign-owner refusal; no partial restore on identifier conflict; sign-in isolation; invalid preview failure preserving an approved plan and earlier reviews.
 
@@ -43,18 +44,18 @@ The four affected tests pass individually at the 412x950dp reference viewport (f
 
 ### Process-death and persistence
 
-The existing `Engine15ProcessRestartTest` and `run-engine15-process-restart.ps1` harness were extended, not replaced. For each of seven synthetic scenariosΓÇödraft, approved, equal current/target mileage, completed workout, feedback, accepted suggestion and dismissed suggestionΓÇöthe harness ran a writer instrumentation invocation, force-stopped the app, verified `pidof` returned no process, relaunched through the Android launcher, and ran a separate verifier instrumentation invocation with a different PID and an offline-only gateway. All seven scenarios passed on the disposable Android 15/API 35 `codex-engine15-clean-20261113` emulator. Every scenario also stored and restored an experimental research review; assertions verified same-owner restoration, sibling-owner invisibility, no executable/production flags, and rejection by the executable `PlanSnapshot` decoder.
+The existing `Engine15ProcessRestartTest` and `run-engine15-process-restart.ps1` harness were extended, not replaced. For each of seven synthetic scenarios—draft, approved, equal current/target mileage, completed workout, feedback, accepted suggestion and dismissed suggestion—the harness ran a writer instrumentation invocation, force-stopped the app, verified `pidof` returned no process, relaunched through the Android launcher, and ran a separate verifier instrumentation invocation with a different PID and an offline-only gateway. All seven scenarios passed on the disposable Android 15/API 35 `codex-engine15-clean-20261113` emulator. Every scenario also stored and restored an experimental research review; assertions verified same-owner restoration, sibling-owner invisibility, no executable/production flags, and rejection by the executable `PlanSnapshot` decoder.
 
 Experimental route selection remains a `rememberSaveable` screen-state contract; it is verified with the existing Compose saved-state restoration test, not claimed as a persisted preference across force-stop-and-launch. Stored production plans and research records were verified across actual process death and offline reopening. No owner phone, real account, athlete record or network service was used.
 
 ### Full verification
 
-- `:app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --rerun-tasks --no-daemon` ΓÇö BUILD SUCCESSFUL; XML reports show **710 JVM tests, 0 failures, 0 skipped**. All 72 Gradle actions executed.
-- Final M10 instrumentation selection (`IndependentResearchDraftRepositoryTest`, `TracksideEngineBuilderIntegrationTest`, `TracksideResponsiveQaTest`, `PlanBuilderRouteRestorationTest`) ΓÇö **38 passed, 0 failed, 0 skipped** at 412x950dp/1.0x.
-- Focused responsive checks ΓÇö four affected cases passed at 412x950dp/1.0x, four passed at 412x950dp/1.3x, and the running-week editor passed at 360x800dp/1.3x.
-- Process-death harness ΓÇö **7/7 scenario pairs passed** (14 one-test instrumentation invocations); all verified old-process absence, new PID, offline restoration and research non-executability.
-- `:app:assembleDebug` and `:app:assembleDebugAndroidTest` ΓÇö BUILD SUCCESSFUL on final application/test sources.
-- `git diff --check` ΓÇö clean before commit.
+- `:app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --rerun-tasks --no-daemon` — BUILD SUCCESSFUL; XML reports show **710 JVM tests, 0 failures, 0 skipped**. All 72 Gradle actions executed.
+- Final M10 instrumentation selection (`IndependentResearchDraftRepositoryTest`, `TracksideEngineBuilderIntegrationTest`, `TracksideResponsiveQaTest`, `PlanBuilderRouteRestorationTest`) — **38 passed, 0 failed, 0 skipped** at 412x950dp/1.0x.
+- Focused responsive checks — four affected cases passed at 412x950dp/1.0x, four passed at 412x950dp/1.3x, and the running-week editor passed at 360x800dp/1.3x.
+- Process-death harness — **7/7 scenario pairs passed** (14 one-test instrumentation invocations); all verified old-process absence, new PID, offline restoration and research non-executability.
+- `:app:assembleDebug` and `:app:assembleDebugAndroidTest` — BUILD SUCCESSFUL on final application/test sources.
+- `git diff --check` — clean before commit.
 
 ### Hosted workflow investigation
 
@@ -74,7 +75,7 @@ The stacked follow-up PR #93 created exact-head run [43697163791](https://github
 
 - No owner physical phone was used. Compose saved-state restoration was exercised; true OS process death for the new route selection was not separately simulated.
 - Backups remain exact-owner scoped; moving a signed-out backup to a different device identity/account is unsupported. No owner reparenting is performed.
-- Existing M10aΓÇôM10c experimental prescription/source evidence remains insufficient for executable-plan promotion. Research stays preview-only.
+- Existing M10a–M10c experimental prescription/source evidence remains insufficient for executable-plan promotion. Research stays preview-only.
 - Hosted CI status is checked after push; local passes do not establish hosted CI.
 - **M10d:** PASS (implementation committed separately).
 - **M10.1:** PARTIAL, because the four M10c-baseline responsive geometry checks remain failing.

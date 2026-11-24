@@ -1,9 +1,10 @@
+FILE: m10c-review-only-engine-selection-20261115.md
 SOURCE: research/engine15/experiments/m10c-review-only-engine-selection-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-50
 --------------------------------------------------
-# Engine 1.5 M10c ΓÇö Explicit review-only research route and versioned local artifacts
+# Engine 1.5 M10c — Explicit review-only research route and versioned local artifacts
 
 Date: 2026-11-15. Stacked on draft PR #90 (signed-out local owner). **M10 is still incomplete.** No tests or Android build have been executed for M10c.
 
@@ -13,7 +14,7 @@ The existing Android \`PlanSnapshot\` contract is a complete playable/approvable
 
 M10c therefore adds an actual **explicit route in Android Week Preview**:
 
-- **Existing coach (default)**: runs the current \`TracksideCoaching.request\` ΓåÆ \`PlanActions.generate\` ΓåÆ \`TrainingRepository.generatePlan\` ΓåÆ \`Engine1Engines.resolve\` path. The legacy/active Engine 1.5 engine, approved plans, workout/player controls, account records and rollback behavior remain unchanged.
+- **Existing coach (default)**: runs the current \`TracksideCoaching.request\` → \`PlanActions.generate\` → \`TrainingRepository.generatePlan\` → \`Engine1Engines.resolve\` path. The legacy/active Engine 1.5 engine, approved plans, workout/player controls, account records and rollback behavior remain unchanged.
 - **Research review (opt-in)**: disables the normal Generate My Plan CTA, exposes the previously implemented M10a mileage-constraints input and shows the M6a/M6b read-only calendar or a concrete deferral. If a valid preview is visible, users can explicitly **Save comparison on device (not a plan)**. It is impossible for this choice to call \`PlanActions.generate\` via the builder: \`IndependentEngineRouteGate.requireProduction\` is called again at the production callback boundary even if UI disabling were bypassed.
 
 ## Versioned, non-executable research snapshot
@@ -37,7 +38,7 @@ New \`IndependentResearchDraft.kt\` contains \`IndependentResearchDraft\`, \`Ind
 - \`PlanActions.kt\` and \`StrideApplication.kt\`: independent typed research action, separate from \`generate\` and all plan mutation actions.
 - \`TrainingRepository.kt\`: local-only owner-scoped storage/reload of research comparisons; no cloud sync or saved PlanSnapshot mutation. Existing M10b guest storage and import rules unchanged.
 
-## New regression tests ΓÇö committed, not run
+## New regression tests — committed, not run
 
 - \`IndependentResearchDraftTest.kt\`: **8 focused JVM tests**. Existing coach routing, research-vs-production block, immutable distance-only draft, recovery/quality/mileage preservation, owner/week/day validation, daily-cap tampering, non-executable guard, determinism.
 - \`IndependentResearchDraftRepositoryTest.kt\`: **5 Android instrumentation tests**, queued for M10.1. Local creation and offline reopen without \`plan\`/outbox mutations, production route independence, cloud sign-in/out visibility isolation, JSON promotion/owner tampering refusal, and rejected request preserving earlier stored artifacts.

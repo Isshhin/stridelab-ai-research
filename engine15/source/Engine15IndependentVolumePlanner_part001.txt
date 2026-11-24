@@ -1,6 +1,7 @@
+FILE: Engine15IndependentVolumePlanner.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentVolumePlanner.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-302
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -9,7 +10,7 @@ import kotlin.math.floor
 import kotlin.math.max
 
 /**
- * M4 Stage B ΓÇö a shadow-only, independent weekly volume candidate.
+ * M4 Stage B — a shadow-only, independent weekly volume candidate.
  *
  * No Engine 1.0, calendar generator, session composer, persistence, or approval
  * path uses this planner. It does not create workouts or certify that a budget

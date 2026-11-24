@@ -1,25 +1,9 @@
+FILE: Engine15AthleteDiagnosticsEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 385-750
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 402-774
 --------------------------------------------------
-            avgDelta in -3.0..6.0 && (verifiedHitRatePct ?: 0.0) >= 65.0 -> {
-                reasons += "QUALITY_EXECUTION_ON_TARGET"
-                LongitudinalPaceTrend.ON_TARGET
-            }
-            else -> {
-                reasons += "QUALITY_PACE_MIXED"
-                LongitudinalPaceTrend.MIXED
-            }
-        }
-        if (subCount > 0) reasons += "VOLUME_ONLY_QUALITY_SUBSTITUTIONS_PRESENT"
-
-        return QualityExecutionDiagnostic(
-            evaluatedQualityCount = evaluatedCount,
-            verifiedHitCount = verifiedHitCount,
-            verifiedHitRatePct = verifiedHitRatePct?.let(::round1),
-            volumeOnlySubstitutionCount = subCount,
-            tooSlowCount = tooSlowCount,
             tooFastCount = tooFastCount,
             partialCount = partialCount,
             paceTrend = paceTrend,
@@ -369,3 +353,27 @@ LINES: 385-750
                     "Aerobic efficiency shifted %+.1f%% across %d steady HR runs%s.",
                     aerobic.efChangePct,
                     aerobic.eligibleRunCount,
+                    decouplingText
+                )
+            )
+        }
+        if (pendingCount > 0 && list.size < 4) {
+            list += DiagnosticInsight(
+                code = "PENDING_CONFIRMATIONS_PRESENT",
+                severity = DiagnosticInsightSeverity.INFO,
+                confidence = overallConfidence,
+                message = "$pendingCount unconfirmed run match(es) count toward total load (${formatKm(volume.completedKm)}) but are excluded from quality scoring until confirmed."
+            )
+        }
+
+        return list.take(4)
+    }
+
+    private fun maxConfidence(a: DiagnosticConfidence, b: DiagnosticConfidence): DiagnosticConfidence =
+        if (a.ordinal >= b.ordinal) a else b
+
+    private fun formatKm(km: Double): String = String.format(Locale.US, "%.1f km", km)
+    private fun round1(v: Double): Double = round(v * 10.0) / 10.0
+    private fun round2(v: Double): Double = round(v * 100.0) / 100.0
+    private fun round4(v: Double): Double = round(v * 10000.0) / 10000.0
+}

@@ -1,47 +1,9 @@
+FILE: Engine15CoachingAcceptanceTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 4
-LINES: 1013-1254
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 4
+LINES: 1052-1254
 --------------------------------------------------
-                        ws.filter { it.kind == "long" }.all {
-                            it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.STEADY_AEROBIC_LONG_RUN.id
-                        }
-                    )
-                }
-            }
-            assertTrue(plan.explanations.any { it.startsWith("MACROCYCLE_PHASES:") })
-        }
-    }
-
-    @Test
-    fun step03BeginnerAndReturningBaseWeightingAndFeasibilityAdvisories() {
-        val beginner5k = profiles().first { it.name == "Beginner_5K" }.request
-        val returning10k = profiles().first { it.name == "Intermediate_10K" }.request.copy(
-            returning = true,
-            experience = 1
-        )
-        for ((label, req) in listOf("Beginner_5K" to beginner5k, "Returning_10K" to returning10k)) {
-            val plan = Engine15IndependentPlanGenerator.generateWithHistory(
-                req, owner, emptyList(), "step03-base-$label", now
-            )
-            Engine15IndependentPlanGenerator.validateSaved(plan)
-            val athlete = Engine15AthleteBaseline.assess(req)
-            val volume = Engine15IndependentVolumePlanner.propose(
-                athlete,
-                Engine15IndependentVolumePlanner.Input(
-                    weeks = req.weeks,
-                    runningDays = req.runDays,
-                    targetWeeklyKm = req.targetWeeklyKm,
-                    returning = req.returning,
-                    raceGoal = req.goal,
-                    experience = req.experience,
-                    useMultiFactorProgression = true
-                )
-            )
-            val phases = Engine15MacrocyclePeriodization.assignPhases(req, volume)
-            val loadingCount = phases.values.count { it == Engine15MacroPhase.BASE || it == Engine15MacroPhase.BUILD || it == Engine15MacroPhase.PEAK }
-            val baseCount = phases.values.count { it == Engine15MacroPhase.BASE }
-            assertEquals("[$label] Conservative athlete must have 0 PEAK weeks", 0, phases.values.count { it == Engine15MacroPhase.PEAK })
             assertTrue("[$label] BASE share ($baseCount / $loadingCount) must be >= 50%", baseCount * 2 >= loadingCount)
         }
 

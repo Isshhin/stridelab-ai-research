@@ -1,6 +1,7 @@
+FILE: Engine15MarathonTidEvaluator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MarathonTidEvaluator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-208
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -69,7 +70,7 @@ internal data class Engine15TidEvaluation(
 
 /**
  * Stage 8 (Batch 34): Read-only advisory Training Intensity Distribution (TID)
- * research evaluator for running plans (especially 8ΓÇô16-week Marathon & Half Marathon).
+ * research evaluator for running plans (especially 8–16-week Marathon & Half Marathon).
  *
  * - Classifies planned volume into 3-zone TID strictly from explicit prescription
  *   segments/distance equivalents; unlabelled steps stay unclassified.
@@ -190,7 +191,7 @@ internal object Engine15MarathonTidEvaluator {
                 add("Long-run distance exceeds 40% of weekly volume in week(s) ${highLongShareWeeks.map { it.weekNumber }.joinToString()}; review single-session exposure.")
             }
             if (plan.request.goal == "Marathon" && plan.request.weeks < 12) {
-                add("Short marathon horizon (${plan.request.weeks} weeks); a 12ΓÇô16-week build is typically preferred for full marathon preparation.")
+                add("Short marathon horizon (${plan.request.weeks} weeks); a 12–16-week build is typically preferred for full marathon preparation.")
             }
         }
 

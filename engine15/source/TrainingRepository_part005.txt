@@ -1,8 +1,14 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 5
-LINES: 1194-1491
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 5 / 8
+LINES: 1251-1564
 --------------------------------------------------
+    private suspend fun operation(label: String, action: () -> Unit): Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            mutable.value = mutable.value.copy(busy = true, message = null, task = label)
+            try { action(); true }
+            catch (e: CancellationException) { throw e }
             catch (e: PlanConstraint) { mutable.value = mutable.value.copy(message=e.message); false }
             catch (e: GarminException) {
                 val error=GarminConnectionStatus.fromError(e)
@@ -18,7 +24,7 @@ LINES: 1194-1491
             } finally { mutable.value = mutable.value.copy(busy = false, task = null) }
         }
     }
-    suspend fun signUp(name: String, email: String, password: String) = operation("Creating accountΓÇª") {
+    suspend fun signUp(name: String, email: String, password: String) = operation("Creating account…") {
         require(name.isNotBlank() && email.isNotBlank() && password.isNotEmpty())
         gateway.signUp(name, email, password)
         // Signup does not activate an account or persist an unverified token.
@@ -26,7 +32,7 @@ LINES: 1194-1491
             message = "Account request submitted. Verify your email if required, then sign in."
         )
     }
-    suspend fun requestPasswordReset(email: String) = operation("Requesting password resetΓÇª") {
+    suspend fun requestPasswordReset(email: String) = operation("Requesting password reset…") {
         require(email.isNotBlank())
         gateway.requestPasswordReset(email)
         // Avoid account enumeration: the same confirmation is shown to everyone.
@@ -34,7 +40,7 @@ LINES: 1194-1491
             message = "If this address has an account, reset instructions will be sent by email."
         )
     }
-    suspend fun signIn(email: String, password: String) = operation("Signing in securelyΓÇª") {
+    suspend fun signIn(email: String, password: String) = operation("Signing in securely…") {
         require(email.isNotBlank() && password.isNotEmpty())
         val session = try {
             gateway.signIn(email, password).also { gateway.verify(it) }
@@ -44,10 +50,22 @@ LINES: 1194-1491
         }
         vault.save(session) // No account activation unless encryption succeeds.
         copyLegacyGarminConnection(session.account)
-        check(preferences.edit().putString("active", session.account).commit())
-        mutable.value = TrainingState(initializing = false, account = session.account,
-            localPlanOwner = localPlanOwner, busy = true,
-            loginGeneration = mutable.value.loginGeneration + 1)
+        val (jwtName, jwtEmail) = AccountProfilePresentation.extractJwtProfile(session.accessToken)
+        val resolvedEmail = jwtEmail ?: email.trim().takeIf { it.isNotBlank() && !AccountProfilePresentation.isUuid(it) }
+        check(preferences.edit().apply {
+            putString("active", session.account)
+            if (jwtName != null) putString("profile_name_${session.account}", jwtName)
+            if (resolvedEmail != null) putString("profile_email_${session.account}", resolvedEmail)
+        }.commit())
+        mutable.value = TrainingState(
+            initializing = false,
+            account = session.account,
+            accountDisplayName = jwtName,
+            accountEmail = resolvedEmail,
+            localPlanOwner = localPlanOwner,
+            busy = true,
+            loginGeneration = mutable.value.loginGeneration + 1
+        )
         loadCache(session.account)
         // Authentication is complete even if this first cache refresh fails.
         fetchActivities()
@@ -99,7 +117,7 @@ LINES: 1194-1491
             val marker = if(completed) JSONObject().put("completedAt", System.currentTimeMillis()).toString() else null
             store.applyRemotePage(account, "activity", rows, marker, System.currentTimeMillis())
             received += page.length()
-            mutable.value = mutable.value.copy(task = "Checking history ┬╖ $received activities")
+            mutable.value = mutable.value.copy(task = "Checking history · $received activities")
             loadCache(account) // Each complete page is already durable, including partial failure.
             if(completed) break
             require(last != null && last != before)
@@ -109,7 +127,7 @@ LINES: 1194-1491
         // Success updates the cache timestamp in place; banners are for actionable problems.
         mutable.value = mutable.value.copy(needsSignIn = false)
     }
-    suspend fun refresh() = operation("Refreshing historyΓÇª") { fetchActivities() }
+    suspend fun refresh() = operation("Refreshing history…") { fetchActivities() }
     /**
      * Explicit, foreground Garmin source sync. Source summaries are cached under
      * provider-derived IDs for offline Activity browsing. No backend mutation,
@@ -300,4 +318,3 @@ LINES: 1194-1491
             success
         }
 
-    /** Cloud backup requires StrideLab sign-in; Garmin itself remains local. */

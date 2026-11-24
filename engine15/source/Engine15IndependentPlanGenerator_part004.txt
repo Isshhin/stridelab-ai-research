@@ -1,33 +1,9 @@
+FILE: Engine15IndependentPlanGenerator.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 4
-LINES: 830-1046
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 6
+LINES: 855-1084
 --------------------------------------------------
-                    "No coach-generated dry-run was constructed because this family came from explicit user direction."
-                qualityDryRun == null ->
-                    "The $familyName structure could not be linked to a valid calendar slot."
-                paceWarnings.isNotEmpty() -> paceWarnings.joinToString(" ")
-                else ->
-                    "A development-only $familyName Intro structure was dry-run for week ${qualityDryRun.weekNumber}: ${qualityDryRun.totalSeconds} seconds total, ${qualityDryRun.workSeconds} seconds work. For unresolved slots, quality distance and weekly mileage remain unknown. Quality slots (week / slot / total metres): ${qualityDryRun.alternatives.joinToString { "${it.weekNumber} / ${it.slotNumber} / ${(it.originalEasyDistanceKm * 1000).toInt()}" + (it.distanceFailureCode?.let { code -> " ($code)" } ?: "") }}."
-            }
-            return Engine15IndependentPlanDecision.Deferred(
-                "QUALITY_GENERATION_NOT_QUALIFIED",
-                "${selection.explanation} This family choice remains a provisional engineering rule, not a qualified prescription. $dryRunNote Coach-generated quality remains non-executable until family, dose, intensity and distance policies are qualified.",
-                selection,
-                qualityDryRun
-            )
-            }
-        }
-
-        val customPattern=Regex("w([1-9][0-9]*)-run(0|[1-9][0-9]*)")
-        val mappedQuality=request.userDefinedQualityWorkouts.map { (key,workout) ->
-            val match=customPattern.matchEntire(key)
-                ?: return defer("USER_WORKOUT_SLOT_INVALID", "A user-defined workout must target a stable w<week>-run<slot> identifier.")
-            val week=match.groupValues[1].toIntOrNull()
-                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout week is outside the supported calendar range.")
-            val slot=match.groupValues[2].toIntOrNull()
-                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout slot is outside the supported calendar range.")
-            if(week !in 1..request.weeks || slot !in 0 until request.runDays)
                 return defer("USER_WORKOUT_SLOT_INVALID", "A user-defined workout refers to a week or running slot outside this plan.")
             if(workout.mixedSegments!=null && workout.reconciledDistanceMeters==null)
                 return defer("USER_DEFINED_MIXED_DISTANCE_UNRECONCILED", "Timed/mixed-unit workouts need an explicit per-step distance basis before they can reconcile to weekly mileage; no recovery distance was inferred.")
@@ -71,8 +47,8 @@ LINES: 830-1046
                 steps=workout.mixedSegments?.mapIndexed { i,step ->
                     val extent=if(step.meters!=null) "${step.meters} m" else "${step.seconds} s"
                     val equivalent=step.distanceEquivalentMeters?.let { " ($it m user-supplied distance equivalent)" }.orEmpty()
-                    "${i+1}. $extent${equivalent} ${step.purpose.lowercase().replace('_',' ')} ΓÇö ${step.effort}."
-                } ?: workout.segments.mapIndexed { i,step -> "${i+1}. ${step.meters} m ${step.purpose.lowercase().replace('_',' ')} ΓÇö ${step.effort}." },
+                    "${i+1}. $extent${equivalent} ${step.purpose.lowercase().replace('_',' ')} — ${step.effort}."
+                } ?: workout.segments.mapIndexed { i,step -> "${i+1}. ${step.meters} m ${step.purpose.lowercase().replace('_',' ')} — ${step.effort}." },
                 reason="User-defined workout structure and intensity targets are preserved as supplied; no coach qualification or athlete-specific intensity validation is claimed." +
                     if(workout.reconciledDistanceMeters!=null) " Timed steps use explicit user-supplied distance equivalents; none were inferred." else "")
         }
@@ -220,3 +196,41 @@ LINES: 830-1046
         return sessions.map { s ->
             if (s.quality || s.distanceKm == null) return@map s
             val weekNum = (ChronoUnit.DAYS.between(request.start, s.date).toInt() / 7) + 1
+            val weekPhase = phasesByWeek[weekNum] ?: Engine15MacroPhase.BUILD
+            val totalMeters = kotlin.math.round(s.distanceKm * 1000.0).toInt().coerceAtLeast(100)
+            val rxRole = s.runningPrescription?.role
+
+            when {
+                s.kind == "long" -> {
+                    val loadingOrd = loadingOrdinalByWeek[weekNum]
+                    val eligibleFastFinish = (weekPhase == Engine15MacroPhase.BUILD || weekPhase == Engine15MacroPhase.PEAK) &&
+                        !request.returning &&
+                        loadingOrd != null &&
+                        request.goal != "Aerobic foundation" &&
+                        totalMeters >= 10_000
+                    if (eligibleFastFinish && request.goal == "Marathon" && weekNum >= 5 && loadingOrd!! % 2 == 1 && totalMeters >= 18_000) {
+                        val finishRatio = (0.26 + 0.03 * ((weekNum - 5) / 2)).coerceIn(0.25, 0.38)
+                        val maxCapM = minOf(14_000, ((totalMeters * 0.40).toInt() / 100) * 100)
+                        val minCapM = maxOf(6_000, ((totalMeters * 0.25 + 99).toInt() / 100) * 100).coerceAtMost(maxCapM)
+                        val finishMeters = (((totalMeters * finishRatio) / 100.0).roundToInt() * 100).coerceIn(minCapM, maxCapM)
+                        val baseMeters = totalMeters - finishMeters
+                        val (raceMin, raceMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(
+                            zones, RunningStepIntent.RACE_PACE, goal = "Marathon"
+                        )
+                        s.copy(
+                            title = "Marathon-Pace Long Run",
+                            steps = listOf(
+                                "${formatMetersAsKm(baseMeters)} easy aerobic base · Z2",
+                                "${formatMetersAsKm(finishMeters)} Marathon pace finish · Stay relaxed and locked into goal rhythm"
+                            ),
+                            reason = "Loading week. Progressive Marathon-pace finish (${formatMetersAsKm(finishMeters)}) builds late-race muscular endurance.",
+                            runningPrescription = RunningPrescription(
+                                role = "LONG",
+                                family = null,
+                                segments = listOf(
+                                    RunningSegment("EASY", baseMeters, "Easy aerobic long-run base pace.", RunningStepIntent.AEROBIC_EASY, easyMin, easyMax),
+                                    RunningSegment("TRANSITION", finishMeters, "Marathon goal race pace finish.", RunningStepIntent.RACE_PACE, raceMin, raceMax)
+                                ),
+                                archetypeId = Engine15WorkoutArchetype.FAST_FINISH_PROGRESSIVE_LONG_RUN.id
+                            )
+                        )

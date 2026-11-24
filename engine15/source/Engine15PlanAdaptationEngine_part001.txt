@@ -1,7 +1,8 @@
+FILE: Engine15PlanAdaptationEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-310
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 5
+LINES: 1-323
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -246,11 +247,11 @@ internal object Engine15PlanAdaptationEngine {
         val candidate = plan.copy(sessions = plan.sessions.map { if (it.id == target.id) after else it })
         Engine15IndependentPlanGenerator.validateSaved(candidate)
         val start = target.date
-        val change = "${target.title} ┬╖ $start ┬╖ ${RunnerSupportDose.label(target)} ΓåÆ ${RunnerSupportDose.label(after)}"
+        val change = "${target.title} · $start · ${RunnerSupportDose.label(target)} → ${RunnerSupportDose.label(after)}"
         val rationale = when {
             strain -> "Your last workout showed high effort, low reps in reserve, or discomfort. Keep the next dose easier."
             jumps -> "Your confirmed landings support a small contact increase within the weekly ceiling."
-            else -> "You confirmed all sets and had 3ΓÇô5 reps in reserve. Add one rep per glute bridge set."
+            else -> "You confirmed all sets and had 3–5 reps in reserve. Add one rep per glute bridge set."
         }
         return PlanAdaptationProposal(
             proposalId = java.util.UUID.nameUUIDFromBytes("${plan.id}:$type:$fingerprint:${plan.revision}:$start".toByteArray()).toString(),
@@ -313,3 +314,16 @@ internal object Engine15PlanAdaptationEngine {
             if (session.discipline !in sources || session.date !in start..today.plusDays(7) ||
                 session.status != "planned" || session.date.toString() == plan.request.lockedSessionDays[session.id] ||
                 session.log != null || session.linkedActivityId != null || session.suggestion != null ||
+                session.swaps.isNotEmpty() || session.difficultyStep < 0 || session.runnerSupportDose != null
+            ) return@map session
+            val reduced = Engine15WorkoutDifficultyAdjuster.adjust(session, plan.request, -1)
+            if (reduced.minutes > session.minutes || reduced.exercises == session.exercises) return@map session
+            changed += session to reduced
+            reduced
+        }
+        if (changed.isEmpty()) return null
+        val candidate = plan.copy(sessions = sessions)
+        val raw = candidate.encode().toString()
+        if (runCatching {
+            val restored = PlanSnapshot.decode(JSONObject(raw), plan.owner)
+            require(restored.encode().toString() == raw)

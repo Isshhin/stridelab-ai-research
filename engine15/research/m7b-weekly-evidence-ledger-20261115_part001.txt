@@ -1,9 +1,10 @@
+FILE: m7b-weekly-evidence-ledger-20261115.md
 SOURCE: research/engine15/experiments/m7b-weekly-evidence-ledger-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-59
 --------------------------------------------------
-# StrideLab Engine 1.5 M7b ΓÇö Weekly evidence ledger research
+# StrideLab Engine 1.5 M7b — Weekly evidence ledger research
 
 Date: 2026-11-15. Based on M7a draft PR #82. This component is **read-only**, isolated from saved-plan mutation and the production Android plan generator.
 
@@ -51,7 +52,7 @@ $env:ANDROID_SDK_ROOT = $sdk
 
 If the new worktree directory already exists, choose a different empty path. Do not delete the owner's previous modified checkout or previous phone-QA worktree. Compile/assembly are not yet validated on this branch.
 
-## Remaining M8ΓÇôM11 gates
+## Remaining M8–M11 gates
 
 M8: Develop longitudinal adaptive coaching with explicit *trusted* source coverage/identity, confirmed performed effort and reviewed recovery vs missed-training intent. The M7 evidence can currently expose missing/disputed/partial data but **cannot** authenticate it; fail closed when readiness is unknown. Compare modes and trajectories with evidence-limited outcomes clearly labeled.
 

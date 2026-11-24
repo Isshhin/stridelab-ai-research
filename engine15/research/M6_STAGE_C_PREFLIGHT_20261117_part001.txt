@@ -1,14 +1,15 @@
+FILE: M6_STAGE_C_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/M6_STAGE_C_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-26
 --------------------------------------------------
-# M6 Stage C ΓÇö independent cross-discipline conflict review (preflight)
+# M6 Stage C — independent cross-discipline conflict review (preflight)
 
 Frozen 2026-11-17 before implementing the stage. Stacked on M6B draft PR #118. M6B was reported successful in the Q3 validation checkout (26s) with 11 selected test suites. **This is SHADOW-ONLY**, not production admission.
 
 ## Scope
-Inspect independent M4BΓåÆM5AΓåÆM6A dated EASY/LONG sessions, plus optional independently recomputed M5BΓåÆM6B quality opportunities, against explicitly supplied nonrunning sessions. This reviewer does not generate strength, calisthenics or conditioning workouts and cannot infer missing schedules or physiological workload.
+Inspect independent M4B→M5A→M6A dated EASY/LONG sessions, plus optional independently recomputed M5B→M6B quality opportunities, against explicitly supplied nonrunning sessions. This reviewer does not generate strength, calisthenics or conditioning workouts and cannot infer missing schedules or physiological workload.
 
 ## Admission boundaries
 1. Recompute M6A from original typed M4B and calendar data; if reviewed quality requests are supplied recompute M6B from those same inputs, feeding asserted external lower-body/hard dates into M6B's spacing checks. Never accept caller-supplied M6A/M6B approved objects and never invoke Engine1, Engine15.generate or legacy PlanSnapshot.

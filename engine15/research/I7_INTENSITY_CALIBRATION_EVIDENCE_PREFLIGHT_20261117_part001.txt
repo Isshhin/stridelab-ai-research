@@ -1,9 +1,10 @@
+FILE: I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-19
 --------------------------------------------------
-Engine 1.5 I7 ΓÇö calibration evidence intake preflight, 2026-11-17
+Engine 1.5 I7 — calibration evidence intake preflight, 2026-11-17
 
 Stacked on I6 draft PR #126 after the user reported all 20 selected I6 and earlier JVM classes passing in 12s.
 
@@ -21,4 +22,4 @@ Contract:
 
 Prespecified synthetic tests: valid field and lab declarations return external-review packets only; wrong owner/family/origin, missing fields, malformed fingerprint, future/expired tests, bad HR/pace, impossible resting/max profile, and contradictory optional display LTHR defer. I6 evidence failures and M5B quality holds still defer. Determinism and false authority flags are mandatory.
 
-Validation: new I7 selected JVM class and I6/I5/I4/I3/source binding/I2/I1/M3ΓÇôM6/Q2/Q3/R0. No athlete-specific intensity or production prescription can be approved by I7.
+Validation: new I7 selected JVM class and I6/I5/I4/I3/source binding/I2/I1/M3–M6/Q2/Q3/R0. No athlete-specific intensity or production prescription can be approved by I7.

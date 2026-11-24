@@ -1,9 +1,10 @@
+FILE: M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/M6_STAGE_C_SHADOW_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-22
 --------------------------------------------------
-# Engine 1.5 M6 Stage C ΓÇö independent cross-discipline conflict review (shadow)
+# Engine 1.5 M6 Stage C — independent cross-discipline conflict review (shadow)
 
 Date: 2026-11-17. Stacked on M6B PR #118; original gate in `M6_STAGE_C_PREFLIGHT_20261117.md`. No new code in production routing.
 

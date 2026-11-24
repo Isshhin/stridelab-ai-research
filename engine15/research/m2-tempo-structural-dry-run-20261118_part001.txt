@@ -1,9 +1,10 @@
+FILE: m2-tempo-structural-dry-run-20261118.md
 SOURCE: research/engine15/experiments/m2-tempo-structural-dry-run-20261118.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-53
 --------------------------------------------------
-# M2 continuous Tempo structural dry run ΓÇö 2026-11-18
+# M2 continuous Tempo structural dry run — 2026-11-18
 
 ## Policy identity and scope
 
@@ -36,9 +37,9 @@ The builder accepts only a provisional goal/experience matrix result for Tempo, 
 
 The dry run copies the existing `engine15-tempo-intro-v1` `IndependentWorkoutComposition` without changing step order or identity:
 
-1. WARM_UP ΓÇö 600 seconds, EASY.
-2. WORK ΓÇö 720 seconds, TEMPO label.
-3. COOL_DOWN ΓÇö 480 seconds, EASY.
+1. WARM_UP — 600 seconds, EASY.
+2. WORK — 720 seconds, TEMPO label.
+3. COOL_DOWN — 480 seconds, EASY.
 
 The exact represented duration is 1,800 seconds. There are no recoveries in this continuous template. The TEMPO label and 720-second work duration remain unqualified; no pace, heart-rate, or effort target is inferred.
 
@@ -50,9 +51,9 @@ An independent qualified coach must review and approve the family-selection basi
 
 ## Source records
 
-- [`IndependentQualityTemplates.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityTemplates.kt) ΓÇö versioned M2 structures and explicit `HEURISTIC` labels.
-- [`Engine15M5QualityPreviewComposer.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposer.kt) ΓÇö explicit review, exposure, time, and non-executable gates.
-- [`Engine15M5TimedDistanceReconciler.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt) ΓÇö per-segment distance claims and arithmetic-only reconciliation; source distances remain unverified.
-- [`Engine15M6IndependentQualitySpacing.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacing.kt) ΓÇö easy-slot, recovery, and spacing review; opportunities remain unscheduled.
-- [`ASTRA_REVIEW_PACKET_ENGINE15_20261117.md`](../ASTRA_REVIEW_PACKET_ENGINE15_20261117.md) ΓÇö previous documented family authorization boundary; it records a prepared review packet, not a completed independent review.
-- [`m9b-reviewed-quality-dose-progression-20261115.md`](m9b-reviewed-quality-dose-progression-20261115.md) ΓÇö dose comparisons and caller-asserted review evidence; no source authentication.
+- [`IndependentQualityTemplates.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/IndependentQualityTemplates.kt) — versioned M2 structures and explicit `HEURISTIC` labels.
+- [`Engine15M5QualityPreviewComposer.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5QualityPreviewComposer.kt) — explicit review, exposure, time, and non-executable gates.
+- [`Engine15M5TimedDistanceReconciler.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt) — per-segment distance claims and arithmetic-only reconciliation; source distances remain unverified.
+- [`Engine15M6IndependentQualitySpacing.kt`](../../../native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M6IndependentQualitySpacing.kt) — easy-slot, recovery, and spacing review; opportunities remain unscheduled.
+- [`ASTRA_REVIEW_PACKET_ENGINE15_20261117.md`](../ASTRA_REVIEW_PACKET_ENGINE15_20261117.md) — previous documented family authorization boundary; it records a prepared review packet, not a completed independent review.
+- [`m9b-reviewed-quality-dose-progression-20261115.md`](m9b-reviewed-quality-dose-progression-20261115.md) — dose comparisons and caller-asserted review evidence; no source authentication.

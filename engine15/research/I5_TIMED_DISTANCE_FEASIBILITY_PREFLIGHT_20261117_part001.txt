@@ -1,9 +1,10 @@
+FILE: I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-28
 --------------------------------------------------
-# Engine 1.5 I5 ΓÇö Timed Workout Distance Feasibility (Preflight)
+# Engine 1.5 I5 — Timed Workout Distance Feasibility (Preflight)
 
 Frozen 2026-11-17 before writing I5 implementation. Stacked on I4 PR #124, after the user reported I4 plus 17 regression classes `BUILD SUCCESSFUL in 26s`. Still SHADOW-only.
 
@@ -18,13 +19,13 @@ Frozen 2026-11-17 before writing I5 implementation. Stacked on I4 PR #124, after
 3. Expand the typed M5B workout elements to chronological timed phases (including *only between-repeat recovery*). All units must be SECONDS, times positive/finite, phase count 3..400, and warm-up / work / cooldown structure must match the original M5B contract. No duplicated final recovery or new workout steps.
 4. Each caller-supplied speed window has explicit phase position, WorkoutPurpose, WorkoutTarget, finite min/max metres/second and 0 < min <= max <= 15.0. The 15 m/s limit is an extreme numeric sanity bound, **not** an athlete ability or safety threshold. Require one and only one matching window per phase, without silent defaults or reordering.
 5. Require explicitly caller-supplied nonblank review reference (length <=256) for these ranges, but mark it *asserted, not authenticated*. Never derive ranges from FIT/Garmin HR, elapsed seconds, or M5C arithmetic claims.
-6. Compute min/max possible metres as sum over all timed phases of seconds ├ù min/max speed. Reject if original M5A allocated metres are below min - 0.01m or above max + 0.01m. Return descriptive interval and original M4B/M5B/I4/M6B references **unchanged**, not a set of prescribed paces or distances.
+6. Compute min/max possible metres as sum over all timed phases of seconds × min/max speed. Reject if original M5A allocated metres are below min - 0.01m or above max + 0.01m. Return descriptive interval and original M4B/M5B/I4/M6B references **unchanged**, not a set of prescribed paces or distances.
 7. A mathematically feasible range **does not** prove that one continuous feasible per-segment pace sequence is demonstrated or safe for this runner. No intensity, source pace calibration, athlete response, quality dose, actual distance, schedule, or production approval may become true. `boundsExternallyAsserted=true`, `paceCalibrationVerified=false`, `qualityIntensityVerified=false`, `actualSegmentDistancesVerified=false`, `doseAuthorized=false`, `executable=false`, `authorizedForProduction=false`.
 8. No Engine1/Engine15 live generate, PlanSnapshot mutation, Android UI, persistence, fallback or auto-adaptation.
 
 ## Prespecified cases
-- A developing 30ΓåÆ35 km, four-day running plan with source-linked 480s work and clean HR signal and an explicitly asserted 2.4ΓÇô4.2 m/s EASY and 2.8ΓÇô5 m/s WORK envelope can span its planned EASY slot mileage, retaining original weekly budget.
-- A 75ΓåÆ80 km six-day plan with short 480s quality preview cannot fit its original EASY slot within this same synthetic bounded-speed envelope; return `ALLOCATION_ABOVE_ASSERTED_MAXIMUM`. Do not automatically lengthen workouts or override weekly mileage.
+- A developing 30→35 km, four-day running plan with source-linked 480s work and clean HR signal and an explicitly asserted 2.4–4.2 m/s EASY and 2.8–5 m/s WORK envelope can span its planned EASY slot mileage, retaining original weekly budget.
+- A 75→80 km six-day plan with short 480s quality preview cannot fit its original EASY slot within this same synthetic bounded-speed envelope; return `ALLOCATION_ABOVE_ASSERTED_MAXIMUM`. Do not automatically lengthen workouts or override weekly mileage.
 - Narrow high-speed-only envelopes may exceed the slot's budget even at their minimum: `ALLOCATION_BELOW_ASSERTED_MINIMUM`.
 - Missing review reference, missing/extra/misordered or mislabelled phase window, reversed speed range, NaN/Infinity, zero or extreme speed, unknown source/HR data, I4 failure, blocked long day, Saturday-before-Sunday quality and recovery-week request: explicit deferral.
 - Deterministic, unchanged original typed workouts and all permission flags false.

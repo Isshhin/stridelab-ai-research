@@ -1,7 +1,8 @@
+FILE: Engine15ExecutionAnalyzer.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-407
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 4
+LINES: 1-425
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -410,3 +411,21 @@ internal object Engine15ExecutionAnalyzer {
                 workAdherencePct = workAdherence,
                 qualityStimulusVerified = false,
                 referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedWorkPace
+            )
+        }
+
+        if (minPace != null && observedWorkPace < minPace - 12.0) {
+            reasons += "WORK_PACE_TOO_FAST"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST,
+                paceBias = ExecutionPaceBias.TOO_FAST,
+                workAdherencePct = workAdherence,
+                qualityStimulusVerified = false,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedWorkPace
+            )
+        }
+

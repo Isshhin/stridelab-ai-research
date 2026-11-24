@@ -1,21 +1,9 @@
+FILE: Engine15PlanAdaptationEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 311-621
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 5
+LINES: 324-655
 --------------------------------------------------
-                session.swaps.isNotEmpty() || session.difficultyStep < 0 || session.runnerSupportDose != null
-            ) return@map session
-            val reduced = Engine15WorkoutDifficultyAdjuster.adjust(session, plan.request, -1)
-            if (reduced.minutes > session.minutes || reduced.exercises == session.exercises) return@map session
-            changed += session to reduced
-            reduced
-        }
-        if (changed.isEmpty()) return null
-        val candidate = plan.copy(sessions = sessions)
-        val raw = candidate.encode().toString()
-        if (runCatching {
-            val restored = PlanSnapshot.decode(JSONObject(raw), plan.owner)
-            require(restored.encode().toString() == raw)
             Engine15IndependentPlanGenerator.validateSaved(restored)
         }.isFailure) return null
         fun dose(session: PlannedSession): String = when {
@@ -28,7 +16,7 @@ LINES: 311-621
         val weeks = changed.groupBy { weekIndexOf(plan.request.start, it.first.date) }.map { (week, changes) ->
             AdaptationWeekDiff(week, "Scheduled", "Reduced exposure", 0.0, 0.0,
                 changes.count { it.first.quality }, changes.count { it.second.quality },
-                changes.joinToString("\n") { (before, after) -> "${before.date} ┬╖ ${before.title}: ${dose(before)} ΓåÆ ${dose(after)}" })
+                changes.joinToString("\n") { (before, after) -> "${before.date} · ${before.title}: ${dose(before)} → ${dose(after)}" })
         }
         val title = if (missed) "Resume training with less volume" else "Reduce upcoming training volume"
         val evidence = if (missed) "missed sessions" else "sessions marked as fatiguing or logged at high effort"
@@ -314,3 +302,37 @@ LINES: 311-621
             val wkIdx = wkNum - 1
             val origWkSessions = originalPlan.sessions.filter { weekIndexOf(originalPlan.request.start, it.date) == wkIdx }
             val candWkSessions = byWeek[wkIdx].orEmpty()
+            val origWkKm = origWkSessions.sumOf { it.distanceKm ?: 0.0 }
+            val candWkKm = candWkSessions.sumOf { it.distanceKm ?: 0.0 }
+            val origTaperQuality = candWkSessions.count { it.quality }
+            if (candWkKm > origWkKm + 0.1 || origTaperQuality > 1) {
+                warnings += "TAPER_WEEK_INFLATED:wk$wkIdx"
+            }
+        }
+
+        // 8. Zero make-up cramming on current partial week
+        if (allowZeroMakeUpCheck) {
+            val curWk = weekIndexOf(originalPlan.request.start, effectiveFromDate.minusDays(1))
+            if (curWk >= 0) {
+                for (cand in byWeek[curWk].orEmpty()) {
+                    if (!cand.date.isBefore(effectiveFromDate)) {
+                        val orig = origById[cand.id]
+                        if (orig == null || (cand.distanceKm ?: 0.0) > (orig.distanceKm ?: 0.0) + 1e-6) {
+                            warnings += "CURRENT_WEEK_MAKEUP_CRAMMING:${cand.id}"
+                        }
+                    }
+                }
+            }
+        }
+
+        // 9. Lossless JSON round-trip check
+        runCatching {
+            val decoded = PlanSnapshot.decode(candidatePlan.encode(), candidatePlan.owner)
+            require(decoded.sessions.size == candidatePlan.sessions.size)
+        }.onFailure {
+            warnings += "SNAPSHOT_JSON_ROUNDTRIP_FAILED"
+        }
+
+        return ValidationOutcome(passed = warnings.isEmpty(), warnings = warnings)
+    }
+

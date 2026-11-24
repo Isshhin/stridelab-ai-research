@@ -1,0 +1,360 @@
+FILE: PlanBuilder.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/PlanBuilder.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 4
+LINES: 341-694
+--------------------------------------------------
+                        when {
+                            d in extraResistance -> {
+                                extraResistance = ArrayList(extraResistance - d)
+                                input
+                            }
+                            active && extraResistance.isNotEmpty() -> {
+                                val next = extraResistance.first()
+                                extraResistance = ArrayList(extraResistance - next)
+                                chooseStrengthTrack(input, next, deselect = false)
+                            }
+                            !active && input.strengthDays > 0 && d == "str" -> {
+                                extraResistance = ArrayList(extraResistance + primary)
+                                chooseStrengthTrack(input, d, deselect = false)
+                            }
+                            !active && input.strengthDays > 0 -> {
+                                extraResistance = ArrayList(extraResistance + d)
+                                input
+                            }
+                            else -> chooseStrengthTrack(input, d, active)
+                        }
+                    }
+                    "cal" -> input.copy(calDays=if(active)0 else 2)
+                    else -> input.copy(conditioningDays=if(active)0 else 1)
+                }
+                // A deselected discipline must not leave phantom fixed sessions
+                // or stale discipline goals in a future generated plan.
+                val cleaned=toggled.copy(
+                    weeklySlots=if(active && d !in setOf("str", "plyo", "iso")) toggled.weeklySlots-d else toggled.weeklySlots,
+                    disciplineGoals=if(active && d !in setOf("str", "plyo", "iso")) toggled.disciplineGoals-d
+                        else toggled.disciplineGoals
+                )
+                val primaryValid=when(cleaned.goal) {
+                    "Aerobic foundation","Improve 5K","Improve 10K",
+                    "Half marathon","Marathon" -> cleaned.runDays>0
+                    "General strength","Muscle development",
+                    "Strength endurance" -> cleaned.strengthDays>0
+                    "Calisthenics foundation","Pull-up progression",
+                    "Push-up progression","Core strength and control",
+                    "Handstand foundations" -> cleaned.calDays>0
+                    "Conditioning" -> cleaned.conditioningDays>0
+                    else -> Engine1Engines.discipline(cleaned.goal)?.let {
+                        cleaned.disciplineSessionCount(it) > 0
+                    } ?: true
+                }
+                val fallback=when {
+                    cleaned.runDays>0 -> "General fitness"
+                    cleaned.strengthDays>0 -> "General strength"
+                    cleaned.calDays>0 -> "Calisthenics foundation"
+                    cleaned.conditioningDays>0 -> "Conditioning"
+                    else -> "General fitness"
+                }
+                edit(cleaned.copy(goal=if(primaryValid) cleaned.goal else fallback))
+            },
+            onBack = onDone,
+            extraResistance = extraResistance.toSet(),
+            onContinue = {
+                step=1
+                runningSubPage=0
+                crossTrainingGoals=false
+                strengthGoalSaved=strengthTrack(input) != "str"
+                strengthSetupSaved=false
+                crossGoalsSaved=false
+            }
+        )
+        10, 11, 12, 13, 14, 15 -> when (runningSubPage) {
+            0 -> TracksideRunningGoalScreen(
+                selected = runningRoute,
+                onSelect = { route ->
+                    editingAbilityFromGuided = false
+                    runningRoute = route
+                    guidedFocus = when(route) {
+                        "faster" -> "10K"
+                        "endurance" -> "Run longer"
+                        "fitness" -> "Consistency"
+                        else -> guidedFocus
+                    }
+                },
+                onBack = { step = 0 },
+                onContinue = {
+                    when (runningRoute) {
+                        "race" -> runningSubPage = 1
+                        "custom" -> {
+                            // Train Your Way is mileage-led, not an inherited 5K race plan.
+                            edit(input.copy(
+                                goal="Aerobic foundation",
+                                disciplineGoals=input.disciplineGoals+("run" to "Aerobic foundation"),
+                                trainYourWay=true,
+                                foundationAcknowledged=false
+                            ))
+                            advancedBackPage = 0
+                            runningSubPage = 2
+                        }
+                        else -> runningSubPage = 5
+                    }
+                }
+            )
+            1 -> TracksideRaceGoalScreen(
+                intent = raceIntent, distance = raceDistance,
+                onIntent = { raceIntent = it }, onDistance = { raceDistance = it },
+                onBack = { runningSubPage = 0 },
+                onContinue = {
+                    val goal = when(raceDistance) {
+                        "10K" -> "Improve 10K"
+                        "21K" -> "Half marathon"
+                        "42K" -> "Marathon"
+                        else -> "Improve 5K"
+                    }
+                    edit(input.copy(goal=goal,
+                        disciplineGoals=input.disciplineGoals+("run" to goal),
+                        trainYourWay=false,foundationAcknowledged=false))
+                    runningSubPage = 2
+                },
+                targetRaceDate = input.targetRaceDate,
+                onTargetRaceDate = { chosenDate ->
+                    if (chosenDate != null) {
+                        val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
+                        val computedWeeks = java.time.temporal.ChronoUnit.WEEKS.between(startDate, chosenDate).toInt().coerceIn(4, 16)
+                        weeks = computedWeeks.toString()
+                        edit(input.copy(targetRaceDate = chosenDate, weeks = computedWeeks))
+                    } else {
+                        edit(input.copy(targetRaceDate = null))
+                    }
+                },
+                benchmarkSeconds = input.benchmarkDurationSeconds,
+                onBenchmarkSeconds = { seconds ->
+                    val distMeters = when (raceDistance) {
+                        "10K" -> 10_000
+                        "21K" -> 21_097
+                        "42K" -> 42_195
+                        else -> 5_000
+                    }
+                    edit(input.copy(
+                        benchmarkDistanceMeters = if (seconds != null) distMeters else null,
+                        benchmarkDurationSeconds = seconds
+                    ))
+                },
+                paceZones = remember(input.benchmarkDistanceMeters, input.benchmarkDurationSeconds, input.planningPace, state.activities) {
+                    Engine15PaceZoneEstimator.estimate(input, activities = state.activities)
+                }
+            )
+            2 -> {
+                val benchDistLabel = when (input.benchmarkDistanceMeters) {
+                    42_195 -> "42K"
+                    21_097 -> "21K"
+                    10_000 -> "10K"
+                    else -> "5K"
+                }
+                val setWeeklyKm: (Double) -> Unit = { value ->
+                    edit(input.copy(
+                        weeklyKm = kotlin.math.round(value * 10) / 10,
+                        recentMileageBasis = if (value >= 0.05) "SELF_REPORTED_AVERAGE" else "UNKNOWN",
+                        foundationAcknowledged = false
+                    ))
+                }
+                val setLongestKm: (Double) -> Unit = { value ->
+                    longestOverride = kotlin.math.round(value * 10) / 10
+                }
+                TracksideRunningAbilityScreen(
+                    experience = input.experience,
+                    weeklyKm = input.weeklyKm.takeIf { input.recentMileageBasis != "UNKNOWN" },
+                    longestKm = input.longestKm.takeIf { it > 0.0 || longestOverride != null },
+                    onExperience = { experienceOverride = it },
+                    onWeeklyKm = setWeeklyKm,
+                    onLongestKm = setLongestKm,
+                    historyContent = {
+                        historySuggestion?.let {
+                            Spacer(Modifier.height(12.dp))
+                            HistoryBaselineCard(it, setWeeklyKm, setLongestKm)
+                        }
+                    },
+                    weeklySource = when (input.recentMileageBasis) {
+                        "RECORDED_PARTIAL" -> "From recent runs"
+                        "SELF_REPORTED_AVERAGE" -> "Entered by you"
+                        "CONFIRMED_ZERO" -> "No recent running"
+                        else -> "No estimate yet"
+                    },
+                    longestSource = when {
+                        longestOverride != null -> "Entered by you"
+                        input.longestKm > 0 -> "Last 30 days"
+                        else -> "No recent distance"
+                    },
+                    onConfirmNoRecentRunning = if (input.weeklyKm == 0.0 && input.longestKm == 0.0 &&
+                        input.recentMileageBasis != "CONFIRMED_ZERO") {
+                        {
+                            experienceOverride = 0
+                            edit(input.copy(recentMileageBasis = "CONFIRMED_ZERO"))
+                        }
+                    } else null,
+                    onBack = {
+                        runningSubPage = when (runningRoute) {
+                            "race" -> 1
+                            "custom" -> 0
+                            else -> 5
+                        }
+                    },
+                    onContinue = {
+                        runningSubPage = when {
+                            runningRoute == "custom" -> 3
+                            editingAbilityFromGuided -> 5
+                            else -> 4
+                        }
+                        editingAbilityFromGuided = false
+                    },
+                    onAdvanced = {
+                        advancedBackPage = 2
+                        runningSubPage = 3
+                    },
+                    benchmarkDistance = benchDistLabel,
+                    benchmarkSeconds = input.benchmarkDurationSeconds,
+                    onSaveBenchmark = { dist, seconds ->
+                        val distMeters = when (dist) {
+                            "10K" -> 10_000
+                            "21K" -> 21_097
+                            "42K" -> 42_195
+                            else -> 5_000
+                        }
+                        edit(input.copy(
+                            benchmarkDistanceMeters = if (seconds != null) distMeters else null,
+                            benchmarkDurationSeconds = seconds
+                        ))
+                    },
+                    paceZones = remember(input.benchmarkDistanceMeters, input.benchmarkDurationSeconds, input.planningPace, state.activities) {
+                        Engine15PaceZoneEstimator.estimate(input, activities = state.activities)
+                    },
+                    progressStep = if (runningRoute == "custom") 2 else 3,
+                    autoDetectedExperience = detectedExperience != null && experienceOverride == null
+                )
+            }
+            3 -> TracksideAdvancedRunning(
+                guided = advancedBackPage != 0,
+                weeks = input.weeks,
+                userDirectedPlanning = input.userDirectedPlanning,
+                userDefinedQualityWorkouts = input.userDefinedQualityWorkouts,
+                weeklyKm = targetKm.toDoubleOrNull()?.coerceIn(0.0, 120.0) ?: 0.0,
+                qualityCount = input.qualityCount.coerceIn(0, 2),
+                maxQualityCount = (input.runDays - 2).coerceIn(0, 2),
+                selectedQualityTypes = advancedQualityTypes,
+                onWeeklyKm = { value ->
+                    targetKm = value.toInt().toString()
+                    targetSupplied = true
+                    edit(input.copy(targetWeeklyKm = value, foundationAcknowledged = false))
+                },
+                onQualityCount = { n ->
+                    desiredQualityCount = n
+                    val allowed = (input.runDays - 2).coerceIn(0, 2)
+                    val q = n.coerceAtMost(allowed)
+                    edit(sanitizeRunningScheduleDays(input.copy(qualityCount = q)))
+                },
+                onToggleQuality = { quality ->
+                    val updated =
+                        if (quality in advancedQualityTypes) advancedQualityTypes-quality
+                        else advancedQualityTypes+quality
+                    advancedQualityCsv = updated.sorted().joinToString("|")
+                    edit(input.copy(allowedQualityTypes=updated, preferredQualityExplicit=false))
+                },
+                onSaveQualityWorkouts = { workouts ->
+                    edit(input.copy(userDefinedQualityWorkouts=workouts))
+                },
+                onRemoveQualityWorkout = { key ->
+                    edit(input.copy(userDefinedQualityWorkouts=input.userDefinedQualityWorkouts-key))
+                },
+                onBack = { runningSubPage = if (runningRoute == "custom") 2 else advancedBackPage },
+                onContinue = {
+                    runningSubPage = when {
+                        runningRoute == "custom" -> 4
+                        advancedBackPage == 5 -> 5
+                        else -> 2
+                    }
+                }
+            )
+            5 -> TracksideGuidedRunning(
+                route = runningRoute,
+                selectedFocus = guidedFocus,
+                onFocus = { guidedFocus = it },
+                weeklyKm = targetKm.toDoubleOrNull()?.coerceIn(0.0,120.0) ?: 0.0,
+                experience = input.experience,
+                onEditAbility = {
+                    editingAbilityFromGuided = true
+                    runningSubPage = 2
+                },
+                onAdvanced = {
+                    advancedBackPage = 5
+                    runningSubPage = 3
+                },
+                onBack = {
+                    editingAbilityFromGuided = false
+                    runningSubPage = 0
+                },
+                onContinue = {
+                    editingAbilityFromGuided = false
+                    val goal = when(runningRoute) {
+                        "faster" -> when(guidedFocus) {
+                            "10K" -> "Improve 10K"
+                            "21K" -> "Half marathon"
+                            else -> "Improve 5K"
+                        }
+                        "endurance" -> "Aerobic foundation"
+                        else -> "General fitness"
+                    }
+                    edit(input.copy(
+                        goal=goal,
+                        disciplineGoals=input.disciplineGoals+("run" to goal),
+                        trainYourWay=false,foundationAcknowledged=false
+                    ))
+                    runningSubPage = 2
+                }
+            )
+            4 -> TracksideRunningSetup(
+                request = input,
+                selectedSlot = runningSelectedSlot,
+                onSelectSlot = { runningSelectedSlot = it },
+                custom = runningCustom,
+                onCustom = { enabled ->
+                    runningCustom = enabled
+                    val updated = input.copy(
+                        weeklySlots = if (enabled) input.weeklySlots +
+                            ("run" to WeeklyPlacement.days(input, "run"))
+                        else input.weeklySlots - "run"
+                    )
+                    edit(sanitizeRunningScheduleDays(updated))
+                },
+                qualityPreference = qualityPreference,
+                onQualityPreference = { selected ->
+                    qualityPreference=selected
+                    edit(input.copy(preferredQuality=selected, preferredQualityExplicit=false))
+                },
+                onQualityCount = { n ->
+                    desiredQualityCount = n
+                    val allowed = (input.runDays - 2).coerceIn(0, 2)
+                    val q = n.coerceAtMost(allowed)
+                    val updated = sanitizeRunningScheduleDays(input.copy(qualityCount = q))
+                    edit(
+                        if ("run" in updated.weeklySlots) {
+                            val slots = WeeklyPlacement.days(updated, "run")
+                            updated.copy(
+                                qualityDays = slots.drop(1).take(q).filter { it in 1..7 }.toSet()
+                            )
+                        } else updated
+                    )
+                },
+                onRunningCount = { n ->
+                    if (input.qualityCount > desiredQualityCount) {
+                        desiredQualityCount = input.qualityCount
+                    }
+                    val changed = if (runningCustom)
+                        WeeklyPlacement.resize(input, "run", n)
+                    else input.copy(
+                        runDays = n,
+                        weeklySlots = input.weeklySlots - "run"
+                    )
+                    val allowed = (n - 2).coerceIn(0, 2)
+                    val q = desiredQualityCount.coerceAtMost(allowed)
+                    val updated = sanitizeRunningScheduleDays(changed.copy(qualityCount = q))
+                    edit(

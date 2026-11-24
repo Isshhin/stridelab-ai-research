@@ -1,9 +1,10 @@
+FILE: m10b-signed-out-local-plans-20261115.md
 SOURCE: research/engine15/experiments/m10b-signed-out-local-plans-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-58
 --------------------------------------------------
-# Engine 1.5 M10b ΓÇö Signed-out owner-isolated local plans
+# Engine 1.5 M10b — Signed-out owner-isolated local plans
 
 Date: 2026-11-15. Stacked on M10a draft PR #89. M10b is **source committed, NOT built/tested**. Physical-device tests remain deferred.
 
@@ -39,7 +40,7 @@ StrideLab must not require account sign-in to build, approve, review or log trai
 - \`LocalPlanOwnershipTest.kt\`: **4 JVM tests** covering unique device owner generation, invalid/cloud owner rejection, account isolation and distinct local profiles.
 - \`LocalPlanRepositoryTest.kt\`: **5 Android instrumentation tests**, not yet run (and intentionally deferred to M10.1), covering local SQLite persistence and approval/reopen, entry drafts/feedback, guest/cloud isolation on sign-in/out, matching-owner backup restore, and opaque-record preservation.
 
-The stacked M8ΓÇôM10a research tests also still require exact-SHA validation. GitHub commit presence does not imply that Kotlin compiles or tests pass.
+The stacked M8–M10a research tests also still require exact-SHA validation. GitHub commit presence does not imply that Kotlin compiles or tests pass.
 
 ## Known limitations and non-negotiable next gate
 

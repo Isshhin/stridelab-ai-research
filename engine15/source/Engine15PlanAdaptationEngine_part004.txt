@@ -1,46 +1,9 @@
+FILE: Engine15PlanAdaptationEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 4
-LINES: 943-1260
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 5
+LINES: 981-1325
 --------------------------------------------------
-            effectiveFromDate = effectiveFromDate,
-            trailing30dLongestKm = trailing30dLongestKm,
-            linkedSessionIds = linkedSessionIds,
-            futureEngineValidationPlan = futureValidationPlan,
-            allowZeroMakeUpCheck = true,
-            reEntryWeekIndices = reEntryWeeks
-        )
-        if (!gate.passed) return null
-
-        val diff = buildPlanDiff(plan, candidatePlan, effectiveFromDate, affectedCount, emptyList(), gate, weekNotes)
-        return PlanAdaptationProposal(
-            proposalId = "prop-${plan.id}-recovery-${disruption.tier.name.lowercase(Locale.ROOT)}-$asOfDate",
-            planId = plan.id,
-            type = AdaptationType.MISSED_WEEK_RECOVERY,
-            status = AdaptationProposalStatus.PENDING,
-            createdAtDate = asOfDate,
-            effectiveFromDate = effectiveFromDate,
-            expiresAtDate = asOfDate.plusDays(PROPOSAL_EXPIRY_DAYS),
-            disruptionTier = disruption.tier,
-            disruptionFingerprint = disruption.fingerprint,
-            sourceDiagnosticDate = diagnostic.asOfDate,
-            sourceConfidence = diagnostic.overallConfidence,
-            title = when (disruption.tier) {
-                DisruptionTier.SHORT_DISRUPTION_3_TO_5D -> "Smooth Short-Gap Re-Entry (${disruption.gapDays}d Missed)"
-                DisruptionTier.FULL_MISSED_WEEK_6_TO_10D -> "Insert Re-Entry Bridge Week (~82% Volume)"
-                DisruptionTier.EXTENDED_GAP_11D_PLUS -> "2-Week Aerobic Rebuild After ${disruption.gapDays}d Gap"
-                DisruptionTier.NONE -> "Recovery Adjustment"
-            },
-            coachingRationale = "Detected ${disruption.missedCount} consecutive missed sessions (${disruption.gapDays}-day interruption). Proposed ${disruption.tier.name.lowercase(Locale.ROOT).replace('_', ' ')} starting $effectiveFromDate with zero make-up cramming.",
-            diff = diff,
-            candidatePlanJson = candidatePlan.encode().toString(),
-            reasonCodes = reasonCodes.toList() + "PRE_SURFACE_INVARIANT_PASSED"
-        )
-    }
-
-    private fun buildProactiveDeloadProposal(
-        plan: PlanSnapshot,
-        diagnostic: AthleteDiagnosticSnapshot,
         linkedSessionIds: Set<String>,
         trailing30dLongestKm: Double,
         cooldowns: List<AdaptationCooldownRecord>,
@@ -321,3 +284,68 @@ LINES: 943-1260
                 if (removedMeters > 0 && cdIdx >= 0 && filtered[cdIdx].seconds != null) {
                     val cd = filtered[cdIdx]
                     val newEq = (cd.distanceEquivalentMeters ?: 0) + removedMeters
+                    steppedSteps = filtered.toMutableList().apply {
+                        set(cdIdx, cd.copy(distanceEquivalentMeters = newEq))
+                    }
+                    newDistKm = session.distanceKm
+                }
+            }
+            val rescaledSteps = steppedSteps.map { step ->
+                val (nMin, nMax) = scalePaceBounds(step.stepIntent, step.targetPaceMinSecPerKm, step.targetPaceMaxSecPerKm)
+                step.copy(targetPaceMinSecPerKm = nMin, targetPaceMaxSecPerKm = nMax)
+            }
+            rx.copy(mixedSegments = rescaledSteps)
+        } else {
+            val rescaledSegs = rx.segments.map { seg ->
+                val (nMin, nMax) = scalePaceBounds(seg.stepIntent, seg.targetPaceMinSecPerKm, seg.targetPaceMaxSecPerKm)
+                seg.copy(targetPaceMinSecPerKm = nMin, targetPaceMaxSecPerKm = nMax)
+            }
+            rx.copy(segments = rescaledSegs)
+        }
+
+        val paceAdjustedMinutes = (session.minutes * paceFactor).roundToInt().coerceAtLeast(15)
+        return session.copy(
+            minutes = paceAdjustedMinutes,
+            runningPrescription = updatedRx,
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+    }
+
+    private fun rebuildBridgeOrAerobicWeek(
+        sessions: List<PlannedSession>,
+        targetWeekKm: Double,
+        longestCapKm: Double,
+        allowSingleTouchTempo: Boolean,
+        effectiveFromDate: LocalDate,
+        linkedSessionIds: Set<String>
+    ): List<PlannedSession> {
+        if (sessions.isEmpty()) return emptyList()
+        var qualityTouchUsed = false
+        val simplified = sessions.map { s ->
+            val protected = s.date.isBefore(effectiveFromDate) || s.status == "completed" ||
+                s.linkedActivityId != null || s.id in linkedSessionIds
+            if (protected || s.discipline != "run") return@map s
+
+            if (s.quality) {
+                if (allowSingleTouchTempo && !qualityTouchUsed) {
+                    qualityTouchUsed = true
+                    stepDownQualityToEntryTouch(s)
+                } else {
+                    convertQualityToEasyOrStrides(s, withStrides = s.kind != "recovery")
+                }
+            } else {
+                s
+            }
+        }
+        return scaleWeekSessionsToBudget(simplified, targetWeekKm, longestCapKm)
+    }
+
+    private fun stepDownQualityToEntryTouch(session: PlannedSession): PlannedSession {
+        val totalMeters = ((session.distanceKm ?: 8.0) * 1000.0).roundToInt().coerceAtLeast(5000)
+        val wuMeters = 2000
+        val cdMeters = 2000
+        val workMeters = (totalMeters - wuMeters - cdMeters).coerceAtLeast(1000)
+        val wuTarget = session.runningPrescription?.segments?.firstOrNull()?.let { it.targetPaceMinSecPerKm to it.targetPaceMaxSecPerKm }
+            ?: (340 to 365)
+        val workTarget = session.runningPrescription?.segments?.firstOrNull { it.purpose == "WORK" }

@@ -1,21 +1,9 @@
+FILE: Engine15M5TimedDistanceReconciler.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 344-401
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 357-401
 --------------------------------------------------
-/** Compare implied averages and physiological / zone pace bounds without setting a hard pace target. */
-internal fun Engine15M5ArithmeticMatch.qualityPaceWarning(
-    zones: Engine15ProvisionalPaceZones? = null
-): String? {
-    val familyName = family.name.lowercase().replaceFirstChar(Char::uppercase)
-    val work = segments.filter { it.purpose == WorkoutPurpose.WORK && it.target != WorkoutTarget.HILLS }
-    fun Engine15M5TimedDistanceSegment.pace() = seconds * 1000 / assertedMeters
-    val warnings = mutableListOf<String>()
-
-    if (work.isNotEmpty()) {
-        val slowestWork = work.maxOf { it.pace() }
-        segments.filter { it.target == WorkoutTarget.EASY && it.pace() * 1.05 < slowestWork }
-            .forEach { easy ->
                 val phase = easy.purpose.name.lowercase().replace('_', ' ')
                 warnings += "The asserted $phase implies ${formatTempoImpliedPace(easy.pace())}, faster than $familyName work at ${formatTempoImpliedPace(slowestWork)}. Check the metres for both steps."
             }

@@ -1,13 +1,14 @@
+FILE: engine15-batch-d-e-handoff.md
 SOURCE: docs/engine15-batch-d-e-handoff.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-63
 --------------------------------------------------
-# Engine 1.5 ΓÇö Batch D verification and Batch E Trackside integration handoff
+# Engine 1.5 — Batch D verification and Batch E Trackside integration handoff
 
-> **HISTORICAL HANDOFF ΓÇö activation rule superseded (2026-11-05).** This document originally prohibited enabling Engine 1.5 and specified Engine 1.0 as default during the candidate stage. The user's latest approved Trackside requirements now specify Engine 1.5 primary and Engine 1.0 controlled fallback: [current contract](qa/engine15-primary-plan-quality-requirements-20261105.md). Preserve this handoff for its historical technical and safety findings, but do not use its earlier activation prohibition as the current product requirement. Code and verification remain pending.
+> **HISTORICAL HANDOFF — activation rule superseded (2026-11-05).** This document originally prohibited enabling Engine 1.5 and specified Engine 1.0 as default during the candidate stage. The user's latest approved Trackside requirements now specify Engine 1.5 primary and Engine 1.0 controlled fallback: [current contract](qa/engine15-primary-plan-quality-requirements-20261105.md). Preserve this handoff for its historical technical and safety findings, but do not use its earlier activation prohibition as the current product requirement. Code and verification remain pending.
 
-**Owner branch:** `feature/engine15-versioned-foundation-20261103` ┬╖ **Draft PR:** [#37](https://github.com/Isshhin/stridelab-development/pull/37) ┬╖ **Trackside draft:** [#36](https://github.com/Isshhin/stridelab-development/pull/36)
+**Owner branch:** `feature/engine15-versioned-foundation-20261103` · **Draft PR:** [#37](https://github.com/Isshhin/stridelab-development/pull/37) · **Trackside draft:** [#36](https://github.com/Isshhin/stridelab-development/pull/36)
 
 **Do not merge, release or enable Engine 1.5 in Plan Builder from this document.** This file is a verifiable implementation handoff for a private, review-only candidate. It is not evidence that prescriptions improve physiological performance.
 
@@ -23,7 +24,7 @@ The candidate has three independent gates:
 
 **Final verified Batch D source checkpoint (3 Nov 2026):** Code commit `1eac288c51078a8982d29324e2ba906dcfd1e9c2` contains the expanded 64-profile synthetic matrix and two additional owner-switch/atomic-restore device tests. [Exercise Library 2.0 cloud verification run 41582368182](https://github.com/Isshhin/stridelab-development/actions/runs/41582368182) completed **successfully**: its `android-unit` and `offline-library` jobs both passed; the offline harness executed **175 JUnit tests twice** (standard and cached-offline mode), and 31 Python integrity tests passed. [Engine 1.5 isolated Android 35 device run 41582362399](https://github.com/Isshhin/stridelab-development/actions/runs/41582362399) completed **successfully**: instrumented `Engine15FeedbackRepositoryTest` and `Engine1RepositoryTest` finished **20/20 tests**, including new account switch and atomic backup validation; final Gradle result `BUILD SUCCESSFUL`. Commits after `1eac288c` changed only this handoff/documentation; no runtime or test code was modified. These are correctness/safety gates, not proof of coaching efficacy or permission to ship.
 
-## Batch E ΓÇö staged integration contract (not yet implemented)
+## Batch E — staged integration contract (not yet implemented)
 
 Prerequisites: both PRs separately reviewed; PR #36 visual baseline stable; PR #37 all requested validation gates green and its source/policy changes audited; an approved integration sequence and rollback strategy. Do **not** silently merge `feature/engine15-versioned-foundation-20261103` into Trackside #36 or vice versa. After review, create an explicit integration branch from the agreed stable target and resolve both sets of UI/data changes deliberately.
 
@@ -36,7 +37,7 @@ Prerequisites: both PRs separately reviewed; PR #36 visual baseline stable; PR #
 5. **Explicit decisions:** user chooses `Review` then `Accept` or `Dismiss`. The repository checks plan revision/current evidence again; a stale result forces refresh, not a silent retry. Dismissed proposals retain audit history; accepted rest changes a future session to skipped only with approval.
 6. **Original target compatibility:** an accepted shorter session currently changes `effectiveMinutes` but deliberately preserves original `minutes`, `distanceKm` and historical workout steps. UI **must not show the old distance as the newly required distance or imply a pace increase**. Label original distance as original context, and the approved change as time-only; avoid setting a contradictory pace/distance goal. Treat this as an explicit integration design gate, not a hidden assumption.
 7. **Offline and failure states:** show pending/accepted decisions after restart; account switches must never leak previews, proposals, sessions or audit records. No network/permission is required to review a stored, account-owned plan. No autopush of a proposed change to an attached watch or training provider.
-8. **Accessibility:** test compact AMOLED Trackside layout on 360/412dp width, 1.3├ù font scaling, descriptive screen-reader labels, long evidence strings, notification-free empty state and unknown/read-only policy states.
+8. **Accessibility:** test compact AMOLED Trackside layout on 360/412dp width, 1.3× font scaling, descriptive screen-reader labels, long evidence strings, notification-free empty state and unknown/read-only policy states.
 
 ### Release gates and scope limits
 
@@ -55,7 +56,7 @@ Prerequisites: both PRs separately reviewed; PR #36 visual baseline stable; PR #
 5. Update PR and the TickTick Batch D task with the exact verified and unverified gates. Leave PR #37 draft, PR #36 untouched; mark only truly completed checkpoints green.
 
 
-## Batch E1 ΓÇö backend safeguards and presentation contract (isolated; UI not enabled)
+## Batch E1 — backend safeguards and presentation contract (isolated; UI not enabled)
 
 **2026-11-03 source checkpoint:** Engine 1.5 candidate PR #37; final source SHA must be obtained from GitHub when continuing. This checkpoint extends the already-green Batch D tests. It is **not** a claim of final Android emulator success until the new exact-head Actions run completes.
 
@@ -63,5 +64,6 @@ Prerequisites: both PRs separately reviewed; PR #36 visual baseline stable; PR #
 - **Time-only target presentation:** `Engine15SessionPresentation.forSession` computes read-only display data. Pending proposals leave original duration, distance and steps active. An accepted shorter Engine 1.5 run shows only accepted minutes and safe time-only instructions: `currentDistanceTargetKm=null`, no original distance, pace or structured steps in active instructions. The original distance/steps/minutes remain unchanged in the persisted plan for historical context. Accepted rest shows no active workout target. Unsupported or Engine 1.0 policies retain their legacy contract. Invalid accepted states fail closed. This is only a **domain presentation contract**; it has NOT been wired into the approved Trackside Compose screen.
 - **Revalidation on acceptance:** `Engine15Feedback.requireCurrentPendingAcceptance` is now called by `TrainingRepository.acceptSuggestion` through the existing account-scoped optimistic revision operation. It rejects newly paused/expired/linked targets, changed completed RPE or log revision, modified missed reason, or duplicate source links after staging by recalculating the exact candidate evidence and stored note before applying. No changes to Engine 1.0 acceptance path.
 - **Verification:** independent pure JVM and Android unit test classes `Engine15SessionPresentationTest`, `Engine15MissedSuggestionSafetyTest`, `Engine15AcceptanceEvidenceTest` and two new synthetic `Engine15FeedbackRepositoryTest` emulator cases cover pending/accepted/rest projections, missed-state non-autostaging, source corrections and offline reopen. `run_library_jvm_checks.py` includes the actual presentation source to preserve the independent JVM gate. Recheck exact-head CI after any change; do not claim source tests imply visual or athlete effectiveness.
-- **Figma parity boundary:** source `https://www.figma.com/design/v73TsYo6gKxUoiUock2sSE?node-id=732-3` specifies the existing approved Trackside Plan Management layout. There is not yet an approved Figma frame for the new Engine 1.5 proposal-review/accept/dismiss experience. Do not invent a new screen or modify the approved frames under a ΓÇ£1:1ΓÇ¥ claim. Keep Plan Builder option and user-facing review controls disabled until an exact visual design is approved and reviewed on PR #36 or an isolated integration branch.
+- **Figma parity boundary:** source `https://www.figma.com/design/v73TsYo6gKxUoiUock2sSE?node-id=732-3` specifies the existing approved Trackside Plan Management layout. There is not yet an approved Figma frame for the new Engine 1.5 proposal-review/accept/dismiss experience. Do not invent a new screen or modify the approved frames under a “1:1” claim. Keep Plan Builder option and user-facing review controls disabled until an exact visual design is approved and reviewed on PR #36 or an isolated integration branch.
 - **Release boundary:** no mainline merge, signed APK, feature flag exposure, automatic plan migration or changes to the separate Trackside PR #36. PR #37 remains draft. UI work belongs in a separate reviewed integration branch after the Figma design gate.
+

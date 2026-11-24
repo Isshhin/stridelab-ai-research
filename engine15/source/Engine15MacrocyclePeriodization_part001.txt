@@ -1,6 +1,7 @@
+FILE: Engine15MacrocyclePeriodization.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15MacrocyclePeriodization.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-155
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -31,8 +32,8 @@ internal object Engine15MacrocyclePeriodization {
      *
      * - Non-race "Train Your Way" goals (`Aerobic foundation`, `General fitness`) use repeating
      *   3:1 loading-to-recovery cycles without artificial race tapers or peak sharpening.
-     * - Race goals scale BASE / BUILD / PEAK / TAPER proportionally by plan horizon (short 4ΓÇô6w,
-     *   medium 7ΓÇô11w, long 12ΓÇô16+w) and readiness (`experience == 0` / `returning == true` receive
+     * - Race goals scale BASE / BUILD / PEAK / TAPER proportionally by plan horizon (short 4–6w,
+     *   medium 7–11w, long 12–16+w) and readiness (`experience == 0` / `returning == true` receive
      *   proportionally longer BASE accumulation and omit harsh PEAK weeks).
      */
     fun assignPhases(
@@ -142,7 +143,7 @@ internal object Engine15MacrocyclePeriodization {
         volume: Engine15IndependentVolumePlanner.Result
     ): List<String> = buildList {
         if (request.goal == "Marathon" && request.weeks < 12) {
-            add("GOAL_HORIZON_SHORT: Marathon build (${request.weeks} weeks) is compressed below the standard 12ΓÇô16 week horizon; volume and long-run progression are safely capped by current baseline.")
+            add("GOAL_HORIZON_SHORT: Marathon build (${request.weeks} weeks) is compressed below the standard 12–16 week horizon; volume and long-run progression are safely capped by current baseline.")
         } else if (request.goal == "Half marathon" && request.weeks < 8) {
             add("GOAL_HORIZON_SHORT: Half marathon build (${request.weeks} weeks) is compressed; progression prioritizes sustainable stamina over peak volume.")
         }

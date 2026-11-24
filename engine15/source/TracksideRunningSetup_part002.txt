@@ -1,0 +1,86 @@
+FILE: TracksideRunningSetup.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideRunningSetup.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 388-467
+--------------------------------------------------
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+        ) {
+            Text("ASSIGN SESSION", color = PlanBuilderPalette.accent,
+                fontSize = 10.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                DayOfWeek.of(day).name.lowercase().replaceFirstChar { it.uppercase() },
+                color = PlanBuilderPalette.text, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(Modifier.height(14.dp))
+            options.forEach { choice ->
+                val targetIndex = choice.indices.firstOrNull { slots.getOrNull(it) == day }
+                    ?: choice.indices.firstOrNull { slots.getOrNull(it) == 0 }
+                    ?: choice.indices.firstOrNull()
+                val selected = assignedIndex in choice.indices && assignedIndex >= 0
+                val fromDay = targetIndex?.let { slots.getOrNull(it) } ?: 0
+                val status = when {
+                    targetIndex == null -> "Not active in current count"
+                    selected -> "Assigned"
+                    fromDay == 0 -> "Place here"
+                    assignedIndex >= 0 -> "Swap with ${DayOfWeek.of(fromDay).name.take(3)}"
+                    else -> "Move from ${DayOfWeek.of(fromDay).name.take(3)}"
+                }
+                Surface(
+                    onClick = {
+                        if (targetIndex != null) {
+                            onAssign(targetIndex, day)
+                            onDismiss()
+                        }
+                    },
+                    enabled = targetIndex != null,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+                        .heightIn(min = 66.dp)
+                        .testTag("builder-run-sheet-option-${choice.tag}"),
+                    color = if (selected) choice.color.copy(alpha = 0.14f) else PlanBuilderPalette.surfaceRaised,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, if (selected) choice.color else PlanBuilderPalette.border)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            Modifier.size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(choice.color.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(choice.code, color = choice.color, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(choice.title, color = PlanBuilderPalette.text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text(choice.subtitle, color = PlanBuilderPalette.secondary, fontSize = 11.sp)
+                        }
+                        Text(
+                            status,
+                            color = if (selected) choice.color else PlanBuilderPalette.muted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+            if (assignedIndex >= 0) {
+                TextButton(
+                    onClick = { onClear(day); onDismiss() },
+                    modifier = Modifier.fillMaxWidth().testTag("builder-run-sheet-clear")
+                ) {
+                    Text("Make rest day", color = StrideLabVisualPalette.highCoral, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}

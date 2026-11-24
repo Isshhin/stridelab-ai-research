@@ -1,9 +1,10 @@
+FILE: M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md
 SOURCE: research/engine15-r0/M5_STAGE_B_SHADOW_IMPLEMENTATION_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-26
 --------------------------------------------------
-# M5 Stage B ΓÇö independent quality preview shadow implementation
+# M5 Stage B — independent quality preview shadow implementation
 
 Date: 2026-11-17. Branch: feature/engine15-m5b-m4b-quality-previews-20261117. Stacked on M5 Stage A PR #114.
 
@@ -21,7 +22,7 @@ Nine focused M5B tests: candidate threshold, candidate tempo, missing/unauthoriz
 
 ## Required validation on the Q3 checkout
 
-From C:\Users\marcs\stridelab-q3-validation\native-android after merging this branch:
+From <LOCAL_USER_HOME>\stridelab-q3-validation\native-android after merging this branch:
 
     .\gradlew.bat -PstrideEngine15Active=true :app:testDebugUnitTest --tests "io.stridelab.privatealpha.Engine15M5QualityPreviewComposerTest" --tests "io.stridelab.privatealpha.Engine15M5WorkoutComposerTest" --tests "io.stridelab.privatealpha.Engine15M4BIndependentVolumePlannerTest" --no-daemon
 

@@ -1,9 +1,10 @@
+FILE: m6b-quality-spacing-20261115.md
 SOURCE: research/engine15/experiments/m6b-quality-spacing-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-44
 --------------------------------------------------
-# Engine 1.5 M6b ΓÇö Quality-day spacing proposals, not workouts
+# Engine 1.5 M6b — Quality-day spacing proposals, not workouts
 
 Date: 2026-11-15. Branch: `research/engine15-m6b-quality-spacing-proposals-20261115`, stacked on M6a draft PR #80.
 
@@ -11,7 +12,7 @@ Date: 2026-11-15. Branch: `research/engine15-m6b-quality-spacing-proposals-20261
 
 The existing Android Engine 1.5 uses largely fixed template strings, limited quality-count gates and an existing scheduling calendar. Neither it nor M6a establishes athlete-specific threshold intensity, exposure provenance or executable mixed time/distance workouts. The M6b research layer adds **review-only** candidate hard-work slots using the *actual M6a constrained multiweek easy/long-run calendar* rather than placing quality sessions independent of long-run and blocked-day context.
 
-`IndependentQualitySpacingPlanner.propose` takes an externally requested 0ΓÇô2 potential quality slots per build week, preferred days, and **explicitly supplied blocked dates** (which may represent separately reviewed mixed-discipline constraints). On each build week it considers only existing EASY run days, excludes long runs and days too close to the long run, excludes user-supplied blocked days, searches all 1- or 2-slot combinations, checks minimum calendar separation from the current and preceding week's quality slots, and selects the best deterministic preferred/spaced candidate. During M4 recovery weeks it holds quality opportunities entirely. Impossible schedules defer the entire candidate with an explicit rule instead of silently changing availability or adding sessions.
+`IndependentQualitySpacingPlanner.propose` takes an externally requested 0–2 potential quality slots per build week, preferred days, and **explicitly supplied blocked dates** (which may represent separately reviewed mixed-discipline constraints). On each build week it considers only existing EASY run days, excludes long runs and days too close to the long run, excludes user-supplied blocked days, searches all 1- or 2-slot combinations, checks minimum calendar separation from the current and preceding week's quality slots, and selects the best deterministic preferred/spaced candidate. During M4 recovery weeks it holds quality opportunities entirely. Impossible schedules defer the entire candidate with an explicit rule instead of silently changing availability or adding sessions.
 
 Example with Saturday long, 6 running days and Thursday unavailable: 1 proposed quality slot defaults to Tuesday; 2 requested slots can be tentatively suggested on Monday and Wednesday. A recovery fourth week produces **zero** quality candidates. These examples are scheduling scenarios, **not authorizations or athlete prescriptions**.
 
@@ -37,7 +38,7 @@ The proposed `IndependentQualityOpportunity` references an **unchanged, preexist
 
 ## Known limitations and remaining coaching roadmap
 
-**M6a + M6b are structural advances, not the completed coaching algorithm.** The research pipeline still uses M4's unvalidated weekly build/deload settings and externally asserted caps. Proposed quality slots are not runnable workouts. The system cannot yet deduce reliable session intensity or pace from observed training, reconcile timed session distances into the weekly volume, or claim that planned recovery is physically appropriate for a runner. It also does not model complete strength/calisthenics training loadsΓÇöthe supplied blocked days are simple external policy inputs, not a physiological interference score.
+**M6a + M6b are structural advances, not the completed coaching algorithm.** The research pipeline still uses M4's unvalidated weekly build/deload settings and externally asserted caps. Proposed quality slots are not runnable workouts. The system cannot yet deduce reliable session intensity or pace from observed training, reconcile timed session distances into the weekly volume, or claim that planned recovery is physically appropriate for a runner. It also does not model complete strength/calisthenics training loads—the supplied blocked days are simple external policy inputs, not a physiological interference score.
 
 Priorities for subsequent isolated research:
 1. **M7 evidence and attribution**: source-verified coverage, activity duplicates, session-to-completion linkage and separately reviewed training intent; avoid the current simplistic `TOLERATED` asserted flag as an inferred physiological fact.

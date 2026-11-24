@@ -1,9 +1,10 @@
+FILE: m9c-complete-week-program-review-20261115.md
 SOURCE: research/engine15/experiments/m9c-complete-week-program-review-20261115.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-74
 --------------------------------------------------
-# Engine 1.5 M9c ΓÇö Complete-week running program review
+# Engine 1.5 M9c — Complete-week running program review
 
 Date: 2026-11-15. Draft research stacked on M9b PR #87.
 
@@ -30,10 +31,10 @@ New pure research component: \`IndependentWeeklyProgramReview.inspect(base,spaci
 - It accepts caller-reviewed **other-discipline HARD dates**, including up to three days before and three days after the running week. If any such day is too near an already proposed hard-running session or the long run, the entire candidate defers. The spacing input is a transparent **policy assertion**, not physiological interference modeling. A known-empty hard-day calendar must also be explicitly reviewed; absence of a review is not treated as proof of no hard training.
 - It reports later M6a weeks as **base-only/unqualified** rather than incorrectly copying next week's observed dose permission into unseen future weeks.
 
-For a synthetic six-day 60 km M6a week with Saturday long, M6b may propose Tuesday threshold OR Monday threshold plus Wednesday tempo. When the independent M9b dose preview fits and every M9a segment distance adds to each selected existing run's kilometer allocation, M9c produces a **read-only first-week calendar** with unchanged 60 km, all EASY/LONG distances still accounted for, and 0ΓÇô2 proposed quality replacements. Reported hard training on a selected hard day or the adjacent day blocks the preview under the requested two-day gap.
+For a synthetic six-day 60 km M6a week with Saturday long, M6b may propose Tuesday threshold OR Monday threshold plus Wednesday tempo. When the independent M9b dose preview fits and every M9a segment distance adds to each selected existing run's kilometer allocation, M9c produces a **read-only first-week calendar** with unchanged 60 km, all EASY/LONG distances still accounted for, and 0–2 proposed quality replacements. Reported hard training on a selected hard day or the adjacent day blocks the preview under the requested two-day gap.
 
 A successful M9c result has:
-- \`segmentDistanceArithmeticChecked=true\` ΓÇö an arithmetic check over *caller-supplied segment distances*, NOT observed distance truth.
+- \`segmentDistanceArithmeticChecked=true\` — an arithmetic check over *caller-supplied segment distances*, NOT observed distance truth.
 - \`ownerAndSourceProvenanceVerified=false\`, \`qualityIntensityVerified=false\`, \`otherDisciplineFatigueVerified=false\`.
 - \`authorizedForPlanMutation=false\` and \`authorizedForProduction=false\`; all day cells carry \`executable=false\`.
 
@@ -66,7 +67,7 @@ $env:ANDROID_SDK_ROOT = $sdk
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug
 ```
 
-No Android instrumentation/emulator/physical-phone test at this phase. **Owner requested Android tests after M10 integration**, so the integrated appΓÇönot isolated research previewsΓÇöis what will be exercised in M10.1.
+No Android instrumentation/emulator/physical-phone test at this phase. **Owner requested Android tests after M10 integration**, so the integrated app—not isolated research previews—is what will be exercised in M10.1.
 
 ## End-of-roadmap acceptance sequence
 

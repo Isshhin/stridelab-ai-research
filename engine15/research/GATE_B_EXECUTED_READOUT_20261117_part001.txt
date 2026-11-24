@@ -1,9 +1,10 @@
+FILE: GATE_B_EXECUTED_READOUT_20261117.md
 SOURCE: research/engine15-r0/GATE_B_EXECUTED_READOUT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-50
 --------------------------------------------------
-# Gate B ΓÇö R0 executed evidence and authorization (2026-11-17)
+# Gate B — R0 executed evidence and authorization (2026-11-17)
 
 ## Evidence provenance and verdict
 
@@ -12,7 +13,7 @@ LINES: 1-50
 - **EXECUTED within synthetic fixture:** experienced-new-app-75-to-80, 6 days, eight weeks, 75 km reported, 80 km requested, 20 km longest run, one quality session, planning pace 360 s/km. This is not a real athlete record.
 - **NOT EXECUTED HERE:** M3 baseline code and alternative M4/M5 generators. No after-change mileage comparison yet.
 
-## R0 measured results ΓÇö experienced 75 ΓåÆ 80 km
+## R0 measured results — experienced 75 → 80 km
 
 | Week | Engine 1 baseline km | Engine 1.5 allocated km | Final distance km | Q2 delta km | Basis |
 |---|---:|---:|---:|---:|---|
@@ -25,11 +26,11 @@ LINES: 1-50
 | 7 | 85.700 | 78.700 | 70.533 | -8.167 | Planning-pace estimate |
 | 8 | 68.500 | 56.400 | 56.400 | 0.000 | Exact distance targets, recovery |
 
-**Week 7 executed stage results:** Engine 1.0 baseline 85.700 ΓåÆ Engine 1.5 ceiling 78.700 ΓåÆ session capacity 98.600 (not binding) ΓåÆ weighted allocation 78.700 ΓåÆ long share 78.700 ΓåÆ rounding 78.700 ΓåÆ final role recheck 78.700 ΓåÆ Q2 timed conversion 70.533 estimated ΓåÆ post-Q2 reconciliation 70.533. Estimated target gap 9.467 = 1.300 gap before Q2 + 8.167 estimate decrease at Q2.
+**Week 7 executed stage results:** Engine 1.0 baseline 85.700 → Engine 1.5 ceiling 78.700 → session capacity 98.600 (not binding) → weighted allocation 78.700 → long share 78.700 → rounding 78.700 → final role recheck 78.700 → Q2 timed conversion 70.533 estimated → post-Q2 reconciliation 70.533. Estimated target gap 9.467 = 1.300 gap before Q2 + 8.167 estimate decrease at Q2.
 
 **Interpretation constraint:** Q2 replaces fixed-distance warm-up/cool-down with timed steps and recalculates estimated distance at an assumed pace. The delta is an **executed change in estimated prescription**, not proof the athlete would run 8.167 km less; not authorization to force that distance into workouts.
 
-**Other synthetic peak planned/estimated km:** 50ΓåÆ80 four-week build 47.033; 30ΓåÆ35 developing 31.500; beginner 0ΓåÆ20 unknown time-only across all eight weeks; returning 40ΓåÆ50 28.300; three-day 75ΓåÆ80 54.600; unverified-quality 75ΓåÆ80 70.533. Shortfall alone never establishes unsafe or unnecessary guardrails.
+**Other synthetic peak planned/estimated km:** 50→80 four-week build 47.033; 30→35 developing 31.500; beginner 0→20 unknown time-only across all eight weeks; returning 40→50 28.300; three-day 75→80 54.600; unverified-quality 75→80 70.533. Shortfall alone never establishes unsafe or unnecessary guardrails.
 
 ## Constraint decisions
 
@@ -38,7 +39,7 @@ LINES: 1-50
 | Engine 1.0 baseline as Engine 1.5 volume input | EXECUTED boundary only; internal source factors not yet traced | M4 can design a single volume skeleton; current generator unchanged |
 | Engine 1.5 weekly ceiling | EXECUTED binding | Review under M4; numerical relaxation **not approved** |
 | Q2 conversion | EXECUTED estimated-volume delta | Review under M5, preserve mixed-unit estimates, no catch-up |
-| 40% long-run share | EXECUTED no change for selected 75ΓåÆ80 profile | **No change** |
+| 40% long-run share | EXECUTED no change for selected 75→80 profile | **No change** |
 | 20% work share | EXECUTED no selected-profile reduction | **No change** |
 | Q3 qualified history | No new athlete efficacy evidence | **Preserve unchanged** |
 | Illness, pain, recovery hold | Focused synthetic rejection preserved | **Preserve unchanged** |

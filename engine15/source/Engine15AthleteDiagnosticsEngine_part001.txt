@@ -1,7 +1,8 @@
+FILE: Engine15AthleteDiagnosticsEngine.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-384
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 2
+LINES: 1-401
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -387,3 +388,20 @@ internal object Engine15AthleteDiagnosticsEngine {
                 reasons += "CONSISTENT_SLOWER_THAN_TARGET_QUALITY"
                 LongitudinalPaceTrend.SLOWER_THAN_TARGET
             }
+            avgDelta in -3.0..6.0 && (verifiedHitRatePct ?: 0.0) >= 65.0 -> {
+                reasons += "QUALITY_EXECUTION_ON_TARGET"
+                LongitudinalPaceTrend.ON_TARGET
+            }
+            else -> {
+                reasons += "QUALITY_PACE_MIXED"
+                LongitudinalPaceTrend.MIXED
+            }
+        }
+        if (subCount > 0) reasons += "VOLUME_ONLY_QUALITY_SUBSTITUTIONS_PRESENT"
+
+        return QualityExecutionDiagnostic(
+            evaluatedQualityCount = evaluatedCount,
+            verifiedHitCount = verifiedHitCount,
+            verifiedHitRatePct = verifiedHitRatePct?.let(::round1),
+            volumeOnlySubstitutionCount = subCount,
+            tooSlowCount = tooSlowCount,

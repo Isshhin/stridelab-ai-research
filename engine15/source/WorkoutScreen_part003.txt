@@ -1,0 +1,65 @@
+FILE: WorkoutScreen.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/WorkoutScreen.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 3
+LINES: 513-571
+--------------------------------------------------
+                if(active && session.log?.sets?.none { it.exerciseId==ex.id }!=false && ExerciseAlternatives.easier(ex)!=null)OutlinedButton(onClick={swapDirection="EASIER";swapId=ex.id},enabled=!state.busy,modifier=Modifier.fillMaxWidth()) { Text("Choose an easier alternative") }
+                if(active && session.log?.sets?.none { it.exerciseId==ex.id }!=false && ExerciseAlternatives.harder(ex)!=null)OutlinedButton(onClick={swapDirection="HARDER";swapId=ex.id},enabled=!state.busy,modifier=Modifier.fillMaxWidth()) { Text("Choose a harder progression") }
+                if(!active) Text(if(done) "Actual values below are your saved records. Blank values were not recorded." else if(!Engine1Engines.canManage(plan))"This saved engine/policy is read-only here. Its original prescription is retained for viewing and export." else "Approve the plan before recording. Targets are not completed sets.",style=MaterialTheme.typography.bodySmall)
+            } }
+            if (!showPrescription) (1..setCount).forEach { i -> item {
+                val data=JSONObject(entries);val prefix="${ex.id}|$i|"
+                fun set(key:String,value:String) { entries=JSONObject(entries).put(prefix+key,value.take(64)).toString() }
+                SignalCard { Text("Set $i",style=MaterialTheme.typography.titleMedium)
+                    if(ex.seconds!=null) OutlinedTextField(data.optString(prefix+"seconds"),{set("seconds",it)},label={Text("Actual hold seconds")},enabled=active,modifier=Modifier.fillMaxWidth(),keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+                    else OutlinedTextField(data.optString(prefix+"reps"),{set("reps",it)},label={Text("Actual reps")},enabled=active,modifier=Modifier.fillMaxWidth(),keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+                    OutlinedTextField(data.optString(prefix+"kg"),{set("kg",it)},label={Text("Actual load (kg), optional")},enabled=active,modifier=Modifier.fillMaxWidth(),keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal))
+                }
+            } }
+            item { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick={exerciseIndex--},enabled=exerciseIndex>0,modifier=Modifier.weight(1f)) { Text("Previous") }
+                OutlinedButton(onClick={exerciseIndex++},enabled=exerciseIndex<exercises.lastIndex,modifier=Modifier.weight(1f)) { Text("Next exercise") }
+            } }
+            if(active && !showPrescription) item { SignalCard { Text("Rest timer · ${restSeconds/60}:${(restSeconds%60).toString().padStart(2,'0')}",style=MaterialTheme.typography.titleLarge)
+                Text("Pauses when you leave the app. Resume it here when ready.",style=MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick={restSeconds=ex.rest;restRunning=true}) { Text("Start rest") };TextButton(onClick={restRunning=!restRunning},enabled=restSeconds>0) { Text(if(restRunning) "Pause" else "Resume") } }
+            } }
+        }
+        if (!showPrescription && !rest && session.status!="unassigned") item { ActualWorkoutRecordFormCard() }
+        formError?.let { item { Text(it,color=MaterialTheme.colorScheme.error) } }
+        if(active && !showPrescription) item { SaveWorkoutButtonsCard() }
+        if(responseEditable) item {
+            Text("Feedback is saved separately. Original workout measurements and prescriptions stay unchanged.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            SignalButton("Save run feedback",{try {formError=null;actions.saveRunResponse(plan.id,plan.revision,session.id,whole(effort,"effort from 1 to 10"),difficulty,discomfort)}catch(e:PlanConstraint){formError=e.message}},!state.busy)
+        }
+        if(done) item { Engine15CoachReviewCard(plan,actions,state.busy,state.message) }
+        if(done) item { Text("Completion is your recorded confirmation, not a sensor-verified activity. It appears separately in workout history without invented pace, GPS or heart rate.",style=MaterialTheme.typography.bodySmall) }
+    }
+    }
+    swapId?.let { id -> exercises.find { it.id==id }?.let { original ->
+        val dir = if(swapDirection=="HARDER") ExerciseAlternatives.SwapDirection.HARDER else ExerciseAlternatives.SwapDirection.EASIER
+        ExerciseAlternatives.alternative(original,dir)?.let { replacement ->
+            val harderSwap = dir == ExerciseAlternatives.SwapDirection.HARDER
+            AlertDialog(onDismissRequest={swapId=null},title={Text(if(harderSwap) "Review harder progression" else "Review easier alternative")},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                Text(replacement.name,style=MaterialTheme.typography.titleLarge)
+                Text("${replacement.sets} sets · ${replacement.reps?.let { "$it reps" } ?: "${replacement.seconds} seconds"} · rest ${replacement.rest} seconds")
+                Text(replacement.cue);Text(ExerciseAlternatives.reasonFor(dir))
+                Text("Any unsaved entries for this exercise will be cleared. Previously saved sets cannot be replaced.",style=MaterialTheme.typography.bodySmall)
+            }},confirmButton={TextButton(onClick={pendingSwap=id;if(harderSwap) actions.swapHarder(plan.id,plan.revision,session.id,id) else actions.swap(plan.id,plan.revision,session.id,id);swapId=null}) { Text(if(harderSwap) "Use harder progression" else "Use easier alternative") }},dismissButton={TextButton(onClick={swapId=null}) { Text("Keep original") }})
+        }
+    } }
+    if(missed && onMissed==null) AlertDialog(onDismissRequest={missed=false},title={Text("Why was this session missed?")},text={ Column { ChoiceChips(listOf("Time","Fatigue","Soreness","Illness","Other"),listOf("Time","Fatigue","Soreness","Illness","Other").indexOf(reason)) { reason=listOf("Time","Fatigue","Soreness","Illness","Other")[it] };Text("No catch-up volume is added. Any recovery suggestion requires your explicit choice.") } },confirmButton={TextButton(onClick={actions.missed(plan.id,plan.revision,session.id,reason,false);missed=false}) { Text("Mark missed") }},dismissButton={Row { TextButton(onClick={actions.missed(plan.id,plan.revision,session.id,reason,true);missed=false}) { Text("Skip") };TextButton(onClick={missed=false}) { Text("Cancel") } }})
+    if(move && onMove==null) AlertDialog(onDismissRequest={move=false},title={Text("Move workout")},text={Column { NativeDateField("Scheduled date",moveDate,{moveDate=it});Text("Available-day, long-run-day and recovery conflicts are checked before saving.");formError?.let { Text(it) } }},confirmButton={TextButton(onClick={try {actions.move(plan.id,plan.revision,session.id,LocalDate.parse(moveDate));move=false}catch(e:PlanConstraint){formError=e.message}catch(_:java.time.format.DateTimeParseException){formError="Enter a valid YYYY-MM-DD date."}}) { Text("Save move") }},dismissButton={TextButton(onClick={move=false}) { Text("Cancel") }})
+}
+
+internal fun workoutDoseLabel(session: PlannedSession, exercise: ExercisePrescription, sets: Int): String {
+    val contacts = session.kind == "structured-plyometrics"
+    val timed = session.discipline == "cond"
+    val unit = when {
+        contacts -> "${exercise.reps} contacts"
+        exercise.seconds != null -> "${exercise.seconds} s ${if (timed) "work" else "hold"}"
+        else -> "${exercise.reps} reps"
+    }
+    return "$sets ${if (timed) "rounds" else "sets"} · $unit · ${exercise.rest} s rest"
+}

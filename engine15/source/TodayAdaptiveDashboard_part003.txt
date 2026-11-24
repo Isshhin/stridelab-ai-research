@@ -1,0 +1,488 @@
+FILE: TodayAdaptiveDashboard.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TodayAdaptiveDashboard.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 4
+LINES: 830-1311
+--------------------------------------------------
+    val isRun = DashboardSummary.isRun(act)
+    val accent = TodayAdaptivePalette.accentFor(item.discipline)
+    val badgeLabel = item.discipline?.title?.uppercase(Locale.ENGLISH)
+        ?: act.type.uppercase(Locale.ENGLISH).ifBlank { "ACTIVITY" }
+
+    val distKm = act.distanceM?.takeIf { it.isFinite() && it > 0.0 }?.div(1000.0)
+    val headline = when {
+        isRun && distKm != null -> "Running • ${String.format(Locale.US, "%.2f km", distKm)}"
+        act.title.isNotBlank() -> act.title.trim()
+        else -> item.discipline?.title ?: act.type.ifBlank { "Recorded Session" }
+    }
+    val dur = (act.movingTimeS ?: act.durationS)?.takeIf { it.isFinite() && it > 0.0 }?.let {
+        if (isRun) ActivityRecord.duration(it) else formatMinutesLabel(it)
+    }
+    val pace = if (isRun) act.detailPaceLabel.takeIf { it.isNotBlank() && it != "Not recorded" } else null
+    val hr = act.averageHr?.takeIf { it.isFinite() && it > 0.0 }?.let { "${it.roundToInt()} bpm" }
+    val subtitle = listOfNotNull(dur, pace, hr).joinToString(" • ")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (useHeroActionTag) Modifier.testTag("today-workout-action") else Modifier)
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(14.dp),
+                highlightBorderColor = TodayAdaptivePalette.runningLime,
+                onClick = { onOpenActivityDetail(act.id) }
+            )
+            .padding(contentPadding),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = accent.copy(alpha = 0.16f)
+            ) {
+                Text(
+                    text = badgeLabel,
+                    color = accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+            Text(
+                text = headline,
+                color = TodayAdaptivePalette.text,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                style = TabularTextStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    style = TabularTextStyle,
+                    color = TodayAdaptivePalette.textSecondary,
+                    fontSize = 13.sp
+                )
+            }
+        }
+        if (isRun) {
+            TodayCachedGpsThumbnail(
+                activityId = act.id,
+                detail = cachedDetail,
+                modifier = Modifier.size(width = 84.dp, height = 64.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmedLogDailySessionRow(
+    item: TodayDailySessionItem.ConfirmedLog,
+    useHeroActionTag: Boolean,
+    onOpenWorkout: (String, String) -> Unit
+) {
+    val accent = TodayAdaptivePalette.accentFor(item.discipline)
+    val workout = item.workout
+    val title = item.plannedSession?.effectiveTitle ?: item.discipline.title
+    val dist = workout.distanceM?.takeIf { it.isFinite() && it > 0.0 }?.let {
+        String.format(Locale.US, "%.2f km", it / 1000.0)
+    }
+    val dur = workout.durationSeconds?.takeIf { it.isFinite() && it > 0.0 }?.let {
+        if (item.discipline == TodayDiscipline.RUNNING) ActivityRecord.duration(it) else formatMinutesLabel(it)
+    }
+    val subtitle = listOfNotNull(dist, dur, item.discipline.title).joinToString(" • ")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (useHeroActionTag) Modifier.testTag("today-workout-action") else Modifier)
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(14.dp),
+                highlightBorderColor = accent,
+                onClick = { onOpenWorkout(workout.planId, workout.sessionId) }
+            )
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = accent.copy(alpha = 0.16f)
+        ) {
+            Text(
+                text = "DONE",
+                color = accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            )
+        }
+        Text(
+            text = title,
+            color = TodayAdaptivePalette.text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (subtitle.isNotBlank()) {
+            Text(
+                text = subtitle,
+                color = TodayAdaptivePalette.textSecondary,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun TodaySessionIntensityBars(
+    session: PlannedSession,
+    isQuality: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val profileBars = remember(session, isQuality) {
+        if (!isQuality) {
+            listOf(
+                WorkoutProfileBar(0, "Warm-up", 1.1f, 0.34f, TodayAdaptivePalette.runningLime),
+                WorkoutProfileBar(1, "Steady", 2.8f, 0.68f, TodayAdaptivePalette.runningLime),
+                WorkoutProfileBar(2, "Cool-down", 1.0f, 0.30f, TodayAdaptivePalette.runningLime)
+            )
+        } else {
+            val steps = buildWorkoutStepItems(
+                session = session,
+                segments = session.runningPrescription?.segments,
+                mixedSegments = session.runningPrescription?.mixedSegments,
+                textFallback = session.steps
+            )
+            flattenProfileBars(steps).ifEmpty {
+                listOf(
+                    WorkoutProfileBar(0, "Warm-up", 1.0f, 0.38f, WorkoutDetailPalette.warmTeal),
+                    WorkoutProfileBar(1, "Work", 1.6f, 0.90f, WorkoutDetailPalette.amber),
+                    WorkoutProfileBar(2, "Recover", 0.7f, 0.40f, WorkoutDetailPalette.teal),
+                    WorkoutProfileBar(3, "Work", 1.6f, 0.90f, WorkoutDetailPalette.amber),
+                    WorkoutProfileBar(4, "Cool-down", 1.0f, 0.36f, WorkoutDetailPalette.mint)
+                )
+            }
+        }
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        profileBars.take(16).forEach { bar ->
+            val heightFraction = if (isQuality) {
+                bar.intensityFraction.coerceIn(0.28f, 1.0f)
+            } else {
+                bar.intensityFraction.coerceIn(0.28f, 0.72f)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(bar.durationMinutes.coerceAtLeast(0.5f))
+                    .fillMaxHeight(heightFraction)
+                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
+                    .background(bar.accentColor)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun TodayTrainingOverviewCard(
+    overview: TodayTrainingOverview,
+    weekLabel: String = "THIS WEEK",
+    modifier: Modifier = Modifier,
+    discipline: TodayDiscipline? = null
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("today-training-overview")
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StrideLabHairline()
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "Training Overview",
+                color = TodayAdaptivePalette.text,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "•",
+                color = TodayAdaptivePalette.textMuted,
+                fontSize = 13.sp
+            )
+            Text(
+                text = weekLabel,
+                color = TodayAdaptivePalette.textMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp,
+                style = TabularTextStyle
+            )
+        }
+
+        if (discipline == null || discipline == TodayDiscipline.RUNNING) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OverviewMetricColumn(
+                    value = formatOverviewRunKm(overview.runKm),
+                    label = "Run km",
+                    modifier = Modifier.weight(1f)
+                )
+                OverviewMetricColumn(
+                    value = TodayOverviewCalculator.formatRunHoursMinutes(overview.runSeconds),
+                    label = "Run hours",
+                    modifier = Modifier.weight(1f)
+                )
+                OverviewMetricColumn(
+                    value = "${overview.runCount}",
+                    label = "Runs",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        if (overview.nonRunningChips.isNotEmpty()) {
+            NonRunningChipsRow(chips = overview.nonRunningChips)
+        }
+
+        overview.adherence?.let { adherence ->
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Adherence",
+                        color = TodayAdaptivePalette.textMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    val kmPart = if (adherence.plannedRunKm > 0.05) {
+                        " • ${formatCompactKm(adherence.completedPlannedRunKm)} / ${formatCompactKm(adherence.plannedRunKm)} km planned"
+                    } else {
+                        ""
+                    }
+                    Text(
+                        text = "${adherence.completedSessions}/${adherence.plannedSessions} Sessions$kmPart",
+                        color = TodayAdaptivePalette.textSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        style = TabularTextStyle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(TodayAdaptivePalette.track)
+                ) {
+                    if (adherence.progress > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(adherence.progress)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(TodayAdaptivePalette.runningLime)
+                        )
+                    }
+                }
+            }
+        }
+        StrideLabHairline()
+    }
+}
+
+@Composable
+private fun OverviewMetricColumn(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = value,
+            color = TodayAdaptivePalette.text,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            style = TabularTextStyle,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = label,
+            color = TodayAdaptivePalette.textMuted,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NonRunningChipsRow(chips: List<TodayDisciplineChip>) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        chips.forEach { chip ->
+            val accent = TodayAdaptivePalette.accentFor(chip.discipline)
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = accent.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.28f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(accent, CircleShape)
+                    )
+                    Text(
+                        text = "${chip.discipline.title} • ${chip.count}",
+                        color = TodayAdaptivePalette.text,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun TodayRecentActivitiesSection(
+    rows: List<TodayRecentRow>,
+    cachedDetails: Map<String, ActivityDetail>,
+    onSeeAll: () -> Unit,
+    onOpenActivityDetail: (String) -> Unit,
+    onOpenWorkout: (String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("today-recent-activities"),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        StrideLabSectionHeader(
+            title = "Recent Activities",
+            actionLabel = "See all",
+            actionTag = "today-recent-see-all",
+            onAction = onSeeAll
+        )
+
+        if (rows.isEmpty()) {
+            Text(
+                text = "No recent activities recorded yet.",
+                color = TodayAdaptivePalette.textSecondary,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
+            StrideLabHairline()
+        } else {
+            rows.forEach { row ->
+                val detail = row.activityId?.let { cachedDetails[it] }
+                TodayRecentActivityListRow(
+                    row = row,
+                    cachedDetail = detail,
+                    onClick = {
+                        when {
+                            row.activityId != null -> onOpenActivityDetail(row.activityId)
+                            row.planId != null && row.sessionId != null ->
+                                onOpenWorkout(row.planId, row.sessionId)
+                        }
+                    }
+                )
+                StrideLabHairline()
+            }
+        }
+    }
+}
+
+@Composable
+private fun TodayRecentActivityListRow(
+    row: TodayRecentRow,
+    cachedDetail: ActivityDetail?,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .strideLabPressFeedback(
+                shape = RoundedCornerShape(12.dp),
+                highlightBorderColor = TodayAdaptivePalette.runningLime,
+                onClick = onClick
+            )
+            .padding(horizontal = 4.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = "${row.typeLabel} • ${row.detailTitle}",
+                color = TodayAdaptivePalette.text,
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                style = TabularTextStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (row.subtitle.isNotBlank()) {
+                Text(
+                    text = row.subtitle,
+                    color = TodayAdaptivePalette.textMuted,
+                    fontSize = 12.5.sp,
+                    style = TabularTextStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (row.isRun) {
+            TodayCachedGpsThumbnail(
+                activityId = row.activityId,
+                detail = cachedDetail,
+                modifier = Modifier.size(width = 52.dp, height = 36.dp)
+            )

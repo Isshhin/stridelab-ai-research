@@ -1,8 +1,24 @@
+FILE: TrainingRepository.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 4
-LINES: 932-1193
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 4 / 8
+LINES: 979-1250
 --------------------------------------------------
+        } else plan
+        val approved = PlanOperations.approve(reviewed, current.plans)
+        savePlan(approved.copy(revision = plan.revision + 1))
+        if (current.planPreview?.id == id) mutable.value = mutable.value.copy(planPreview = null)
+        reconcileActivityMatchesAndAnalysis()
+    }
+    suspend fun pausePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="paused") }
+    suspend fun archivePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="archived") }
+    suspend fun deletePlan(id:String,revision:Int)=operation("Deleting plan…") {
+        val activeOwner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
+        val plan=mutable.value.plans.find { it.id==id && it.owner==activeOwner }
+            ?: throw PlanConstraint("This plan is unavailable for the current local profile or account.")
+        if(plan.revision!=revision)throw PlanConstraint("The saved plan changed. Reopen it before deleting.")
+        store.deleteRecord(activeOwner,"plan",plan.id)
+        val staleDrafts=mutable.value.workoutDrafts.filter { (_,draft) -> draft.planId==plan.id && draft.owner==activeOwner }
         staleDrafts.values.forEach { draft -> store.deleteRecord(activeOwner,"workout",draft.recordId) }
         mutable.value=mutable.value.copy(
             plans=mutable.value.plans.filterNot { it.id==plan.id },
@@ -61,7 +77,7 @@ LINES: 932-1193
                     java.util.UUID.randomUUID().toString()).copy(openedAtMs = System.currentTimeMillis())
                 val before = if (saved != null && baseline.finalLog == null && baseline.phase != PlayerPhase.Completed) {
                     val currentTargets = WorkoutExecution.create(baseline.executionId, planId, session, baseline.finalizationId)
-                    if (baseline.sets.map { it.target to it.number } == currentTargets.sets.map { it.target to it.number }) baseline
+                    if (baseline.matchesPrescribedStructure(currentTargets)) baseline
                     else {
                         if (!baseline.canChangePrescription)
                             throw PlanConstraint("The workout prescription changed after you started. Your original execution was retained.")
@@ -157,7 +173,7 @@ LINES: 932-1193
     }
 
     suspend fun saveFeedback(id:String,revision:Int,category:String,text:String,sessionId:String?=null)=changePlan(id,revision) { PlanOperations.feedback(it,category,text,sessionId) }
-    suspend fun refreshWellness() = operation("Refreshing wellness recordsΓÇª") {
+    suspend fun refreshWellness() = operation("Refreshing wellness records…") {
         val account=mutable.value.account ?: throw IllegalStateException("Sign in first")
         val raw=authenticated { gateway.wellness(it) }
         val seen=HashSet<String>(); val rows=ArrayList<TrainingStore.RemoteRecord>()
@@ -177,7 +193,7 @@ LINES: 932-1193
      * This record is account-scoped, and Garmin sync cannot overwrite it.
      */
     internal suspend fun renameActivity(id:String, requestedTitle:String):Boolean =
-        operation("Saving activity titleΓÇª") {
+        operation("Saving activity title…") {
             val account = if(id in mutable.value.localGarminIds) localGarminOwner else mutable.value.account
                 ?: throw PlanConstraint("This activity is not in the current local or cloud history.")
             if(mutable.value.activities.none { it.id==id })
@@ -251,7 +267,7 @@ LINES: 932-1193
         route.takeIf { currentOwner == owner && current.activities.any { activity -> activity.id == id } }
     }
 
-    suspend fun loadDetail(id: String) = operation("Loading recorded streamsΓÇª") {
+    suspend fun loadDetail(id: String) = operation("Loading recorded streams…") {
         val account = mutable.value.account ?: throw IllegalStateException("Sign in first")
         require(mutable.value.activities.any { it.id == id })
         val raw = authenticated { gateway.detail(it,id) }
@@ -260,8 +276,3 @@ LINES: 932-1193
         mutable.value = mutable.value.copy(details = mutable.value.details + (id to parsed))
         reconcileActivityMatchesAndAnalysis()
     }
-    private suspend fun operation(label: String, action: () -> Unit): Boolean = withContext(Dispatchers.IO) {
-        mutex.withLock {
-            mutable.value = mutable.value.copy(busy = true, message = null, task = label)
-            try { action(); true }
-            catch (e: CancellationException) { throw e }

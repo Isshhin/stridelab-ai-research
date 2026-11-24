@@ -1,9 +1,10 @@
+FILE: I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-26
 --------------------------------------------------
-# Engine 1.5 ΓÇö I3 source-linked quality duration consistency, preflight
+# Engine 1.5 — I3 source-linked quality duration consistency, preflight
 
 Frozen 2026-11-17 before implementation. Stacked on I2 PR #122, whose focused and selected full regressions passed in the user's Q3 checkout (BUILD SUCCESSFUL in 20s / 14s). **I3 stays shadow-only.**
 

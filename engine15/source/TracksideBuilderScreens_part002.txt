@@ -1,0 +1,372 @@
+FILE: TracksideBuilderScreens.kt
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TracksideBuilderScreens.kt
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 3
+LINES: 412-777
+--------------------------------------------------
+    onBenchmarkSeconds: ((Int?) -> Unit)? = null,
+    paceZones: Engine15ProvisionalPaceZones? = null
+) {
+    val context = LocalContext.current
+    var benchmarkDialogOpen by remember { mutableStateOf(false) }
+
+    val intents = listOf(
+        Triple("pr", "Beat my personal best", "Train to improve your existing PR"),
+        Triple("time", "Reach a target time", "Work toward a specific finish time"),
+        Triple("finish", "Finish confidently", "Prepare to complete the distance"),
+        Triple("benchmark", "Set my first benchmark", "Establish a PR for a new distance")
+    )
+    TracksideBuilderFrame(
+        eyebrow = "RUNNING / RACE TARGET",
+        headline = "What are you aiming\nfor?",
+        description = "Pick your race distance, optional time target, and race day.",
+        onBack = onBack,
+        onContinue = onContinue,
+        descriptionBottomGap = 14,
+        progressStep = 2,
+        continueEnabled = true
+    ) {
+        Text("RACE DISTANCE", fontSize = 10.sp, letterSpacing = 1.4.sp, color = muted, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("5K", "10K", "21K", "42K").forEach { dist ->
+                val active = distance == dist
+                Surface(
+                    modifier = Modifier.weight(1f).height(44.dp).testTag("builder-distance-$dist"),
+                    onClick = { onDistance(dist) },
+                    color = if (active) limeAccent else surfaceCard,
+                    shape = RoundedCornerShape(13.dp),
+                    border = BorderStroke(1.dp, if (active) limeAccent else outline)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            dist,
+                            fontSize = 13.5.sp,
+                            color = if (active) PlanBuilderPalette.accentOn else white,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        intents.forEachIndexed { i, (id, title, desc) ->
+            TracksideRaceOption(
+                title, desc, intent == id,
+                icon = when (id) {
+                    "pr" -> R.drawable.trackside_race_goal_pr
+                    "time" -> R.drawable.trackside_race_goal_time
+                    "finish" -> R.drawable.trackside_race_goal_finish
+                    else -> R.drawable.trackside_race_goal_benchmark
+                },
+                onClick = { onIntent(id) }, tag = id
+            )
+            if (i < intents.lastIndex) Spacer(Modifier.height(8.dp))
+        }
+        if (intent == "pr" || intent == "time") {
+            Spacer(Modifier.height(14.dp))
+            BenchmarkEntryCard(
+                title = if (intent == "time") "Target $distance finish time" else "Current $distance PR",
+                subtitle = "Estimates training pace zones (editable anytime)",
+                benchmarkSeconds = benchmarkSeconds,
+                onClick = { benchmarkDialogOpen = true },
+                cardTag = "builder-race-pr-panel",
+                buttonTag = "builder-race-add-pr"
+            )
+        }
+        if (paceZones != null && (benchmarkSeconds != null || paceZones.basis == Engine15PaceBandBasis.CONFIRMED_EASY_BASELINE_ESTIMATE)) {
+            Spacer(Modifier.height(10.dp))
+            ProvisionalPaceZoneStrip(paceZones)
+        }
+        Spacer(Modifier.height(14.dp))
+        Text("TARGET RACE DAY", fontSize = 10.sp, letterSpacing = 1.4.sp, color = muted, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Surface(
+            onClick = {
+                val init = targetRaceDate ?: LocalDate.now().plusWeeks(12)
+                DatePickerDialog(context, { _, y, m, d ->
+                    onTargetRaceDate?.invoke(LocalDate.of(y, m + 1, d))
+                }, init.year, init.monthValue - 1, init.dayOfMonth).show()
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("builder-race-target-day"),
+            color = surfaceCard,
+            shape = RoundedCornerShape(15.dp),
+            border = BorderStroke(1.dp, if (targetRaceDate != null) limeAccent else outline)
+        ) {
+            Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(36.dp).clip(RoundedCornerShape(10.dp))
+                        .background(if (targetRaceDate != null) limeAccent.copy(alpha = 0.16f) else PlanBuilderPalette.surfaceRaised),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painterResource(R.drawable.trackside_race_goal_calendar),
+                        contentDescription = null, tint = Color.Unspecified,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        targetRaceDate?.format(DateTimeFormatter.ofPattern("EEE, MMM d, yyyy", Locale.US))
+                            ?: "Choose race date (optional)",
+                        fontSize = 13.5.sp,
+                        fontWeight = if (targetRaceDate != null) FontWeight.Bold else FontWeight.Medium,
+                        color = if (targetRaceDate != null) white else muted
+                    )
+                    if (targetRaceDate != null) {
+                        val wks = ChronoUnit.WEEKS.between(LocalDate.now(), targetRaceDate).coerceIn(4, 16)
+                        Text("$wks-week plan · automatic taper synced", fontSize = 11.sp, color = limeAccent)
+                    }
+                }
+                if (targetRaceDate != null && onTargetRaceDate != null) {
+                    TextButton(onClick = { onTargetRaceDate(null) }, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                        Text("Clear", fontSize = 11.sp, color = muted)
+                    }
+                } else {
+                    Text("›", color = muted, fontSize = 20.sp)
+                }
+            }
+        }
+    }
+    if (benchmarkDialogOpen) {
+        BenchmarkTimeDialog(
+            distanceLabel = distance,
+            initialSeconds = benchmarkSeconds,
+            onSave = { sec -> onBenchmarkSeconds?.invoke(sec); benchmarkDialogOpen = false },
+            onDismiss = { benchmarkDialogOpen = false }
+        )
+    }
+}
+
+@Composable
+private fun BenchmarkEntryCard(
+    title: String,
+    subtitle: String,
+    benchmarkSeconds: Int?,
+    onClick: () -> Unit,
+    cardTag: String,
+    buttonTag: String
+) {
+    fun formatSec(sec: Int): String {
+        val h = sec / 3600; val m = (sec % 3600) / 60; val s = sec % 60
+        return if (h > 0) "%d:%02d:%02d".format(Locale.US, h, m, s) else "%d:%02d".format(Locale.US, m, s)
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(cardTag),
+        color = surfaceCard,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, if (benchmarkSeconds != null) limeAccent.copy(alpha = 0.65f) else outline)
+    ) {
+        Row(
+            Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = white)
+                Text(
+                    benchmarkSeconds?.let { "Recorded: ${formatSec(it)}" } ?: subtitle,
+                    fontSize = 11.5.sp,
+                    color = if (benchmarkSeconds != null) limeAccent else muted,
+                    fontWeight = if (benchmarkSeconds != null) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+            Surface(
+                onClick = onClick,
+                shape = RoundedCornerShape(10.dp),
+                color = if (benchmarkSeconds != null) PlanBuilderPalette.surfaceRaised else limeAccent,
+                border = BorderStroke(1.dp, if (benchmarkSeconds != null) limeAccent else Color.Transparent),
+                modifier = Modifier.heightIn(min = 38.dp).testTag(buttonTag)
+            ) {
+                Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        if (benchmarkSeconds != null) "Edit" else "Add result",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (benchmarkSeconds != null) limeAccent else PlanBuilderPalette.accentOn
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BenchmarkTimeDialog(
+    distanceLabel: String,
+    initialSeconds: Int?,
+    onSave: (Int?) -> Unit,
+    onDismiss: () -> Unit,
+    showDistancePicker: Boolean = false,
+    selectedDistance: String = distanceLabel,
+    onSelectDistance: ((String) -> Unit)? = null
+) {
+    var hText by remember(initialSeconds) { mutableStateOf(initialSeconds?.let { (it / 3600).toString() } ?: "0") }
+    var mText by remember(initialSeconds) { mutableStateOf(initialSeconds?.let { ((it % 3600) / 60).toString().padStart(2, '0') } ?: "25") }
+    var sText by remember(initialSeconds) { mutableStateOf(initialSeconds?.let { (it % 60).toString().padStart(2, '0') } ?: "00") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PlanBuilderPalette.surface,
+        title = { Text("Recent Race / Time Trial", color = white, fontWeight = FontWeight.ExtraBold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (showDistancePicker && onSelectDistance != null) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("5K", "10K", "21K", "42K").forEach { d ->
+                            val active = selectedDistance == d
+                            Surface(
+                                onClick = { onSelectDistance(d) },
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                color = if (active) limeAccent else PlanBuilderPalette.surfaceRaised,
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(d, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                        color = if (active) PlanBuilderPalette.accentOn else white)
+                                }
+                            }
+                        }
+                    }
+                }
+                Text("Enter your $selectedDistance time to estimate training pace zones.", color = muted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = hText, onValueChange = { hText = it.filter(Char::isDigit).take(1) }, label = { Text("Hr") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = mText, onValueChange = { mText = it.filter(Char::isDigit).take(2) }, label = { Text("Min") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                    OutlinedTextField(value = sText, onValueChange = { sText = it.filter(Char::isDigit).take(2) }, label = { Text("Sec") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val totalSec = (hText.toIntOrNull() ?: 0) * 3600 + (mText.toIntOrNull() ?: 0) * 60 + (sText.toIntOrNull() ?: 0)
+                if (totalSec in 120..43200) onSave(totalSec) else onDismiss()
+            }) { Text("Save", color = limeAccent, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            Row {
+                if (initialSeconds != null) {
+                    TextButton(onClick = { onSave(null) }) { Text("Clear", color = muted) }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel", color = muted) }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TracksideAbilityRange(
+    header: String, title: String, note: String,
+    value: Double?, maxValue: Float, unit: String, tag: String,
+    onValue: (Double) -> Unit
+) {
+    val sliderValue = (value ?: 0.0).toFloat().coerceIn(0f, maxValue)
+    Surface(
+        Modifier.fillMaxWidth().testTag("builder-ability-$tag-card"),
+        color = surfaceCard,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, outline)
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(limeAccent.copy(alpha = 0.04f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(header, Modifier.weight(1f), fontSize = 10.sp, letterSpacing = 1.4.sp, color = PlanBuilderPalette.muted, fontWeight = FontWeight.Bold)
+                Text(note, color = muted, fontSize = 10.5.sp)
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    if (value == null) "—" else String.format(Locale.getDefault(), if (value % 1.0 == 0.0) "%.0f" else "%.1f", value),
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = white,
+                    letterSpacing = (-1).sp
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    unit,
+                    color = limeAccent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 7.dp)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Slider(
+                value = sliderValue,
+                onValueChange = { onValue(it.toDouble()) },
+                valueRange = 0f..maxValue,
+                modifier = Modifier.fillMaxWidth().height(30.dp).testTag("builder-ability-$tag-slider"),
+                thumb = { _ ->
+                    Box(
+                        Modifier.size(20.dp)
+                            .clip(CircleShape)
+                            .background(limeAccent)
+                            .padding(5.dp)
+                            .clip(CircleShape)
+                            .background(PlanBuilderPalette.accentOn)
+                    )
+                },
+                track = { _ ->
+                    Box(
+                        Modifier.fillMaxWidth().height(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(PlanBuilderPalette.surfaceRaised)
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(sliderValue / maxValue)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(StrideLabVisualPalette.easyTeal, limeAccent)
+                                    )
+                                )
+                        )
+                    }
+                }
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("0 km", fontSize = 10.sp, color = PlanBuilderPalette.muted)
+                Text(String.format(Locale.getDefault(), "%.0f km", maxValue / 2), fontSize = 10.sp, color = PlanBuilderPalette.muted)
+                Text(String.format(Locale.getDefault(), "%.0f km", maxValue), fontSize = 10.sp, color = PlanBuilderPalette.muted)
+            }
+        }
+    }
+}
+
+/**
+ * Art-directed Running Ability screen:
+ * - Clean experience selector pills
+ * - Typical weekly volume (automatic)
+ * - Longest recent run
+ * - ONLY "Recent Performance (Optional)" card below it (wired to real benchmark picker + live pace zones)
+ */
+@Composable
+internal fun TracksideRunningAbilityScreen(
+    experience: Int, weeklyKm: Double?, longestKm: Double?,
+    onExperience: (Int) -> Unit,
+    onWeeklyKm: (Double) -> Unit,
+    onLongestKm: (Double) -> Unit,
+    onBack: () -> Unit,
+    onContinue: () -> Unit,
+    onAdvanced: () -> Unit,
+    historyContent: @Composable () -> Unit = {},
+    benchmarkDistance: String = "5K",
+    benchmarkSeconds: Int? = null,
+    onSaveBenchmark: ((String, Int?) -> Unit)? = null,
+    paceZones: Engine15ProvisionalPaceZones? = null,
+    autoDetectedExperience: Boolean = false,
+    weeklySource: String = "Recent training",
+    longestSource: String = "Recent training",

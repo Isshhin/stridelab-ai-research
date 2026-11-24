@@ -1,33 +1,9 @@
+FILE: Engine15IndependentPlanGeneratorTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 3
-LINES: 560-910
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 3 / 3
+LINES: 585-922
 --------------------------------------------------
-        ) as Engine15IndependentPlanDecision.Candidate
-        assertEquals(LocalDate.parse("2026-11-21"), longLock.plan.sessions.single {
-            it.kind == "long" && it.date < input.start.plusWeeks(1)
-        }.date)
-    }
-
-    @Test fun explicitRunningWeekdayAssignmentsArePreservedInEveryWeek() {
-        val assigned = listOf(6, 1, 2, 3, 5, 7)
-        val input = request().copy(weeklySlots = mapOf("run" to assigned))
-        val result = Engine15IndependentPlanGenerator.preview(input, owner, "assigned", now)
-        assertTrue("Expected candidate, got $result", result is Engine15IndependentPlanDecision.Candidate)
-        val sessions = (result as Engine15IndependentPlanDecision.Candidate).plan.sessions
-        for (week in 1..input.weeks) {
-            for (runIndex in assigned.indices) {
-                val session = sessions.single { it.id == "assigned-w$week-run$runIndex" }
-                assertEquals(assigned[runIndex], session.date.dayOfWeek.value)
-            }
-        }
-    }
-
-    @Test fun appGenerationReturnsReviewableManagedDraftAndAutoReconcilesQualityInOneTap() {
-        val plan = Engine15IndependentPlanGenerator.generateWithHistory(request(), owner, emptyList(), "app-draft", now)
-        assertEquals(ENGINE15_INDEPENDENT_RUNNING_POLICY, plan.policyId)
-        assertEquals("draft", plan.status)
-        assertTrue(Engine1Engines.canManage(plan))
         assertTrue(plan.sessions.all { it.discipline == "run" && !it.quality })
         val decoded = PlanSnapshot.decode(plan.encode(), owner)
         assertEquals(plan, decoded)
@@ -230,7 +206,7 @@ LINES: 560-910
                 quality = true,
                 kind = "quality",
                 title = "Threshold intervals",
-                steps = listOf("12 min easy warm-up", "4 ├ù 6 min threshold, with 2 min easy jog", "10 min easy cooldown"),
+                steps = listOf("12 min easy warm-up", "4 × 6 min threshold, with 2 min easy jog", "10 min easy cooldown"),
                 runningPrescription = null
             )
             val fallbackBlocks = WorkoutVisualBlocks.fromSession(stepFallbackSession, null)
@@ -354,3 +330,15 @@ LINES: 560-910
             reused.copy(
                 weeks = 8,
                 qualityCount = 2,
+                qualityDays = setOf(2, 4),
+                allowedQualityTypes = setOf("Fartlek", "Tempo", "Threshold")
+            ),
+            owner, emptyList(), "multi-style-rotation", now
+        )
+        val families = multiStyle.sessions.filter { it.quality }
+            .mapNotNull { it.runningPrescription?.family }
+            .toSet()
+        assertTrue("Expected rotation across multiple selected styles, got $families", families.size >= 2)
+        assertTrue(families.all { it in setOf("Fartlek", "Tempo", "Threshold") })
+    }
+}

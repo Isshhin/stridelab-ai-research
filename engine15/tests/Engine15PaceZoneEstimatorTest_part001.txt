@@ -1,6 +1,7 @@
+FILE: Engine15PaceZoneEstimatorTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PaceZoneEstimatorTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-68
 --------------------------------------------------
 package io.stridelab.privatealpha
@@ -42,7 +43,7 @@ class Engine15PaceZoneEstimatorTest {
             run("stale-1", 120, 10_000.0, 240.0),
             run("stale-2", 110, 10_000.0, 245.0),
             run("stale-3", 100, 10_000.0, 250.0),
-            // Recent runs around 6:30ΓÇô6:45/km easy
+            // Recent runs around 6:30–6:45/km easy
             run("rec-1", 2, 8_000.0, 405.0),
             run("rec-2", 5, 10_000.0, 395.0),
             run("rec-3", 10, 6_000.0, 390.0),

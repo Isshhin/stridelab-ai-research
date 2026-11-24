@@ -1,9 +1,10 @@
+FILE: M4_GATE_B_PREFLIGHT_20261117.md
 SOURCE: research/engine15-r0/M4_GATE_B_PREFLIGHT_20261117.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-36
 --------------------------------------------------
-# Gate B / M4 ΓÇö Predeclared weekly-volume migration checks
+# Gate B / M4 — Predeclared weekly-volume migration checks
 
 Date: 2026-11-17. **Written before M4 executable implementation or local test output.**
 
@@ -23,7 +24,7 @@ With the existing 100 m downward rounding: 67.5, 71.2, 75.0, 60.0, 71.2, 75.0, 7
 
 For 50 km/week reported, target 80 over four weeks: existing ceiling 45.0, 47.5, 50.0, 40.0 km. No promise of 80 km attainment.
 
-For the observed 75ΓåÆ80 R0 synthetic fixture, existing total weekly allocations before Q2 are 67.5, 71.2, 75.0, 54.1, 71.2, 75.0, 78.7, 56.4 km. Stage A should preserve these and complete Q2/Q3 session prescriptions exactly. The existing Q2 estimated peak 70.533 km remains unchanged.
+For the observed 75→80 R0 synthetic fixture, existing total weekly allocations before Q2 are 67.5, 71.2, 75.0, 54.1, 71.2, 75.0, 78.7, 56.4 km. Stage A should preserve these and complete Q2/Q3 session prescriptions exactly. The existing Q2 estimated peak 70.533 km remains unchanged.
 
 ## Acceptance (fail closed)
 
@@ -38,4 +39,4 @@ For the observed 75ΓåÆ80 R0 synthetic fixture, existing total weekly allocati
 
 ## Stage B is separately gated
 
-After Stage A proves parity, Gate B must review a candidate that removes Engine 1.0's mileage cap from the volume skeleton, specifies a quantified confidence-dependent progression envelope, and compares 75ΓåÆ80, 50ΓåÆ80, 30ΓåÆ35, 0ΓåÆ20, returning, fatigued and three-day profiles against the frozen R0 reports. No numeric policy changes in Stage A.
+After Stage A proves parity, Gate B must review a candidate that removes Engine 1.0's mileage cap from the volume skeleton, specifies a quantified confidence-dependent progression envelope, and compares 75→80, 50→80, 30→35, 0→20, returning, fatigued and three-day profiles against the frozen R0 reports. No numeric policy changes in Stage A.

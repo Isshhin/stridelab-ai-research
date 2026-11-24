@@ -1,15 +1,9 @@
+FILE: Engine15DisciplineProgression.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 261-316
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 268-316
 --------------------------------------------------
-                (session.runnerSupportDose != null && (plan.request.timeBudgetEnabled && session.minutes > plan.request.minutes)) ||
-                base.copy(date = slot.date, runnerSupportPlacement = false, reason = slot.reason, status = slot.status, log = slot.log, missedReason = slot.missedReason,
-                    suggestion = slot.suggestion, linkedActivityId = slot.linkedActivityId, linkPreviousStatus = slot.linkPreviousStatus,
-                    swaps = slot.swaps, logRevision = slot.logRevision, runResponse = slot.runResponse) != slot ||
-                !Engine15WorkoutDifficultyAdjuster.matchesAdjusted(session, plan.request))
-                throw PlanConstraint("A saved prescription no longer matches its structured dose or calendar.")
-        }
         if (!reschedule) checkSpacing(plan.sessions)
         Engine15SessionLocks.validateOutput(plan.request, plan.sessions)
     }

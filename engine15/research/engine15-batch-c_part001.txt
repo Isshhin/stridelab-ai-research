@@ -1,9 +1,10 @@
+FILE: engine15-batch-c.md
 SOURCE: docs/engine15-batch-c.md
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 1
 LINES: 1-40
 --------------------------------------------------
-# Engine 1.5 ΓÇö Batch C: review-only workout feedback (candidate)
+# Engine 1.5 — Batch C: review-only workout feedback (candidate)
 
 Branch: `feature/engine15-versioned-foundation-20261103`
 Review: https://github.com/Isshhin/stridelab-development/pull/37
@@ -19,7 +20,7 @@ Possible evidence is narrowly defined:
 - A **completed** session with a stored `WorkoutLog`, positive log revision, explicit actual `performedOn` within the last three days, and manually recorded RPE at least 8/10, or RPE at least 7/10 together with duration above 135% of planned. Strength/calisthenics requires an actual performed set. Recorded time/effort is historical evidence, not a measured readiness or fitness estimate.
 - Linked-only activity records are **not** sufficient to infer exertion. Duplicate source links are rejected as evidence, including across supplied plans. In-progress logs, missing RPE, missing actual performance date, zero actual strength sets, stale/late records, and incomplete weeks do not trigger proposals. Pending same-day sessions are not targeted, avoiding action before late uploads. No missing duration, mileage, heart rate, pace or recovery metric is imputed.
 
-Only the earliest **unstarted, unlogged, unlinked, unsuggested running** session scheduled strictly after today and within four days after the source event can be targeted. A single source proposes at most one reduction; competing sources do not stack reductions. An explicit recent illness or a targeted quality session leads to a **rest** proposal (0 minutes). Other supported signals recommend a ~25ΓÇô30% shorter session, minimum 10 minutes, never an increase. No quality workout is rewritten into an easy workout while retaining hard workout steps; a 0-minute rest is applied as `skipped` only after explicit acceptance. The original session fields and source log remain intact.
+Only the earliest **unstarted, unlogged, unlinked, unsuggested running** session scheduled strictly after today and within four days after the source event can be targeted. A single source proposes at most one reduction; competing sources do not stack reductions. An explicit recent illness or a targeted quality session leads to a **rest** proposal (0 minutes). Other supported signals recommend a ~25–30% shorter session, minimum 10 minutes, never an increase. No quality workout is rewritten into an easy workout while retaining hard workout steps; a 0-minute rest is applied as `skipped` only after explicit acceptance. The original session fields and source log remain intact.
 
 ## Reviewing and durability
 

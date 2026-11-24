@@ -1,25 +1,9 @@
+FILE: Engine15QualityWorkoutDryRunTest.kt
 SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15QualityWorkoutDryRunTest.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 2
-LINES: 281-474
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 2 / 2
+LINES: 298-474
 --------------------------------------------------
-        assertNull(result.qualityDryRun)
-    }
-
-    @Test fun dryRunPreservesSelectionAndAuthorizationBoundaries() {
-        val result = deferred(request())
-        val dryRun = result.qualityDryRun!!
-
-        assertEquals(Engine15QualityFamilySelection.POLICY_ID, dryRun.selectionPolicyId)
-        assertEquals(Engine15QualityFamilySelection.POLICY_ID, result.qualitySelection!!.policyId)
-        assertTrue(dryRun.developmentOnly)
-        assertFalse(dryRun.sourceEvidenceVerified)
-        assertFalse(dryRun.templateAuthorized)
-        assertFalse(dryRun.doseAuthorized)
-        assertFalse(dryRun.intensityAuthorized)
-        assertFalse(dryRun.scheduled)
-        assertFalse(dryRun.includedInPlan)
-        assertFalse(dryRun.executable)
         assertEquals(result.qualitySelection!!.candidateSlots.first().sessionId, dryRun.sessionId)
         assertEquals(result.qualitySelection!!.candidateSlots.first().date, dryRun.date)
     }

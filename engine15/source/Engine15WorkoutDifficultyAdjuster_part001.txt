@@ -1,7 +1,8 @@
+FILE: Engine15WorkoutDifficultyAdjuster.kt
 SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt
-COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
-PART: 1
-LINES: 1-320
+COMMIT: 11a59b329341135039a30d24df0d55c8f085cc5d
+PART: 1 / 3
+LINES: 1-333
 --------------------------------------------------
 package io.stridelab.privatealpha
 
@@ -38,34 +39,34 @@ internal object Engine15WorkoutDifficultyAdjuster {
                     ?: "${session.minutes} min"
                 when {
                     base.quality && session.difficultyStep == -2 ->
-                        "Coached target: ${base.title} ($orig) ┬╖ Switched to easy recovery run ($cur)"
+                        "Coached target: ${base.title} ($orig) · Switched to easy recovery run ($cur)"
                     base.quality -> {
                         val origReps = base.runningPrescription?.mixedSegments?.count { it.purpose == "WORK" }
                         val curReps = session.runningPrescription?.mixedSegments?.count { it.purpose == "WORK" }
                         val detail = if (origReps != null && curReps != null && origReps != curReps) {
-                            "$origReps ΓåÆ $curReps reps ┬╖ $orig ΓåÆ $cur"
+                            "$origReps → $curReps reps · $orig → $cur"
                         } else {
-                            "$orig (${base.minutes} min) ΓåÆ $cur (${session.minutes} min)"
+                            "$orig (${base.minutes} min) → $cur (${session.minutes} min)"
                         }
                         "Coached target: $detail"
                     }
-                    else -> "Coached target: $orig (${base.minutes} min) ΓåÆ $cur (${session.minutes} min)"
+                    else -> "Coached target: $orig (${base.minutes} min) → $cur (${session.minutes} min)"
                 }
             }
             "str", "cal" -> {
                 val baseFirst = base.exercises.firstOrNull()
                 val curFirst = session.exercises.firstOrNull()
                 if (baseFirst != null && curFirst != null) {
-                    val bUnit = baseFirst.reps?.let { "${baseFirst.sets}├ù$it" }
-                        ?: "${baseFirst.sets}├ù${baseFirst.seconds}s"
-                    val cUnit = curFirst.reps?.let { "${curFirst.sets}├ù$it" }
-                        ?: "${curFirst.sets}├ù${curFirst.seconds}s"
-                    "Coached target: $bUnit (${base.minutes} min) ΓåÆ $cUnit (${session.minutes} min)"
+                    val bUnit = baseFirst.reps?.let { "${baseFirst.sets}×$it" }
+                        ?: "${baseFirst.sets}×${baseFirst.seconds}s"
+                    val cUnit = curFirst.reps?.let { "${curFirst.sets}×$it" }
+                        ?: "${curFirst.sets}×${curFirst.seconds}s"
+                    "Coached target: $bUnit (${base.minutes} min) → $cUnit (${session.minutes} min)"
                 } else {
-                    "Coached target: ${base.minutes} min ΓåÆ ${session.minutes} min"
+                    "Coached target: ${base.minutes} min → ${session.minutes} min"
                 }
             }
-            else -> "Coached target: ${base.minutes} min ΓåÆ ${session.minutes} min"
+            else -> "Coached target: ${base.minutes} min → ${session.minutes} min"
         }
     }
 
@@ -323,3 +324,16 @@ internal object Engine15WorkoutDifficultyAdjuster {
                 )
                 val newMinutes = (
                     finalSteps.sumOf { it.seconds ?: 0 } / 60 +
+                        ceil(finalSteps.sumOf { it.meters ?: 0 } * pace * 0.86 / 60_000.0).toInt()
+                    ).coerceAtLeast(10)
+                return base.copy(
+                    minutes = newMinutes,
+                    distanceKm = newTotalMeters / 1000.0,
+                    steps = finalSteps.map { step ->
+                        val timeText = step.seconds?.let { s ->
+                            when {
+                                s % 60 == 0 -> "${s / 60} min"
+                                s > 60 -> "${s / 60}m ${s % 60}s"
+                                else -> "${s}s"
+                            }
+                        } ?: "${step.meters} m (${formatMetersAsKm(step.meters ?: 0)})"
