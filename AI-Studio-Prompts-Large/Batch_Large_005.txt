@@ -1,0 +1,74 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Consolidated Batch 005 / 008
+# Objective: Activity/HR/Evidence + Unit & Regression Tests + Engine 1.5 Core
+# Immutable Snapshot: 28878a67fe577427a936734b981892fef03164f9 (Manifest Parts: f461bb3c6d32aa7cb8ca70148e879cc26ff21d15)
+# Development Source: 11a59b329341135039a30d24df0d55c8f085cc5d
+# URLs in this batch: 57
+
+Retrieve every commit-pinned raw GitHub URL listed below.
+After retrieval, report ONLY:
+1. **Successful Retrievals:** total count of URLs retrieved cleanly.
+2. **Failed URLs:** exact URLs (if any) that failed or timed out.
+3. **Incomplete Files:** any multi-part file missing a `PART X / Y` or contiguous `LINES` range.
+4. **New Findings:** concrete Engine 1.5, Activity/FIT, persistence, or policy findings discovered in this batch.
+5. **Cumulative Ledger Updates:** deltas to the running research ledger (new IDs, confirmed hypotheses, or invalidated assumptions).
+
+Do NOT output lengthy per-file verification tables unless a retrieval failure or incomplete file occurs.
+Do NOT infer missing source content or begin production implementation.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/BackupIntegrityTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AcceptanceEvidenceTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15ActivityAutoMatcherTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AdaptiveHistoryAndUiContractTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15ArchitectureTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AthleteDiagnosticsEngineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AthleteDiagnosticsEngineTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AthleteEffortBaselineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15AvailabilityReconciliationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15Batch1AuditFixesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15Batch1AuditFixesTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15Batch2AuditFixesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15Batch3AuditFixesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15CoachingAcceptanceTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15CoachingAcceptanceTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15CoachingAcceptanceTest_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15CoachingAcceptanceTest_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15CompletePlanRobustnessMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15DailyLoadShaperTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15DisciplineProgressionTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15DistanceRoundingTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15ExecutionAnalyzerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15ExecutionAnalyzerTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15FeedbackTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15HistoryInformedPlanningTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I1IntegratedShadowMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I1IntegratedShadowMatrixTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I2AdversarialShadowMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I3SourceLinkedQualityDurationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I4WorkLapHeartRateReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I5TimedDistanceFeasibilityTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I7IntensityCalibrationReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15I9ReadOnlyBasePlanAssemblyTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15IndependentDevelopmentRouteTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15IndependentPlanGeneratorTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15IndependentPlanGeneratorTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15IndependentPlanGeneratorTest_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M28CoachingAuditTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M28CoachingAuditTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M3AthleteBaselineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M4BIndependentVolumePlannerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M4WeeklyVolumeSkeletonTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M5QualityPreviewComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M5TimedDistanceReconcilerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M5WorkoutComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M6IndependentCalendarTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M6IndependentInterferenceReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M6IndependentPeriodizationReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15M6IndependentQualitySpacingTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15MarathonTidEvaluatorTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15MissedSuggestionSafetyTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15MultiDisciplineStabilizationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/Engine15PaceZoneEstimatorTest_part001.txt
