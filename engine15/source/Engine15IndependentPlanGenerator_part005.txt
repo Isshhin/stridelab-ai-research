@@ -1,0 +1,278 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 5
+LINES: 1047-1319
+--------------------------------------------------
+            val weekPhase = phasesByWeek[weekNum] ?: Engine15MacroPhase.BUILD
+            val totalMeters = kotlin.math.round(s.distanceKm * 1000.0).toInt().coerceAtLeast(100)
+            val rxRole = s.runningPrescription?.role
+
+            when {
+                s.kind == "long" -> {
+                    val loadingOrd = loadingOrdinalByWeek[weekNum]
+                    val eligibleFastFinish = (weekPhase == Engine15MacroPhase.BUILD || weekPhase == Engine15MacroPhase.PEAK) &&
+                        !request.returning &&
+                        loadingOrd != null &&
+                        request.goal != "Aerobic foundation" &&
+                        totalMeters >= 10_000
+                    if (eligibleFastFinish && request.goal == "Marathon" && weekNum >= 5 && loadingOrd!! % 2 == 1 && totalMeters >= 18_000) {
+                        val finishRatio = (0.26 + 0.03 * ((weekNum - 5) / 2)).coerceIn(0.25, 0.38)
+                        val maxCapM = minOf(14_000, ((totalMeters * 0.40).toInt() / 100) * 100)
+                        val minCapM = maxOf(6_000, ((totalMeters * 0.25 + 99).toInt() / 100) * 100).coerceAtMost(maxCapM)
+                        val finishMeters = (((totalMeters * finishRatio) / 100.0).roundToInt() * 100).coerceIn(minCapM, maxCapM)
+                        val baseMeters = totalMeters - finishMeters
+                        val (raceMin, raceMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(
+                            zones, RunningStepIntent.RACE_PACE, goal = "Marathon"
+                        )
+                        s.copy(
+                            title = "Marathon-Pace Long Run",
+                            steps = listOf(
+                                "${formatMetersAsKm(baseMeters)} easy aerobic base ┬╖ Z2",
+                                "${formatMetersAsKm(finishMeters)} Marathon pace finish ┬╖ Stay relaxed and locked into goal rhythm"
+                            ),
+                            reason = "Loading week. Progressive Marathon-pace finish (${formatMetersAsKm(finishMeters)}) builds late-race muscular endurance.",
+                            runningPrescription = RunningPrescription(
+                                role = "LONG",
+                                family = null,
+                                segments = listOf(
+                                    RunningSegment("EASY", baseMeters, "Easy aerobic long-run base pace.", RunningStepIntent.AEROBIC_EASY, easyMin, easyMax),
+                                    RunningSegment("TRANSITION", finishMeters, "Marathon goal race pace finish.", RunningStepIntent.RACE_PACE, raceMin, raceMax)
+                                ),
+                                archetypeId = Engine15WorkoutArchetype.FAST_FINISH_PROGRESSIVE_LONG_RUN.id
+                            )
+                        )
+                    } else if (eligibleFastFinish && request.goal == "Half marathon" && weekNum >= 5 && loadingOrd!! % 2 == 1 && totalMeters >= 14_000) {
+                        val finishRatio = (0.26 + 0.03 * ((weekNum - 5) / 2)).coerceIn(0.25, 0.38)
+                        val maxCapM = minOf(10_000, ((totalMeters * 0.40).toInt() / 100) * 100)
+                        val minCapM = maxOf(4_000, ((totalMeters * 0.25 + 99).toInt() / 100) * 100).coerceAtMost(maxCapM)
+                        val finishMeters = (((totalMeters * finishRatio) / 100.0).roundToInt() * 100).coerceIn(minCapM, maxCapM)
+                        val baseMeters = totalMeters - finishMeters
+                        val (raceMin, raceMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(
+                            zones, RunningStepIntent.RACE_PACE, goal = "Half marathon"
+                        )
+                        s.copy(
+                            title = "HM-Pace Long Run",
+                            steps = listOf(
+                                "${formatMetersAsKm(baseMeters)} easy aerobic base ┬╖ Z2",
+                                "${formatMetersAsKm(finishMeters)} Half Marathon pace finish ┬╖ Controlled strong closing kilometers"
+                            ),
+                            reason = "Loading week. Progressive Half Marathon pace finish (${formatMetersAsKm(finishMeters)}) practices race rhythm under fatigue.",
+                            runningPrescription = RunningPrescription(
+                                role = "LONG",
+                                family = null,
+                                segments = listOf(
+                                    RunningSegment("EASY", baseMeters, "Easy aerobic long-run base pace.", RunningStepIntent.AEROBIC_EASY, easyMin, easyMax),
+                                    RunningSegment("TRANSITION", finishMeters, "Half marathon race pace finish.", RunningStepIntent.RACE_PACE, raceMin, raceMax)
+                                ),
+                                archetypeId = Engine15WorkoutArchetype.FAST_FINISH_PROGRESSIVE_LONG_RUN.id
+                            )
+                        )
+                    } else if (eligibleFastFinish &&
+                        request.goal in setOf("Improve 10K", "Half marathon", "Marathon", "General fitness") &&
+                        loadingOrd!! % 2 == 0
+                    ) {
+                        val finishMeters = (((totalMeters * 0.25) / 100.0).roundToInt() * 100).coerceIn(2_000, totalMeters - 4_000)
+                        val baseMeters = totalMeters - finishMeters
+                        s.copy(
+                            title = "Fast-Finish Long Run",
+                            steps = listOf(
+                                "${formatMetersAsKm(baseMeters)} easy aerobic base ┬╖ Z2",
+                                "${formatMetersAsKm(finishMeters)} steady progressive finish ┬╖ Smoothly close at steady aerobic effort"
+                            ),
+                            reason = "Loading week. 75% easy aerobic base followed by a controlled 25% steady finish.",
+                            runningPrescription = RunningPrescription(
+                                role = "LONG",
+                                family = null,
+                                segments = listOf(
+                                    RunningSegment("EASY", baseMeters, "Easy aerobic long-run base pace.", RunningStepIntent.AEROBIC_EASY, easyMin, easyMax),
+                                    RunningSegment("TRANSITION", finishMeters, "Steady controlled finish effort.", RunningStepIntent.STEADY, steadyMin, steadyMax)
+                                ),
+                                archetypeId = Engine15WorkoutArchetype.FAST_FINISH_PROGRESSIVE_LONG_RUN.id
+                            )
+                        )
+                    } else {
+                        s.copy(
+                            title = "Steady Aerobic Long Run",
+                            steps = listOf("${formatMetersAsKm(totalMeters)} at steady easy aerobic long-run effort"),
+                            runningPrescription = RunningPrescription(
+                                role = "LONG",
+                                family = null,
+                                segments = listOf(
+                                    RunningSegment("EASY", totalMeters, "Easy, conversational aerobic long-run effort.", RunningStepIntent.AEROBIC_EASY, easyMin, easyMax)
+                                ),
+                                archetypeId = Engine15WorkoutArchetype.STEADY_AEROBIC_LONG_RUN.id
+                            )
+                        )
+                    }
+                }
+                s.id in strideConfigBySessionId -> {
+                    val (reps, recSec) = strideConfigBySessionId.getValue(s.id)
+                    val strideM = kotlin.math.round(20.0 * 1000.0 / zones.fastIntervals.midpointSecondsPerKm).toInt().coerceIn(40, 140)
+                    val recM = kotlin.math.round(recSec * 1000.0 / zones.recovery.midpointSecondsPerKm).toInt().coerceIn(50, 260)
+                    val mainM = totalMeters - reps * (strideM + recM)
+                    val strideSteps = buildList {
+                        add(
+                            RunningStepV2(
+                                purpose = "EASY",
+                                effort = "Easy conversational aerobic base before strides.",
+                                meters = mainM,
+                                stepIntent = RunningStepIntent.AEROBIC_EASY,
+                                targetPaceMinSecPerKm = easyMin,
+                                targetPaceMaxSecPerKm = easyMax
+                            )
+                        )
+                        repeat(reps) {
+                            add(
+                                RunningStepV2(
+                                    purpose = "TRANSITION",
+                                    effort = "20s smooth relaxed stride ΓÇö quick cadence and tall posture, never an all-out sprint.",
+                                    seconds = 20,
+                                    distanceEquivalentMeters = strideM,
+                                    stepIntent = RunningStepIntent.STRIDE,
+                                    targetPaceMinSecPerKm = strideMin,
+                                    targetPaceMaxSecPerKm = strideMax
+                                )
+                            )
+                            add(
+                                RunningStepV2(
+                                    purpose = "RECOVERY",
+                                    effort = "Full easy walk/jog recovery so every stride stays relaxed.",
+                                    seconds = recSec,
+                                    distanceEquivalentMeters = recM,
+                                    stepIntent = RunningStepIntent.RECOVERY,
+                                    targetPaceMinSecPerKm = recMin,
+                                    targetPaceMaxSecPerKm = recMax
+                                )
+                            )
+                        }
+                    }
+                    s.copy(
+                        title = "Easy Run + Strides",
+                        steps = listOf(
+                            "${formatMetersAsKm(mainM)} easy aerobic running",
+                            "$reps ├ù 20s relaxed strides (${formatMetersAsKm(reps * (strideM + recM))} w/ ${recSec}s walk/jog recovery)"
+                        ),
+                        reason = "${s.reason.trimEnd()} Includes $reps ├ù 20s neuromuscular strides with full walk/jog recovery.",
+                        runningPrescription = RunningPrescription(
+                            role = "EASY",
+                            family = null,
+                            segments = emptyList(),
+                            mixedSegments = strideSteps,
+                            reconciledDistanceMeters = totalMeters,
+                            archetypeId = Engine15WorkoutArchetype.EASY_RUN_WITH_STRIDES.id
+                        )
+                    )
+                }
+                rxRole == "RECOVERY" -> {
+                    s.copy(
+                        title = "Recovery run",
+                        runningPrescription = RunningPrescription(
+                            role = "RECOVERY",
+                            family = null,
+                            segments = listOf(
+                                RunningSegment(
+                                    "RECOVERY",
+                                    totalMeters,
+                                    "Recovery, very easy conversational pace (15ΓÇô30 s/km slower than easy max).",
+                                    RunningStepIntent.RECOVERY,
+                                    recMin,
+                                    recMax
+                                )
+                            ),
+                            archetypeId = Engine15WorkoutArchetype.RECOVERY_RUN.id
+                        )
+                    )
+                }
+                else -> {
+                    s.copy(
+                        title = "Easy Aerobic Run",
+                        runningPrescription = RunningPrescription(
+                            role = "EASY",
+                            family = null,
+                            segments = listOf(
+                                RunningSegment(
+                                    "EASY",
+                                    totalMeters,
+                                    "Easy, conversational aerobic effort.",
+                                    RunningStepIntent.AEROBIC_EASY,
+                                    easyMin,
+                                    easyMax
+                                )
+                            ),
+                            archetypeId = Engine15WorkoutArchetype.EASY_AEROBIC_RUN.id
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private data class ExternalPlanContext(
+        val blockedRunDates: Set<LocalDate>,
+        val sessions: List<Engine15M6CExternalSession>
+    )
+
+    private fun externalPlanContext(
+        request: PlanRequest,
+        owner: String,
+        plans: List<PlanSnapshot>?
+    ): ExternalPlanContext {
+        if (plans == null) return ExternalPlanContext(emptySet(), emptyList())
+        val first = request.start.minusDays(1)
+        val last = request.start.plusWeeks(request.weeks.toLong())
+        val sessions = plans.asSequence().filter { it.owner == owner && it.status in setOf("approved", "paused") }
+            .flatMap { plan -> plan.sessions.asSequence().filter { it.status in setOf("planned", "in_progress") }
+                .map { plan.id to it } }
+            .filter { (_, session) -> session.date in first..last }
+            .toList()
+        val blockedRuns = sessions.filter { it.second.discipline == "run" }.map { it.second.date }.toSet()
+        val external = sessions.filter { it.second.discipline != "run" }.map { (planId, session) ->
+            val discipline = when (session.discipline) {
+                "str" -> Engine15M6CDiscipline.STRENGTH
+                "cal" -> Engine15M6CDiscipline.CALISTHENICS
+                "cond" -> Engine15M6CDiscipline.CONDITIONING
+                else -> throw PlanConstraint("EXTERNAL_DISCIPLINE_UNSUPPORTED: A saved plan includes an unknown discipline; its workload cannot be safely ignored.")
+            }
+            val load = if (session.quality) Engine15M6CLoad.FULL_BODY_HARD else when (discipline) {
+                Engine15M6CDiscipline.STRENGTH -> if (session.lower) Engine15M6CLoad.LOWER_BODY else Engine15M6CLoad.UPPER_BODY
+                Engine15M6CDiscipline.CALISTHENICS -> Engine15M6CLoad.FULL_BODY_HARD
+                Engine15M6CDiscipline.CONDITIONING -> Engine15M6CLoad.EASY_GENERAL
+            }
+            Engine15M6CExternalSession("$planId:${session.id}", session.date, discipline, load)
+        }
+        return ExternalPlanContext(blockedRuns, external)
+    }
+
+    private fun m5SlotForRunIndex(runDays: Int, runIndex: Int): Int =
+        if ((runDays >= 3 || runDays == 1) && runIndex == 0) runDays else if (runDays >= 3) runIndex else runIndex + 1
+
+    private fun legacyRunIndex(runDays: Int, slotNumber: Int, role: Engine15M5RunRole): Int =
+        if ((runDays >= 3 || runDays == 1) && role == Engine15M5RunRole.LONG) 0
+        else if (runDays >= 3) slotNumber else slotNumber - 1
+
+    private fun soloExternalCalendar(
+        request: PlanRequest, owner: String, plans: List<PlanSnapshot>, discipline: String,
+        compose: (PlanRequest) -> List<PlannedSession>
+    ): Pair<PlanRequest, List<PlannedSession>> {
+        val window = request.start.minusDays(1)..request.start.plusWeeks(request.weeks.toLong())
+        val existing = plans.filter { it.owner == owner && it.status == "approved" }
+            .flatMap { plan -> plan.sessions.map { plan.policyId to it } }
+            .filter { (_, session) -> session.status in setOf("planned", "in_progress") && session.date in window }
+        val policy = when (discipline) {
+            "str" -> ENGINE15_INDEPENDENT_STRENGTH_POLICY
+            "cal" -> ENGINE15_INDEPENDENT_CALISTHENICS_POLICY
+            else -> ENGINE15_INDEPENDENT_CONDITIONING_POLICY
+        }
+        fun fits(rows: List<PlannedSession>, strict: Boolean) = rows.none { row ->
+            existing.any { (savedPolicy, saved) ->
+                if (strict) conflict(row, saved)
+                else PlanScheduleValidation.acrossPlansConflict(row, saved, policy, savedPolicy)
+            }
+        }
+        val initial = runCatching { compose(request) }.getOrElse { error ->
+            if (error !is PlanConstraint || existing.isEmpty() || discipline in request.weeklySlots) throw error
+            null
+        }
+        if (initial != null && fits(initial, strict = true)) return request to initial
+        var fallback = initial?.takeIf { fits(it, strict = false) }?.let { request to it }
+        if (discipline !in request.weeklySlots && request.lockedSessionDays.isEmpty()) {

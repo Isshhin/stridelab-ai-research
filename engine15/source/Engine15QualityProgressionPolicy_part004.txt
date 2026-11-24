@@ -1,0 +1,299 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 4
+LINES: 887-1180
+--------------------------------------------------
+        val fallbackPool = adaptiveArchetypeRotation(request, primaryFamily)
+        if (request.preferredQualityExplicit) return fallbackPool
+        if (request.experience == 0 || request.returning) return fallbackPool
+
+        val raw = when (phase) {
+            Engine15MacroPhase.BASE -> when (request.goal) {
+                "Improve 5K", "Aerobic foundation" -> listOf(
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+                else -> listOf(
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS
+                )
+            }
+            Engine15MacroPhase.BUILD -> when (request.goal) {
+                "Improve 5K" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO
+                )
+                "Improve 10K" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+                "Half marathon" -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+                "Marathon" -> listOf(
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+                "Aerobic foundation" -> listOf(
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS,
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+                else -> listOf( // "General fitness"
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS
+                )
+            }
+            Engine15MacroPhase.PEAK -> when (request.goal) {
+                "Improve 5K" -> if (request.experience >= 2) listOf(
+                    Engine15WorkoutArchetype.SHORT_TRACK_REPEATS,
+                    Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS
+                ) else listOf(
+                    Engine15WorkoutArchetype.SHORT_TRACK_REPEATS,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS
+                )
+                "Improve 10K" -> if (request.experience >= 2) listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS
+                ) else listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO
+                )
+                "Half marathon" -> if (request.experience >= 2) listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID
+                ) else listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+                "Marathon" -> listOf(
+                    Engine15WorkoutArchetype.BROKEN_TEMPO,
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+                else -> fallbackPool
+            }
+            Engine15MacroPhase.TAPER, Engine15MacroPhase.RECOVERY -> when (request.goal) {
+                "Improve 5K" -> listOf(
+                    Engine15WorkoutArchetype.SHORT_TRACK_REPEATS,
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS
+                )
+                else -> listOf(
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                    Engine15WorkoutArchetype.CONTINUOUS_TEMPO
+                )
+            }
+        }
+        val filtered = if (request.allowedQualityTypes.isEmpty()) raw else raw.filter { arch ->
+            val famName = arch.family?.name ?: return@filter false
+            request.allowedQualityTypes.any { it.equals(famName, ignoreCase = true) }
+        }
+        return filtered.ifEmpty { fallbackPool }.distinct()
+    }
+
+    fun plan(
+        request: PlanRequest,
+        selection: Engine15QualityFamilySelectionResult,
+        assertedExposureSecondsOverride: Int? = null,
+        adaptiveQualityMode: Boolean = false,
+        taperWeeks: Set<Int> = emptySet(),
+        weeklyBudgetsByWeek: Map<Int, Double> = emptyMap(),
+        phasesByWeek: Map<Int, Engine15MacroPhase> = emptyMap()
+    ): List<Engine15QualityWeekPrescription> {
+        val family = selection.selectedFamily ?: return emptyList()
+        val slots = selection.candidateSlots
+        if (slots.isEmpty()) return emptyList()
+        val steps = ladder(family, request.experience)
+        val intro = steps.first()
+        val timeBudgetSeconds = if (request.timeBudgetEnabled) request.minutes * 60 else null
+        val isRaceGoal = request.goal != "Aerobic foundation" && request.goal != "General fitness"
+        val lastLoadingWeek = slots.maxOf { it.weekNumber }
+        val repeatedBaseline = when {
+            assertedExposureSecondsOverride != null && assertedExposureSecondsOverride in 1..14400 &&
+                (selection.assertedRepeatedWorkSeconds == null ||
+                    assertedExposureSecondsOverride <= selection.assertedRepeatedWorkSeconds) ->
+                assertedExposureSecondsOverride
+            selection.exposureConfidence == IndependentQualityExposureConfidence.REPEATED_DEVICE_RECORDS_ASSERTED &&
+                selection.assertedRepeatedWorkSeconds != null -> selection.assertedRepeatedWorkSeconds
+            assertedExposureSecondsOverride != null && assertedExposureSecondsOverride in 1..14400 ->
+                assertedExposureSecondsOverride
+            else -> null
+        }
+
+        if (repeatedBaseline == null) {
+            return slots.map { slot ->
+                Engine15QualityWeekPrescription(
+                    policyId = POLICY_ID,
+                    weekNumber = slot.weekNumber,
+                    family = family,
+                    step = intro,
+                    basis = Engine15QualityProgressionBasis.HOLD_NO_REPEATED_EXPOSURE,
+                    ruleIds = listOf(
+                        "HOLD_INTRO_UNVERIFIED_EXPOSURE",
+                        "NO_AUTOMATIC_PROGRESSION_FROM_ELAPSED_WEEKS"
+                    ),
+                    rationale = "Held at ${intro.stageLabel} (${intro.workSeconds / 60} min work) because repeated same-family exposure is unavailable or unverified.",
+                    slotNumber = slot.slotNumber
+                )
+            }
+        }
+
+        val adaptiveOverrideActive = adaptiveQualityMode &&
+            assertedExposureSecondsOverride != null &&
+            selection.exposureConfidence != IndependentQualityExposureConfidence.REPEATED_DEVICE_RECORDS_ASSERTED
+        val maxPermittedWork = if (adaptiveOverrideActive) {
+            maxOf(repeatedBaseline + MAX_EXPOSURE_INCREMENT_SECONDS, (repeatedBaseline * 1.35).roundToInt())
+        } else {
+            repeatedBaseline + MAX_EXPOSURE_INCREMENT_SECONDS
+        }
+        val anchorIndex = steps.indexOfLast { it.workSeconds <= repeatedBaseline }.coerceAtLeast(0)
+        val anchorRatio = if (steps.lastIndex > 0) anchorIndex.toDouble() / steps.lastIndex.toDouble() else 0.0
+        val deterministicZones = if (adaptiveQualityMode) Engine15PaceZoneEstimator.estimate(request) else null
+
+        if (adaptiveQualityMode && deterministicZones != null) {
+            val archRotation = adaptiveArchetypeRotation(request, family)
+            val isConservativeAthlete = request.experience == 0 || request.returning
+            val distinctLoadingWeeks = slots.map { it.weekNumber }.distinct().sorted()
+            val ordinalByWeek = distinctLoadingWeeks.withIndex().associate { (i, w) -> w to i }
+            val archCounts = mutableMapOf<Engine15WorkoutArchetype, Int>()
+            val phaseSlotCounts = mutableMapOf<Engine15MacroPhase, Int>()
+
+            return slots.mapIndexed { slotIndex, slot ->
+                val weekOrdinal = ordinalByWeek[slot.weekNumber] ?: slotIndex
+                val weekPhase = phasesByWeek[slot.weekNumber]
+                    ?: if ((slot.weekNumber in taperWeeks) ||
+                        (isRaceGoal && request.weeks >= 8 && slot.weekNumber == lastLoadingWeek)
+                    ) Engine15MacroPhase.TAPER else Engine15MacroPhase.BUILD
+                val isRaceTaperWeek = weekPhase == Engine15MacroPhase.TAPER
+                val phasePool = if (phasesByWeek.isNotEmpty()) {
+                    phaseArchetypePool(request, family, weekPhase)
+                } else {
+                    archRotation
+                }
+                val phaseSlotIdx = phaseSlotCounts[weekPhase] ?: 0
+                phaseSlotCounts[weekPhase] = phaseSlotIdx + 1
+
+                val primaryArch = when {
+                    phasePool.size == 1 -> phasePool.first()
+                    isRaceTaperWeek -> phasePool.first()
+                    isConservativeAthlete && weekOrdinal < 2 -> phasePool.first()
+                    isConservativeAthlete -> phasePool[((slotIndex - 1).coerceAtLeast(0)) % phasePool.size]
+                    phasesByWeek.isNotEmpty() -> phasePool[phaseSlotIdx % phasePool.size]
+                    slotIndex == 0 -> phasePool.first()
+                    else -> phasePool[slotIndex % phasePool.size]
+                }
+                val occurrenceIdx = archCounts[primaryArch] ?: 0
+                archCounts[primaryArch] = occurrenceIdx + 1
+
+                fun fitsSlot(cand: Engine15QualityDoseStep, arch: Engine15WorkoutArchetype): Boolean {
+                    val target = workTargetForFamily(arch.family ?: family)
+                    val easyPace = deterministicZones.easy.midpointSecondsPerKm
+                    val workPace = deterministicZones.forTarget(target, arch).midpointSecondsPerKm
+                    val minEasyMeters = 480.0 * (1000.0 / easyPace)
+                    val workM = if (cand.workMeters > 0) cand.workMeters.toDouble() else cand.workSeconds * (1000.0 / workPace)
+                    val recM = cand.recoveryMeters.toDouble() +
+                        (if (cand.recoveryMeters > 0) 0 else cand.recoverySeconds) * (1000.0 / easyPace)
+                    val slotMeters = slot.originalEasyDistanceKm * 1000.0
+                    if (workM + recM + minEasyMeters > slotMeters * 1.05) return false
+                    if (timeBudgetSeconds != null && (780 + cand.workSeconds + cand.recoverySeconds > timeBudgetSeconds)) {
+                        return false
+                    }
+                    return true
+                }
+
+                val preferDist = occurrenceIdx % 2 == 0
+                val useTimedShortTrack = occurrenceIdx % 2 == 1
+                var chosenArch = primaryArch
+                var archSteps = adaptiveLadder(
+                    chosenArch, request.experience, deterministicZones,
+                    preferDistanceBased = preferDist,
+                    useTimedRecoveryForShortTrack = useTimedShortTrack
+                )
+                // If distance-based entry rung does not fit physical slot/time budget, try timed ladder then fallback archetype.
+                if (!fitsSlot(archSteps.first(), chosenArch)) {
+                    if (chosenArch in setOf(
+                            Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS,
+                            Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS
+                        ) && preferDist
+                    ) {
+                        val timedAlt = adaptiveLadder(chosenArch, request.experience, deterministicZones, preferDistanceBased = false)
+                        if (fitsSlot(timedAlt.first(), chosenArch)) {
+                            archSteps = timedAlt
+                        }
+                    }
+                    if (!fitsSlot(archSteps.first(), chosenArch)) {
+                        val sameFamAlt = (phasePool + archRotation).distinct().firstOrNull { candArch ->
+                            candArch.family == chosenArch.family &&
+                                fitsSlot(adaptiveLadder(candArch, request.experience, deterministicZones, false).first(), candArch)
+                        } ?: (phasePool + archRotation).distinct().firstOrNull { candArch ->
+                            fitsSlot(adaptiveLadder(candArch, request.experience, deterministicZones, false).first(), candArch)
+                        }
+                        if (sameFamAlt != null) {
+                            chosenArch = sameFamAlt
+                            archSteps = adaptiveLadder(chosenArch, request.experience, deterministicZones, false)
+                        }
+                    }
+                }
+
+                val weekFamily = chosenArch.family ?: family
+                val weekIntro = archSteps.first()
+                val weekAnchorIdx = (anchorRatio * archSteps.lastIndex).roundToInt().coerceIn(0, archSteps.lastIndex)
+                val blockIndex = (slot.weekNumber - 1) / 4
+                val weekInBlock = (slot.weekNumber - 1) % 4
+                val desiredIndex = when {
+                    isRaceTaperWeek -> minOf(weekAnchorIdx, 1).coerceAtLeast(0)
+                    isConservativeAthlete && weekOrdinal < 2 -> 0
+                    isConservativeAthlete -> ((weekOrdinal - 1) / 2).coerceIn(1, archSteps.lastIndex)
+                    else -> (weekAnchorIdx + blockIndex + weekInBlock).coerceAtMost(archSteps.lastIndex)
+                }
+
+                val weekKm = weeklyBudgetsByWeek[slot.weekNumber] ?: request.weeklyKm
+                val (ceilingMeters, ceilingSeconds) = doseCeilingForArchetype(
+                    chosenArch, weekKm, request.experience, request.qualityCount
+                )
+                val exposureCapSec = if (isConservativeAthlete && weekOrdinal < 2) {
+                    weekIntro.workSeconds
+                } else {
+                    minOf(
+                        maxOf(weekIntro.workSeconds, (maxPermittedWork * (familyWorkWeight(weekFamily) / familyWorkWeight(family)).coerceAtMost(1.15)).roundToInt()),
+                        ceilingSeconds
+                    )
+                }
+                val workTarget = workTargetForFamily(weekFamily)
+                val workPace = deterministicZones.forTarget(workTarget, chosenArch).midpointSecondsPerKm
+                val candidatesInWindow = archSteps.take(desiredIndex + 1).filter { cand ->
+                    val candMeters = if (cand.workMeters > 0) cand.workMeters else kotlin.math.round(cand.workSeconds * 1000.0 / workPace).toInt()
+                    cand.stepIndex == 0 || (cand.workSeconds <= exposureCapSec && candMeters <= ceilingMeters)
+                }.ifEmpty { listOf(weekIntro) }
+
+                val timeBounded = if (timeBudgetSeconds != null) {
+                    candidatesInWindow.filter { cand ->
+                        780 + cand.workSeconds + cand.recoverySeconds <= timeBudgetSeconds
+                    }.ifEmpty { listOf(weekIntro) }
+                } else candidatesInWindow
+
+                val distanceFitted = timeBounded.lastOrNull { cand -> fitsSlot(cand, chosenArch) } ?: weekIntro
+                val finalStep = fitWarmupCooldownToSlotDistance(

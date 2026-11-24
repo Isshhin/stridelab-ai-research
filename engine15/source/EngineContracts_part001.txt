@@ -1,0 +1,231 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-226
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.time.Instant
+import java.time.LocalDate
+import java.util.UUID
+
+internal const val PLAN_SCHEMA=1
+internal const val ENGINE1_VERSION="1.0.0"
+internal const val ENGINE1_POLICY="stridelab.engine1.conservative-20261026.1"
+internal const val MULTI_SESSION_POLICY="stridelab.engine1.multi-session-20261027.1"
+internal const val ENGINE15_VERSION="1.5.0"
+internal const val ENGINE15_FOUNDATION_POLICY="stridelab.engine15.foundation-20261103.1"
+internal const val ENGINE15_POLICY="stridelab.engine15.bounded-running-20261103.1"
+internal const val ENGINE15_MULTI_POLICY="stridelab.engine15.multi-session-20261103.1"
+internal const val ENGINE15_INTERFERENCE_POLICY="stridelab.engine15.interference-calendar-20261103.1"
+internal class PlanConstraint(message:String):IllegalArgumentException(message)
+internal object PlanDisciplineContract {
+    val goals=mapOf(
+        "run" to listOf("Aerobic foundation","Improve 5K","Improve 10K","Half marathon","Marathon"),
+        "str" to listOf("General strength","Muscle development","Strength endurance"),
+        "cal" to listOf("Calisthenics foundation","Pull-up progression","Push-up progression","Core strength and control","Handstand foundations"),
+        "cond" to listOf("Conditioning")).mapValues { (discipline, legacy) ->
+            legacy + Engine15DisciplineProgression.goals[discipline].orEmpty()
+        }
+}
+internal val ALL_SUPPORTED_GOALS=listOf("General fitness")+PlanDisciplineContract.goals.values.flatten()
+internal interface PlanGenerationEngine {
+    val version:String
+    val policyId:String
+    fun generate(request:PlanRequest,owner:String,id:String=UUID.randomUUID().toString(),now:Instant=Instant.now()):PlanSnapshot
+}
+internal data class PlanRequest(
+    val goal:String="General fitness", val secondaryGoal:String="", val experience:Int=0,
+    val start:LocalDate=LocalDate.now(), val weeks:Int=4, val minutes:Int=45,
+    val days:Set<Int> = setOf(1,2,4,5,6), val runDays:Int=3, val strengthDays:Int=0, val calDays:Int=0, val conditioningDays:Int=0,
+    val longDay:Int=6,val qualityDays:Set<Int> = setOf(2),val qualityCount:Int=0,
+    val weeklyKm:Double=0.0,val longestKm:Double=0.0,val planningPace:Double=480.0,
+    val equipment:Map<String,Int> = emptyMap(),val calLevel:Int=0,val returning:Boolean=false,
+    val excluded:Set<String> = emptySet(),val limitations:String="",val recoveryNotes:String="",val strengthExperience:Int=0,val pullLevel:Int=0,val coreLevel:Int=0,val policyChoice:String="engine15",val disciplineGoals:Map<String,String> = emptyMap(),val dailyMinutes:Int=90,
+    val weeklySlots:Map<String,List<Int>> = emptyMap(),
+    val preferredQuality:String = "Threshold",
+    val allowedQualityTypes:Set<String> = emptySet(),
+    val lockedSessionDays:Map<String,String> = emptyMap(),
+    val allowDoubleDays:Boolean = false,
+    val timeBudgetEnabled:Boolean = true,
+    val targetWeeklyKm:Double? = null,
+    val runningRecoveryHold:Boolean = false,
+    val recentQualitySessionsPerWeek:Int? = null,
+    /** Preserves the manual mileage-builder identity; never treated as race intent. */
+    val trainYourWay:Boolean = false,
+    /** Explicit consent to a foundation plan below the requested future mileage. */
+    val foundationAcknowledged:Boolean = false,
+    /** M3 evidence provenance. Legacy snapshots remain unclassified. */
+    val recentMileageBasis:String = "LEGACY_UNSPECIFIED",
+    /** Reported peak is not treated as a sustainable weekly average. */
+    val reportedPeakWeeklyKm:Double? = null,
+    /** Private/debug plan preference; this remains a requested budget, not validated capacity. */
+    val userDirectedPlanning:Boolean = false,
+    /** Explicit user-authored workouts keyed by stable week/run-slot suffix, e.g. w2-run1. */
+    val userDefinedQualityWorkouts:Map<String,RunningPrescription> = emptyMap(),
+    /** True only after the runner chooses a family in Plan Builder; default Threshold is not intent. */
+    val preferredQualityExplicit:Boolean = false,
+    /** User-asserted per-segment equivalents for debug-only quality alternatives. */
+    val qualityDistanceClaims:List<Engine15M5SegmentDistanceClaim> = emptyList(),
+    /** Optional target race date chosen in Plan Builder; used to compute horizon and taper. */
+    val targetRaceDate:LocalDate? = null,
+    /** Optional recent race / time-trial benchmark distance in meters (e.g. 5000, 10000, 21097, 42195). */
+    val benchmarkDistanceMeters:Int? = null,
+    /** Optional recent race / time-trial benchmark duration in seconds. */
+    val benchmarkDurationSeconds:Int? = null,
+    /** Optional separate duration cap in minutes for the weekly long run when timeBudgetEnabled is true. */
+    val longRunMinutes:Int? = null
+) {
+    init {
+        require(qualityDistanceClaims.size <= 32)
+        require(qualityDistanceClaims.all {
+            it.provenance == Engine15M5DistanceClaimProvenance.USER_ASSERTED_EQUIVALENT &&
+                it.externalReviewReference == null
+        })
+        require(benchmarkDistanceMeters == null || benchmarkDistanceMeters in 1000..100000)
+        require(benchmarkDurationSeconds == null || benchmarkDurationSeconds in 120..43200)
+        require(longRunMinutes == null || longRunMinutes in 15..300)
+    }
+    fun disciplineSessionCount(discipline:String)=when(discipline) {
+        "run"->runDays;"str"->strengthDays;"cal"->calDays;"cond"->conditioningDays;else->0
+    }
+    fun disciplineGoal(discipline:String):String=disciplineGoals[discipline]
+        ?: goal.takeIf { it in PlanDisciplineContract.goals.getValue(discipline) }
+        ?: PlanDisciplineContract.goals.getValue(discipline).first()
+
+    fun encode():JSONObject {
+        val encoded=JSONObject().put("goal",goal).put("secondaryGoal",secondaryGoal).put("experience",experience).put("start",start.toString()).put("weeks",weeks).put("minutes",minutes)
+            .put("days",JSONArray(days.sorted())).put("runDays",runDays).put("strengthDays",strengthDays).put("calDays",calDays).put("conditioningDays",conditioningDays).put("longDay",longDay)
+            .put("qualityDays",JSONArray(qualityDays.sorted())).put("qualityCount",qualityCount).put("weeklyKm",weeklyKm).put("longestKm",longestKm).put("planningPace",planningPace)
+            .put("equipment",JSONObject(equipment)).put("calLevel",calLevel).put("returning",returning).put("excluded",JSONArray(excluded.sorted())).put("limitations",limitations).put("recoveryNotes",recoveryNotes).put("strengthExperience",strengthExperience).put("pullLevel",pullLevel).put("coreLevel",coreLevel).put("policyChoice",policyChoice).put("disciplineGoals",JSONObject(disciplineGoals))
+        if(policyChoice=="engine15")encoded.put("lockedSessionDays",JSONObject(lockedSessionDays))
+        if(policyChoice=="engine15" && allowDoubleDays)encoded.put("allowDoubleDays",true)
+        if(!timeBudgetEnabled)encoded.put("timeBudgetEnabled",false)
+        if(policyChoice=="multi-session" || policyChoice=="engine15")encoded.put("dailyMinutes",dailyMinutes)
+        if(weeklySlots.isNotEmpty()) {
+            val assignments=JSONObject()
+            weeklySlots.forEach { (discipline, slots) ->
+                assignments.put(discipline, JSONArray(slots))
+            }
+            encoded.put("weeklySlots", assignments)
+        }
+        if(targetWeeklyKm!=null)encoded.put("targetWeeklyKm",targetWeeklyKm)
+        if(trainYourWay)encoded.put("trainYourWay",true)
+        if(foundationAcknowledged)encoded.put("foundationAcknowledged",true)
+        if(recentMileageBasis!="LEGACY_UNSPECIFIED")encoded.put("recentMileageBasis",recentMileageBasis)
+        if(reportedPeakWeeklyKm!=null)encoded.put("reportedPeakWeeklyKm",reportedPeakWeeklyKm)
+        if(policyChoice=="engine15" && userDirectedPlanning)encoded.put("userDirectedPlanning",true)
+        if(policyChoice=="engine15" && userDefinedQualityWorkouts.isNotEmpty())
+            encoded.put("userDefinedQualityWorkouts",JSONObject().apply {
+                userDefinedQualityWorkouts.toSortedMap().forEach { (key,value)->put(key,value.encode()) }
+            })
+        if(runningRecoveryHold)encoded.put("runningRecoveryHold",true)
+        if(recentQualitySessionsPerWeek!=null)encoded.put("recentQualitySessionsPerWeek",recentQualitySessionsPerWeek)
+        if(preferredQuality!="Threshold")encoded.put("preferredQuality",preferredQuality)
+        if(policyChoice=="engine15" && preferredQualityExplicit)encoded.put("preferredQualityExplicit",true)
+        if(policyChoice=="engine15" && qualityDistanceClaims.isNotEmpty())
+            encoded.put("qualityDistanceClaims",JSONArray(qualityDistanceClaims.map { it.encode() }))
+        if(allowedQualityTypes.isNotEmpty())
+            encoded.put("allowedQualityTypes",JSONArray(allowedQualityTypes.sorted()))
+        if(targetRaceDate!=null)encoded.put("targetRaceDate",targetRaceDate.toString())
+        if(benchmarkDistanceMeters!=null)encoded.put("benchmarkDistanceMeters",benchmarkDistanceMeters)
+        if(benchmarkDurationSeconds!=null)encoded.put("benchmarkDurationSeconds",benchmarkDurationSeconds)
+        if(longRunMinutes!=null)encoded.put("longRunMinutes",longRunMinutes)
+        return encoded
+    }
+    companion object {
+        fun decode(j:JSONObject):PlanRequest {
+            val eq=j.getJSONObject("equipment"); val days=j.getJSONArray("days");val quality=j.getJSONArray("qualityDays");val excluded=j.getJSONArray("excluded")
+            return PlanRequest(j.getString("goal"),j.getString("secondaryGoal"),j.getInt("experience"),LocalDate.parse(j.getString("start")),j.getInt("weeks"),j.getInt("minutes"),
+                (0 until days.length()).map { days.getInt(it) }.toSet(),j.getInt("runDays"),j.getInt("strengthDays"),j.getInt("calDays"),j.getInt("conditioningDays"),j.getInt("longDay"),
+                (0 until quality.length()).map { quality.getInt(it) }.toSet(),j.getInt("qualityCount"),j.getDouble("weeklyKm"),j.getDouble("longestKm"),j.getDouble("planningPace"),
+                eq.keys().asSequence().associateWith { eq.getInt(it) },j.getInt("calLevel"),j.getBoolean("returning"),(0 until excluded.length()).map { excluded.getString(it) }.toSet(),j.getString("limitations"),j.getString("recoveryNotes"),j.optInt("strengthExperience",j.getInt("experience")),j.optInt("pullLevel",0),j.optInt("coreLevel",0),j.optString("policyChoice","baseline"),j.optJSONObject("disciplineGoals")?.let { obj -> obj.keys().asSequence().associateWith { obj.getString(it) } } ?: emptyMap(),j.optInt("dailyMinutes",90),
+                j.optJSONObject("weeklySlots")?.let { assignments ->
+                    assignments.keys().asSequence().associateWith { discipline ->
+                        val days = assignments.getJSONArray(discipline)
+                        (0 until days.length()).map { days.getInt(it) }
+                    }
+                } ?: emptyMap(),
+                j.optString("preferredQuality","Threshold"),
+                j.optJSONArray("allowedQualityTypes")?.let { qualities ->
+                    (0 until qualities.length()).map { qualities.getString(it) }.toSet()
+                } ?: emptySet(),
+                j.optJSONObject("lockedSessionDays")?.let { locks ->
+                    locks.keys().asSequence().associateWith { locks.getString(it) }
+                } ?: emptyMap(), j.has("allowDoubleDays") && j.getBoolean("allowDoubleDays"),
+                j.optBoolean("timeBudgetEnabled",true),j.optDouble("targetWeeklyKm").takeIf { j.has("targetWeeklyKm") },j.optBoolean("runningRecoveryHold",false),j.nullInt("recentQualitySessionsPerWeek"),
+                j.optBoolean("trainYourWay",false),j.optBoolean("foundationAcknowledged",false),
+                j.optString("recentMileageBasis","LEGACY_UNSPECIFIED"),
+                j.nullDouble("reportedPeakWeeklyKm"),j.optBoolean("userDirectedPlanning",false),
+                j.optJSONObject("userDefinedQualityWorkouts")?.let { workouts ->
+                    workouts.keys().asSequence().associateWith { RunningPrescription.decode(workouts.getJSONObject(it)) }
+                } ?: emptyMap(),j.optBoolean("preferredQualityExplicit",false),
+                j.optJSONArray("qualityDistanceClaims")?.let { claims ->
+                    (0 until claims.length()).map { Engine15M5SegmentDistanceClaim.decode(claims.getJSONObject(it)) }
+                } ?: emptyList(),
+                j.nullString("targetRaceDate")?.let(LocalDate::parse),
+                j.nullInt("benchmarkDistanceMeters"),
+                j.nullInt("benchmarkDurationSeconds"),
+                j.nullInt("longRunMinutes"))
+        }
+    }
+}
+internal data class ExercisePrescription(val id:String,val name:String,val sets:Int,val reps:Int?=null,val seconds:Int?=null,val rest:Int=60,val equipment:String="None",val cue:String="Keep the movement controlled; stop before form breaks.") {
+    fun encode()=JSONObject().put("id",id).put("name",name).put("sets",sets).put("reps",reps).put("seconds",seconds).put("rest",rest).put("equipment",equipment).put("cue",cue)
+    companion object { fun decode(j:JSONObject)=ExercisePrescription(j.getString("id"),j.getString("name"),j.getInt("sets"),j.nullInt("reps"),j.nullInt("seconds"),j.getInt("rest"),j.getString("equipment"),j.getString("cue")) }
+}
+internal data class SetRecord(val exerciseId:String,val set:Int,val reps:Int?=null,val kg:Double?=null,val seconds:Int?=null) {
+    fun encode()=JSONObject().put("exerciseId",exerciseId).put("set",set).put("reps",reps).put("kg",kg).put("seconds",seconds)
+    companion object { fun decode(j:JSONObject)=SetRecord(j.getString("exerciseId"),j.getInt("set"),j.nullInt("reps"),j.nullDouble("kg"),j.nullInt("seconds")) }
+}
+internal data class WorkoutLog(val at:Instant,val minutes:Double?=null,val distanceKm:Double?=null,val effort:Int?=null,val sets:List<SetRecord> = emptyList(),val notes:String="",val performedOn:LocalDate?=null,val completionDifficulty:String?=null,val discomfort:String?=null,val qualityWorkKm:Double?=null) {
+    init {
+        require(qualityWorkKm==null || qualityWorkKm.isFinite() && qualityWorkKm>0 && qualityWorkKm<=120 && (distanceKm==null || qualityWorkKm<=distanceKm))
+        require(completionDifficulty==null || completionDifficulty in setOf("As planned","Easier","Harder","Could not finish"))
+        require(discomfort==null || discomfort in setOf("None","Soreness","Pain"))
+    }
+    fun encode()=JSONObject().put("at",at.toString()).put("minutes",minutes).put("distanceKm",distanceKm).put("effort",effort).put("sets",JSONArray(sets.map { it.encode() })).put("notes",notes).put("performedOn",performedOn?.toString()).put("completionDifficulty",completionDifficulty).put("discomfort",discomfort).put("qualityWorkKm",qualityWorkKm)
+    companion object { fun decode(j:JSONObject)=WorkoutLog(Instant.parse(j.getString("at")),j.nullDouble("minutes"),j.nullDouble("distanceKm"),j.nullInt("effort"),j.getJSONArray("sets").objects().map(SetRecord::decode),j.getString("notes"),j.nullString("performedOn")?.let(LocalDate::parse),j.nullString("completionDifficulty"),j.nullString("discomfort"),j.nullDouble("qualityWorkKm")) }
+}
+internal data class SessionSuggestion(val minutes:Int,val reason:String,val accepted:Boolean=false) {
+    fun encode()=JSONObject().put("minutes",minutes).put("reason",reason).put("accepted",accepted)
+    companion object { fun decode(j:JSONObject)=SessionSuggestion(j.getInt("minutes"),j.getString("reason"),j.getBoolean("accepted")) }
+}
+internal data class SessionDifficultyBaseline(
+    val title: String,
+    val minutes: Int,
+    val distanceKm: Double?,
+    val kind: String,
+    val quality: Boolean,
+    val exercises: List<ExercisePrescription> = emptyList(),
+    val steps: List<String> = emptyList(),
+    val reason: String = "",
+    val runningPrescription: RunningPrescription? = null
+) {
+    fun encode(): JSONObject = JSONObject()
+        .put("title", title)
+        .put("minutes", minutes)
+        .put("distanceKm", distanceKm)
+        .put("kind", kind)
+        .put("quality", quality)
+        .put("exercises", JSONArray(exercises.map { it.encode() }))
+        .put("steps", JSONArray(steps))
+        .put("reason", reason)
+        .put("runningPrescription", runningPrescription?.encode())
+
+    companion object {
+        fun decode(j: JSONObject) = SessionDifficultyBaseline(
+            title = j.getString("title"),
+            minutes = j.getInt("minutes"),
+            distanceKm = j.nullDouble("distanceKm"),
+            kind = j.getString("kind"),
+            quality = j.getBoolean("quality"),
+            exercises = j.getJSONArray("exercises").objects().map(ExercisePrescription::decode),
+            steps = j.getJSONArray("steps").strings(),
+            reason = j.getString("reason"),
+            runningPrescription = j.optJSONObject("runningPrescription")?.let(RunningPrescription::decode)
+        )
+    }
+}

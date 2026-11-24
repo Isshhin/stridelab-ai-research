@@ -1,0 +1,53 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 8
+LINES: 2131-2178
+--------------------------------------------------
+        mutable.value = mutable.value.copy(message = if(revoked) null else "Signed out on this device. Server session revocation was unavailable; saved files were retained.")
+    }
+}
+
+/** Stable, bounded local metadata key; never changes the Garmin source ID. */
+private fun sha256PrefixKey(prefix: String, id: String): String {
+    RecordPolicy.identifier(id)
+    return hashedLocalKey(prefix, id)
+}
+
+private fun hashedLocalKey(prefix: String, id: String): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+        .digest(id.toByteArray(Charsets.UTF_8))
+    return prefix + digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+}
+
+private fun localActivityTitleKey(activityId: String): String =
+    sha256PrefixKey("local-activity-title-", activityId)
+
+private fun activityMatchRecordId(activityId: String): String =
+    sha256PrefixKey("activity-match-", activityId)
+
+private fun executionAnalysisRecordId(plannedSessionId: String): String =
+    sha256PrefixKey("execution-analysis-", plannedSessionId)
+
+private fun athleteDiagnosticRecordId(planId: String): String =
+    sha256PrefixKey("athlete-diagnostic-", planId)
+
+private fun adaptationProposalRecordId(proposalId: String): String =
+    sha256PrefixKey("adaptation-proposal-", proposalId)
+
+private fun adaptationRevisionRecordId(revisionId: String): String =
+    sha256PrefixKey("adaptation-revision-", revisionId)
+
+private fun adaptationCooldownRecordId(cooldown: AdaptationCooldownRecord): String =
+    hashedLocalKey(
+        "adaptation-cooldown-",
+        "${cooldown.planId}:${cooldown.adaptationType.name}:${cooldown.disruptionFingerprint ?: ""}"
+    )
+
+private fun validatedActivityTitle(input:String):String {
+    val title = input.trim()
+    require(title.isNotBlank() && title.length <= 100 &&
+        title.none { Character.isISOControl(it) }) {
+        "Activity title must contain 1ΓÇô100 printable characters."
+    }
+    return title
+}

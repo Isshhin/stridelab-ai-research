@@ -1,0 +1,305 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15IndependentPlanGeneratorTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-300
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import java.time.Instant
+import java.time.LocalDate
+import kotlin.math.ceil
+import org.junit.Assert.*
+import org.junit.Test
+
+class Engine15IndependentPlanGeneratorTest {
+    private val owner = "independent-synthetic"
+    private val now = Instant.parse("2026-11-17T00:00:00Z")
+
+    private fun request(weeks: Int = 8) = PlanRequest(
+        goal = "Aerobic foundation",
+        start = LocalDate.parse("2026-11-16"),
+        weeks = weeks,
+        days = setOf(1, 2, 3, 5, 6, 7),
+        runDays = 6,
+        weeklyKm = 75.0,
+        longestKm = 20.0,
+        targetWeeklyKm = 80.0,
+        longDay = 6,
+        timeBudgetEnabled = false,
+        policyChoice = "engine15",
+        recentMileageBasis = "SELF_REPORTED_AVERAGE"
+    )
+
+    @Test fun userWorkoutAuthoringBuildsDistanceAndMixedUnitPlansWithoutInferringDistance() {
+        val distance=Engine15UserWorkoutAuthoring.build("Intervals",listOf(
+            RunningStepV2("WARM_UP","Easy",meters=2000),
+            RunningStepV2("WORK","User fast target",meters=800),
+            RunningStepV2("RECOVERY","Easy",meters=400),
+            RunningStepV2("WORK","User fast target",meters=800),
+            RunningStepV2("COOL_DOWN","Easy",meters=2000)
+        ))
+        assertEquals(1,distance.encode().getInt("version"))
+        assertEquals(6000,distance.meters)
+        assertEquals(3,MixedRunningStepGrouping.of(listOf(
+            RunningStepV2("WARM_UP","Easy",meters=2000),
+            RunningStepV2("WORK","User fast target",meters=800),
+            RunningStepV2("RECOVERY","Easy",meters=400),
+            RunningStepV2("WORK","User fast target",meters=800),
+            RunningStepV2("COOL_DOWN","Easy",meters=2000)
+        )).size)
+
+        val timed=Engine15UserWorkoutAuthoring.build("Threshold",listOf(
+            RunningStepV2("WARM_UP","Easy",meters=2000),
+            RunningStepV2("WORK","User threshold target",seconds=300,distanceEquivalentMeters=1200),
+            RunningStepV2("RECOVERY","Easy",seconds=90,distanceEquivalentMeters=300),
+            RunningStepV2("WORK","User threshold target",seconds=300,distanceEquivalentMeters=1200),
+            RunningStepV2("TRANSITION","Easy between blocks",seconds=180,distanceEquivalentMeters=300),
+            RunningStepV2("WORK","User speed target",meters=200),
+            RunningStepV2("RECOVERY","Easy",meters=200),
+            RunningStepV2("WORK","User speed target",meters=200),
+            RunningStepV2("COOL_DOWN","Easy",meters=4000)
+        ))
+        assertEquals(3,timed.encode().getInt("version"))
+        assertEquals(9600,timed.reconciledDistanceMeters)
+        assertEquals(timed,RunningPrescription.decode(timed.encode()))
+    }
+
+    @Test fun userWorkoutAuthoringRejectsUnknownTimedDistanceAndInvalidStepOrder() {
+        assertThrows(PlanConstraint::class.java) {
+            Engine15UserWorkoutAuthoring.build("Tempo",listOf(
+                RunningStepV2("WARM_UP","Easy",meters=1000),
+                RunningStepV2("WORK","User target",seconds=300),
+                RunningStepV2("COOL_DOWN","Easy",meters=1000)
+            ))
+        }
+        assertThrows(PlanConstraint::class.java) {
+            Engine15UserWorkoutAuthoring.build("Fartlek",listOf(
+                RunningStepV2("WARM_UP","Easy",meters=1000),
+                RunningStepV2("RECOVERY","Easy",meters=100),
+                RunningStepV2("WORK","User target",meters=400),
+                RunningStepV2("COOL_DOWN","Easy",meters=1000)
+            ))
+        }
+    }
+
+    @Test fun workoutEditorReopensAndReordersRepeatGroupsAsAtomicBlocks() {
+        val workout=Engine15UserWorkoutAuthoring.build("Intervals",listOf(
+            RunningStepV2("WARM_UP","Easy",meters=1000),
+            RunningStepV2("WORK","User target",meters=800),
+            RunningStepV2("RECOVERY","Easy",meters=400),
+            RunningStepV2("WORK","User target",meters=800),
+            RunningStepV2("TRANSITION","Easy between blocks",meters=200),
+            RunningStepV2("WORK","Second block",meters=200),
+            RunningStepV2("COOL_DOWN","Easy",meters=1000)
+        ))
+        val savedRequest=PlanRequest(policyChoice="engine15",userDefinedQualityWorkouts=mapOf("w1-run1" to workout))
+        val reopened=WorkoutDraft.from(PlanRequest.decode(savedRequest.encode())
+            .userDefinedQualityWorkouts.getValue("w1-run1"),1)
+        val group=reopened.steps.filter { it.groupId!=null }
+        assertEquals(listOf("WORK","RECOVERY","WORK"),group.map { it.purpose })
+        assertEquals(2,group.count { it.purpose=="WORK" })
+
+        val moved=moveWorkoutStepBlock(reopened.steps,1,1)
+        val groupIndices=moved.indices.filter { moved[it].groupId==group.first().groupId }
+        assertEquals((groupIndices.first()..groupIndices.last()).toList(),groupIndices)
+        assertEquals(listOf("WORK","RECOVERY","WORK"),groupIndices.map { moved[it].purpose })
+        val edited=updateWorkoutStep(moved,groupIndices.first()) { it.copy(amount="900") }
+        assertEquals(listOf("900","900"),edited.filter { it.groupId==group.first().groupId && it.purpose=="WORK" }.map { it.amount })
+        assertEquals(1,edited.count { it.groupId==group.first().groupId && it.purpose=="RECOVERY" })
+        assertTrue(removeWorkoutStepBlock(edited,groupIndices.first()).none { it.groupId==group.first().groupId })
+    }
+
+    @Test fun assemblesCompleteEightWeekSaturdayLongSundayEasyCandidate() {
+        val decision = Engine15IndependentPlanGenerator.preview(request(), owner, "candidate", now)
+        assertTrue("Expected candidate, got $decision", decision is Engine15IndependentPlanDecision.Candidate)
+        val candidate = decision as Engine15IndependentPlanDecision.Candidate
+        val plan = candidate.plan
+        assertEquals(48, plan.sessions.size)
+        assertEquals(8, candidate.periodization.weeks.size)
+        for (week in 0 until 8) {
+            val start = request().start.plusWeeks(week.toLong())
+            val sessions = plan.sessions.filter { it.date >= start && it.date < start.plusWeeks(1) }
+            assertEquals(6, sessions.size)
+            assertEquals(candidate.volume.weeks[week].proposedKm!!,
+                sessions.sumOf { it.distanceKm!! }, 1e-6)
+            assertEquals(6, sessions.single { it.kind == "long" }.date.dayOfWeek.value)
+            assertEquals("easy", sessions.single { it.date.dayOfWeek.value == 7 }.kind)
+        }
+        assertFalse(candidate.executable)
+        assertFalse(candidate.authorizedForProduction)
+        assertTrue(plan.sessions.all { it.quality.not() && it.runningPrescription?.family == null })
+        assertEquals(plan, Engine15IndependentPlanGenerator.preview(request(), owner, "candidate", now).let {
+            (it as Engine15IndependentPlanDecision.Candidate).plan
+        })
+    }
+
+    @Test fun activityEvidenceIsOwnerCheckedAndDescriptiveOnly() {
+        val evidence = ActivityAthleteEvidenceProfile(
+            owner = owner, asOf = now, recordedRunCount = 4,
+            recordedDistanceByWeekKm = emptyMap(), recordedRunDaysByWeek = emptyMap(),
+            longestRecordedRunLast28DaysKm = 12.0,
+            userReportedRunCharacteristics = emptyMap(), evidenceActivityIds = listOf("run-a", "run-b"),
+            sourceCoverage = "UNKNOWN"
+        )
+        val without = Engine15IndependentPlanGenerator.preview(request(), owner, "same", now)
+            as Engine15IndependentPlanDecision.Candidate
+        val with = Engine15IndependentPlanGenerator.preview(
+            request(), owner, "same", now, activityEvidence = evidence
+        ) as Engine15IndependentPlanDecision.Candidate
+
+        assertEquals(without.volume.weeks, with.volume.weeks)
+        assertEquals(without.volume.athleteBaseline.typicalWeeklyKm,
+            with.volume.athleteBaseline.typicalWeeklyKm)
+        assertEquals(evidence, with.volume.athleteBaseline.activityEvidence)
+        assertEquals(without.plan.sessions, with.plan.sessions)
+        assertTrue(with.plan.explanations.any {
+            it.contains("ACTIVITY_EVIDENCE_CONTEXT") && it.contains("did not set weekly capacity")
+        })
+        val mismatch = Engine15IndependentPlanGenerator.preview(
+            request(), owner, "mismatch", now,
+            activityEvidence = evidence.copy(owner = "another-owner")
+        )
+        assertTrue(mismatch is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("ACTIVITY_EVIDENCE_SCOPE_INVALID",
+            (mismatch as Engine15IndependentPlanDecision.Deferred).reasonCode)
+    }
+
+    @Test fun defersQualityRequestsInsteadOfDroppingOrSubstitutingThem() {
+        for (qualityCount in 1..2) {
+            val decision = Engine15IndependentPlanGenerator.preview(
+                request().copy(
+                    qualityCount = qualityCount,
+                    qualityDays = if (qualityCount == 2) setOf(1, 3) else setOf(2)
+                ),
+                owner, "quality-$qualityCount", now
+            )
+            assertTrue(decision is Engine15IndependentPlanDecision.Deferred)
+            val deferred = decision as Engine15IndependentPlanDecision.Deferred
+            assertEquals("QUALITY_GENERATION_NOT_QUALIFIED", deferred.reasonCode)
+            assertTrue(deferred.explanation.contains("Coach-generated quality remains non-executable"))
+            assertNotNull(deferred.qualitySelection)
+            assertEquals(Engine15WorkoutExecutability.NON_EXECUTABLE,
+                deferred.qualitySelection!!.workoutExecutability)
+            assertEquals(Engine15QualitySelectionDecision.FAMILY_CANDIDATE,
+                deferred.qualitySelection!!.decision)
+            assertNotNull(deferred.qualityDryRun)
+        }
+        val unsupported = Engine15IndependentPlanGenerator.preview(
+            request().copy(qualityCount = 3), owner, "quality-3", now
+        )
+        assertTrue(unsupported is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("QUALITY_FREQUENCY_UNSUPPORTED",
+            (unsupported as Engine15IndependentPlanDecision.Deferred).reasonCode)
+    }
+
+    @Test fun goalBasedFamilyCandidateRemainsNonExecutableThroughGenerator() {
+        val evidence = listOf(
+            IndependentQualitySegmentEvidence(
+                owner, "source-old", "session-old", now.atZone(java.time.ZoneOffset.UTC).toLocalDate().minusDays(9),
+                IndependentQualityFamily.THRESHOLD, IndependentQualityEvidenceOrigin.DEVICE_SEGMENTS_ASSERTED,
+                true, listOf(240, 240, 240)
+            ),
+            IndependentQualitySegmentEvidence(
+                owner, "source-new", "session-new", now.atZone(java.time.ZoneOffset.UTC).toLocalDate().minusDays(2),
+                IndependentQualityFamily.THRESHOLD, IndependentQualityEvidenceOrigin.DEVICE_SEGMENTS_ASSERTED,
+                true, listOf(300, 300, 300)
+            )
+        )
+        val deferred = Engine15IndependentPlanGenerator.preview(
+            request().copy(qualityCount = 1), owner, "quality-candidate", now,
+            qualityEvidence = evidence
+        ) as Engine15IndependentPlanDecision.Deferred
+
+        val selection = deferred.qualitySelection!!
+        assertEquals(Engine15QualitySelectionDecision.FAMILY_CANDIDATE, selection.decision)
+        assertEquals(IndependentQualityFamily.TEMPO, selection.selectedFamily)
+        assertEquals(Engine15QualitySelectionBasis.GOAL_EXPERIENCE_MATRIX, selection.selectionBasis)
+        assertEquals(Engine15FamilyPolicyQualification.PROVISIONAL_ENGINEERING_RULE,
+            selection.familyPolicyQualification)
+        assertFalse(selection.sourceEvidenceVerified)
+        assertEquals(Engine15TemplateAuthorization.NOT_AUTHORIZED, selection.templateAuthorization)
+        assertEquals(Engine15WorkoutExecutability.NON_EXECUTABLE, selection.workoutExecutability)
+        assertNull(selection.templateId)
+        assertTrue(selection.explanation.contains("unqualified"))
+        assertNotNull(deferred.qualityDryRun)
+        assertFalse(deferred.qualityDryRun!!.executable)
+    }
+
+    @Test fun representativeGoalsProduceCompleteDeterministicEightToSixteenWeekPlans() {
+        val scenarios = listOf(
+            Triple("Improve 5K", 3, 35.0),
+            Triple("Improve 10K", 4, 45.0),
+            Triple("Half marathon", 5, 60.0),
+            Triple("Marathon", 6, 75.0)
+        )
+        for ((index, scenario) in scenarios.withIndex()) {
+            val (goal, frequency, target) = scenario
+            val input = request(if (index % 2 == 0) 8 else 16).copy(
+                goal = goal,
+                runDays = frequency,
+                weeklyKm = target,
+                targetWeeklyKm = target,
+                longestKm = target * 0.3,
+                days = (1..7).toSet(),
+                userDirectedPlanning = true
+            )
+            val first = Engine15IndependentPlanGenerator.preview(input, owner, "matrix-$index", now)
+            assertTrue("$goal/$frequency/$target: $first", first is Engine15IndependentPlanDecision.Candidate)
+            val candidate = first as Engine15IndependentPlanDecision.Candidate
+            val repeated = Engine15IndependentPlanGenerator.preview(input, owner, "matrix-$index", now)
+                as Engine15IndependentPlanDecision.Candidate
+            assertEquals(candidate.plan, repeated.plan)
+            assertEquals(input.weeks * frequency, candidate.plan.sessions.size)
+            assertEquals(input.weeks, candidate.periodization.weeks.size)
+            for (week in 0 until input.weeks) {
+                val from = input.start.plusWeeks(week.toLong())
+                val rows = candidate.plan.sessions.filter { it.date >= from && it.date < from.plusWeeks(1) }
+                assertEquals(frequency, rows.size)
+                assertEquals(candidate.volume.weeks[week].proposedKm!!, rows.sumOf { it.distanceKm!! }, 1e-6)
+                assertEquals(
+                    if (week % 4 == 3) Engine15IndependentVolumePlanner.WeekKind.RECOVERY
+                    else Engine15IndependentVolumePlanner.WeekKind.LOADING,
+                    candidate.volume.weeks[week].kind
+                )
+            }
+            val savedDraft = Engine15IndependentPlanGenerator.generateWithHistory(
+                input, owner, emptyList(), "matrix-saved-$index", now
+            )
+            Engine15IndependentPlanGenerator.validateSaved(savedDraft)
+            assertEquals(candidate.plan.sessions.map { listOf(it.date, it.distanceKm, it.kind, it.runningPrescription) },
+                savedDraft.sessions.map { listOf(it.date, it.distanceKm, it.kind, it.runningPrescription) })
+            assertFalse(candidate.executable)
+        }
+    }
+
+    @Test fun userDirectedModeHonorsHighWeeklyTargetAndLabelsItAsUnvalidated() {
+        val input=request(8).copy(targetWeeklyKm=110.0,longestKm=5.0,userDirectedPlanning=true)
+        val result=Engine15IndependentPlanGenerator.preview(input,owner,"user-directed",now)
+        assertTrue("Expected a reviewable user-directed plan, got $result",result is Engine15IndependentPlanDecision.Candidate)
+        val candidate=result as Engine15IndependentPlanDecision.Candidate
+        assertTrue(candidate.periodization.ruleIds.contains("USER_DIRECTED_BUDGET_RECONCILED_NOT_CAPACITY_VALIDATED"))
+        for(week in 0 until input.weeks) {
+            val rows=candidate.plan.sessions.filter {
+                it.date>=input.start.plusWeeks(week.toLong()) && it.date<input.start.plusWeeks((week+1).toLong())
+            }
+            assertEquals(if(week%4==3)88.0 else 110.0,rows.sumOf { it.distanceKm!! },1e-6)
+        }
+        assertTrue(candidate.plan.explanations.any { it.contains("user-requested workload") })
+        assertTrue(candidate.plan.explanations.any { it.contains("not validated athlete capacity") })
+        assertTrue(candidate.plan.explanations.any { it.contains("PROVISIONAL_SESSION_EXPOSURE_WARNING") })
+        assertTrue(PlanRequest.decode(candidate.plan.request.encode()).userDirectedPlanning)
+        val unknownLongest=Engine15IndependentPlanGenerator.preview(input.copy(longestKm=0.0),owner,"unknown-longest",now)
+        assertTrue("A provisional longest-run estimate must not cap user-directed volume: $unknownLongest",
+            unknownLongest is Engine15IndependentPlanDecision.Candidate)
+    }
+
+    @Test fun userDefinedDistanceIntervalsReplaceOneEasySlotWithoutChangingWeeklyMileage() {
+        val workout=RunningPrescription("QUALITY","Intervals",listOf(
+            RunningSegment("WARM_UP",2000,"User supplied easy effort"),
+            RunningSegment("WORK",800,"User supplied fast target"),
+            RunningSegment("RECOVERY",400,"User supplied easy recovery") ,
+            RunningSegment("WORK",800,"User supplied fast target"),
+            RunningSegment("RECOVERY",400,"User supplied easy recovery"),
+            RunningSegment("WORK",800,"User supplied fast target"),
+            RunningSegment("RECOVERY",400,"User supplied easy recovery"),
+            RunningSegment("WORK",800,"User supplied fast target"),

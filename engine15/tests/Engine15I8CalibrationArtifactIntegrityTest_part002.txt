@@ -1,0 +1,103 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15I8CalibrationArtifactIntegrityTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 386-483
+--------------------------------------------------
+        deferred("ARTIFACT_BYTES_MISSING", bytes = byteArrayOf())
+        deferred("ARTIFACT_BYTES_TOO_LARGE", bytes = ByteArray(16_385) { 65 })
+    }
+
+    @Test fun changedBytesWithoutMatchingDigestMustBeRejectedFirst() {
+        val altered = originalBytes().copyOf()
+        altered[altered.lastIndex - 1] = '9'.code.toByte()
+        deferred("ARTIFACT_SHA256_MISMATCH", bytes = altered)
+    }
+
+    @Test fun invalidStrictUtf8CannotBeDecodedEvenWithMatchingDigest() {
+        val raw = byteArrayOf(0xC3.toByte(), 0x28.toByte())
+        deferred("ARTIFACT_UTF8_INVALID", bytes = raw,
+            candidate = claim().copy(artifactSha256Claim = hex(raw)))
+    }
+
+    @Test fun canonicalLineEndingsAndNoBomAreRequiredEvenIfHashMatches() {
+        val crlf = String(originalBytes(), StandardCharsets.UTF_8)
+            .replace("\n", "\r\n").toByteArray(StandardCharsets.UTF_8)
+        deferred("ARTIFACT_SCHEMA_NOT_CANONICAL", bytes = crlf,
+            candidate = claim().copy(artifactSha256Claim = hex(crlf)))
+        val noTrailingNewline = originalBytes().dropLast(1).toByteArray()
+        deferred("ARTIFACT_SCHEMA_NOT_CANONICAL", bytes = noTrailingNewline,
+            candidate = claim().copy(artifactSha256Claim = hex(noTrailingNewline)))
+    }
+
+    @Test fun missingExtraReorderedOrDuplicateKeysFailWithMatchedHash() {
+        val content = String(originalBytes(), StandardCharsets.UTF_8)
+        val lines = content.removeSuffix("\n").split("\n")
+        val cases = listOf(
+            (lines.dropLast(1).joinToString("\n") + "\n"),
+            (lines + "unknown=extra").joinToString("\n") + "\n",
+            (lines.take(3) + lines[3] + lines.drop(3)).joinToString("\n") + "\n",
+            (lines.take(2) + lines[3] + lines[2] + lines.drop(4)).joinToString("\n") + "\n"
+        )
+        cases.forEach { malformed ->
+            val bytes = malformed.toByteArray(StandardCharsets.UTF_8)
+            deferred("ARTIFACT_SCHEMA_INVALID", bytes = bytes,
+                candidate = claim().copy(artifactSha256Claim = hex(bytes)))
+        }
+    }
+
+    @Test fun metadataContradictionCannotBeHiddenByRehashingChangedRecord() {
+        val alteredClaims = listOf(
+            claim().copy(assertedOwnerId = "other-owner"),
+            claim().copy(family = IndependentQualityFamily.TEMPO),
+            claim().copy(measuredOn = asOf.minusDays(1)),
+            claim().copy(origin = Engine15I7CalibrationOrigin.LAB_TEST_ASSERTED),
+            claim().copy(subjectSpecificSourceReference = "different-source"),
+            claim().copy(testingProtocolReference = "different-protocol"),
+            claim().copy(claimedThresholdHrBpm = 173),
+            claim().copy(claimedThresholdPaceSecondsPerKm = 245.0),
+            claim().copy(assertedRestingHrBpm = 50),
+            claim().copy(assertedMaximumHrBpm = 200)
+        )
+        alteredClaims.forEach { variant ->
+            val altered = Engine15I8CalibrationArtifactIntegrity.canonicalRecordBytes(
+                variant
+            )
+            deferred("ARTIFACT_FIELDS_CONTRADICT_CLAIM",
+                bytes = altered,
+                candidate = claim().copy(artifactSha256Claim = hex(altered)))
+        }
+    }
+
+    @Test fun invalidReferenceTokenCannotProduceUnambiguousI8Record() {
+        val changed = claim().copy(
+            subjectSpecificSourceReference = "synthetic ref with spaces",
+            artifactSha256Claim = hex(originalBytes())
+        )
+        deferred("ARTIFACT_CLAIM_TOKEN_INVALID", candidate = changed)
+    }
+
+    @Test fun upstreamInvalidOriginAndBrokenSourcePaceStillDefer() {
+        deferred("UPSTREAM_CALIBRATION_ORIGIN_NOT_ELIGIBLE_FOR_REVIEW",
+            candidate = claim().copy(
+                origin = Engine15I7CalibrationOrigin.DEVICE_ESTIMATE,
+                artifactSha256Claim = hex(originalBytes())
+            ))
+        deferred("UPSTREAM_I6_INSUFFICIENT_WORK_LAP_PACE_COVERAGE",
+            evidence = sourceEvidence(badPace = true))
+        deferred("UPSTREAM_I6_UPSTREAM_I4_UPSTREAM_UPSTREAM_QUALITY_EXTERNAL_REVIEW_MISSING",
+            q = quality(reviewed = false))
+    }
+
+    @Test fun replayIsDeterministicAndOriginalI7ChainRemainsUnmodified() {
+        val one = accepted()
+        val two = accepted()
+        assertEquals(one, two)
+        assertEquals(
+            source().weeks.first().proposedKm,
+            one.originalI7.originalI6.originalI5.originalM6B
+                .baseCalendar.first().budgetKm
+        )
+        assertFalse(one.originalI7.originalI6.originalI5.originalI4
+            .originalI3.originalM5B.executable)
+    }
+}

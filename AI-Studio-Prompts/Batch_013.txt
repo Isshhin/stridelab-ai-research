@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I1IntegratedShadowMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I1IntegratedShadowMatrixTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I2AdversarialShadowMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I3SourceLinkedQualityDurationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I4WorkLapHeartRateReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I5TimedDistanceFeasibilityTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I6SourceWorkLapPaceConsistencyTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I7IntensityCalibrationReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I7IntensityCalibrationReviewTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I8CalibrationArtifactIntegrityTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15I9ReadOnlyBasePlanAssemblyTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15IndependentDevelopmentRouteTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15IndependentPlanGeneratorTest_part001.txt

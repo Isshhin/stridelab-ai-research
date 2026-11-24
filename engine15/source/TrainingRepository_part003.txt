@@ -1,0 +1,289 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 3
+LINES: 648-931
+--------------------------------------------------
+                .sortedByDescending { it.createdAt },
+            message="Research comparison saved privately on this device. No workouts or approved plan changed."
+        )
+    }
+
+    suspend fun generatePlan(request:PlanRequest,engine:PlanGenerationEngine?=null) = operation("Building your planΓÇª") {
+        val owner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
+        val state=mutable.value
+        val selected=engine ?: Engine15IndependentPlanGenerator
+        mutable.value = state.copy(planPreview = null, planPreviewSupportReview = null, hybridPlanPreview = null)
+        val supportDiscipline = when {
+            request.runDays == 0 && request.strengthDays > 0 && request.calDays == 0 && request.conditioningDays == 0 -> "str"
+            request.runDays == 0 && request.calDays > 0 && request.strengthDays == 0 && request.conditioningDays == 0 -> "cal"
+            else -> null
+        }
+        val generationPeers = if (supportDiscipline != null && Engine15DisciplineProgression.supports(request, supportDiscipline)) {
+            state.plans.map { it.copy(sessions = it.sessions.filterNot { session -> session.discipline == "run" }) }
+        } else state.plans
+        val preview = draftGenerator(state, owner, selected)(request, generationPeers)
+        mutable.value = mutable.value.copy(planPreview = preview,
+            planPreviewSupportReview = RunnerSupportSchedule.review(preview, state.plans))
+    }
+
+    private fun draftGenerator(
+        state: TrainingState, owner: String, selected: PlanGenerationEngine
+    ): (PlanRequest, List<PlanSnapshot>) -> PlanSnapshot {
+        val ownerRows = state.activities.filter { activityCorrectionOwner(it.id, state) == owner }
+        val allowedIds = ownerRows.mapTo(mutableSetOf()) { it.id }
+        val userLabels = if (ownerRows.isEmpty()) emptyMap() else {
+            val labels = UserActivityWorkoutLabelStore(appContext)
+            ownerRows.mapNotNull { row -> labels.load(owner, row.id)?.let { row.id to it } }.toMap()
+        }
+        val detections = if (ownerRows.isEmpty()) emptyList() else {
+            Engine15WorkoutDetection.detectAll(
+                owner = owner,
+                activities = ownerRows,
+                allowedActivityIds = allowedIds,
+                detailsByActivityId = state.details,
+                plans = state.plans,
+                userLabels = userLabels,
+                asOf = java.time.Instant.now()
+            )
+        }
+        val qualityEvidence = if (detections.isEmpty()) emptyList() else {
+            Engine15WorkoutDetection.toQualitySegmentEvidence(owner, detections)
+        }
+        val activityEvidence by lazy {
+            if (ownerRows.isEmpty()) null else {
+                ActivityAthleteEvidence.profile(
+                    owner, ownerRows, allowedIds, userLabels, java.time.Instant.now()
+                )
+            }
+        }
+        return { request, generationPeers -> when(selected) {
+            Engine15IndependentPlanGenerator -> Engine15IndependentPlanGenerator.generateWithHistory(
+                request, owner, generationPeers,
+                exerciseLibrary = if (request.strengthDays > 0 || request.calDays > 0 || request.conditioningDays > 0)
+                    engine15ExerciseLibrary else null,
+                activityEvidence = if (request.runDays > 0 && request.strengthDays == 0 &&
+                    request.calDays == 0 && request.conditioningDays == 0 &&
+                    request.disciplineGoals.keys.all { it == "run" }) activityEvidence else null,
+                qualityEvidence = qualityEvidence,
+                activities = ownerRows,
+                detections = detections
+            )
+            else -> selected.generate(request,owner)
+        } }
+    }
+
+    suspend fun generateHybridPlan(requests: List<HybridTrackRequest>) =
+        operation("Building your training tracksΓÇª") {
+            val state = mutable.value
+            val owner = LocalPlanOwnership.activeOwner(state.account, localPlanOwner)
+            mutable.value = state.copy(planPreview = null, planPreviewSupportReview = null, hybridPlanPreview = null)
+            val result = HybridPlanBuilder.build(java.util.UUID.randomUUID().toString(), owner, requests,
+                state.plans, draftGenerator(state, owner, Engine15IndependentPlanGenerator))
+            mutable.value = mutable.value.copy(hybridPlanPreview = result)
+        }
+
+    suspend fun approveHybridPlan(previewId: String) = operation("Activating your training tracksΓÇª") {
+        val state = mutable.value
+        val owner = LocalPlanOwnership.activeOwner(state.account, localPlanOwner)
+        val preview = state.hybridPlanPreview?.takeIf { it.id == previewId }
+            ?: throw PlanConstraint("This Blueprint is no longer available.")
+        val approved = HybridPlanBuilder.prepareActivation(preview, owner, state.plans)
+        store.restoreReviewedBackup(owner,
+            approved.map { TrainingStore.RemoteRecord(it.id, it.encode().toString(), null) },
+            emptyList(), state.account != null, System.currentTimeMillis())
+        mutable.value = state.copy(
+            plans = (state.plans + approved).sortedByDescending { it.createdAt },
+            hybridPlanPreview = null
+        )
+        reconcileActivityMatchesAndAnalysis()
+    }
+    suspend fun changePlan(id:String,revision:Int,action:(PlanSnapshot)->PlanSnapshot) = operation("Saving your planΓÇª") {
+        val activeOwner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
+        val plan=mutable.value.plans.find { it.id==id && it.owner==activeOwner }
+            ?: throw PlanConstraint("This plan is unavailable for the current local profile or account.")
+        if(!Engine1Engines.canManage(plan))throw PlanConstraint("This saved plan needs its compatible engine before editing. Its original snapshot is retained.")
+        if(plan.revision!=revision)throw PlanConstraint("The saved plan changed. Reopen it before editing.")
+        val updated=action(plan)
+        require(updated.id==plan.id && updated.owner==plan.owner && updated.engineVersion==plan.engineVersion && updated.policyId==plan.policyId)
+        if (updated != plan) {
+            savePlan(updated.copy(revision = plan.revision + 1))
+            if (updated.sessions.any { it.discipline != "run" }) reconcileActivityMatchesAndAnalysis()
+        }
+    }
+    suspend fun swapExercise(id:String,revision:Int,sessionId:String,exerciseId:String,direction:ExerciseAlternatives.SwapDirection=ExerciseAlternatives.SwapDirection.EASIER)=changePlan(id,revision) { PlanOperations.swapExercise(it,sessionId,exerciseId,direction=direction) }
+    suspend fun linkActivity(id:String,revision:Int,sessionId:String,activityId:String?): Boolean {
+        val priorLinked = mutable.value.plans.find { it.id == id }
+            ?.sessions?.find { it.id == sessionId }?.linkedActivityId
+        val priorAutoLinked = mutable.value.activityMatches.values
+            .firstOrNull {
+                it.plannedSessionId == sessionId &&
+                    (it.matchStatus == ActivityMatchStatus.AUTO_LINKED ||
+                        it.matchStatus == ActivityMatchStatus.MANUALLY_LINKED)
+            }?.activityId
+        val ok = changePlan(id,revision) { plan ->
+            if(activityId!=null) {
+                val activity=mutable.value.activities.find { it.id==activityId } ?: throw PlanConstraint("This source activity is not cached for your account.")
+                if(!DashboardSummary.isRun(activity))throw PlanConstraint("Only a recorded run can be linked to a planned run.")
+                if(mutable.value.plans.any { p -> p.sessions.any { s -> s.linkedActivityId==activityId && (p.id!=id || s.id!=sessionId) } })throw PlanConstraint("This source run is already linked to another workout. Unlink it there first.")
+            }
+            PlanOperations.linkActivity(plan,sessionId,activityId)
+        }
+        if (ok) {
+            withContext(Dispatchers.IO) {
+                mutex.withLock {
+                    if (activityId == null) {
+                        val rejectedId = priorLinked ?: priorAutoLinked
+                        if (rejectedId != null) markManualRejectionLocked(rejectedId, sessionId)
+                    } else {
+                        markManualLinkLocked(activityId, sessionId)
+                    }
+                    reconcileActivityMatchesAndAnalysis()
+                }
+            }
+        }
+        return ok
+    }
+    suspend fun confirmActivityMatch(id: String, revision: Int, sessionId: String, activityId: String): Boolean =
+        linkActivity(id, revision, sessionId, activityId)
+    suspend fun rejectActivityMatch(activityId: String, plannedSessionId: String) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            markManualRejectionLocked(activityId, plannedSessionId)
+            reconcileActivityMatchesAndAnalysis()
+        }
+    }
+    suspend fun approveAdaptationProposal(planId: String, proposalId: String): Boolean =
+        operation("Applying approved plan adaptationΓÇª") {
+            val current = mutable.value
+            val plan = current.plans.find { it.id == planId }
+                ?: throw PlanConstraint("This plan is unavailable.")
+            val proposal = current.pendingAdaptationProposals[planId]
+                ?.takeIf { it.proposalId == proposalId }
+                ?: throw PlanConstraint("This adaptation proposal is no longer pending.")
+            val today = java.time.LocalDate.now()
+            if (proposal.type == AdaptationType.RUNNER_SUPPORT_DOSE) {
+                val live = Engine15PlanAdaptationEngine.evaluateRunnerSupport(plan, current.plans, today,
+                    current.adaptationCooldowns) { supportReceipt(plan, it) }
+                if (live?.proposalId != proposal.proposalId || live.candidatePlanJson != proposal.candidatePlanJson)
+                    throw PlanConstraint("The workout evidence or Running calendar changed. Review the updated adjustment.")
+            }
+            val applied = Engine15PlanAdaptationEngine.applyProposal(plan, proposal, today)
+            writeSupportRevisionAtomically(proposal.type) {
+                savePlan(applied.appliedPlan)
+                persistAdaptationProposalLocked(applied.updatedProposal)
+                persistAdaptationRevisionLocked(applied.revision)
+                persistAdaptationCooldownLocked(applied.cooldown)
+            }
+            val updatedRevisions = current.adaptationRevisions.toMutableMap().apply {
+                put(planId, getOrDefault(planId, emptyList()) + applied.revision)
+            }
+            mutable.value = mutable.value.copy(
+                pendingAdaptationProposals = mutable.value.pendingAdaptationProposals - planId,
+                adaptationRevisions = updatedRevisions,
+                adaptationCooldowns = (mutable.value.adaptationCooldowns.filterNot {
+                    it.planId == planId && it.adaptationType == applied.cooldown.adaptationType &&
+                        it.disruptionFingerprint == applied.cooldown.disruptionFingerprint
+                } + applied.cooldown)
+            )
+            reconcileActivityMatchesAndAnalysis()
+        }
+    suspend fun dismissAdaptationProposal(planId: String, proposalId: String): Boolean =
+        operation("Dismissing adaptation suggestionΓÇª") {
+            val current = mutable.value
+            val proposal = current.pendingAdaptationProposals[planId]
+                ?.takeIf { it.proposalId == proposalId }
+                ?: return@operation
+            val today = java.time.LocalDate.now()
+            val dismissed = proposal.copy(status = AdaptationProposalStatus.DISMISSED)
+            val cooldown = AdaptationCooldownRecord(
+                planId = planId,
+                adaptationType = proposal.type,
+                lastActionStatus = AdaptationProposalStatus.DISMISSED,
+                actionDate = today,
+                cooldownUntilDate = today.plusDays(14L),
+                disruptionFingerprint = proposal.disruptionFingerprint
+            )
+            persistAdaptationProposalLocked(dismissed)
+            persistAdaptationCooldownLocked(cooldown)
+            mutable.value = mutable.value.copy(
+                pendingAdaptationProposals = current.pendingAdaptationProposals - planId,
+                adaptationCooldowns = current.adaptationCooldowns.filterNot {
+                    it.planId == planId && it.adaptationType == cooldown.adaptationType &&
+                        it.disruptionFingerprint == cooldown.disruptionFingerprint
+                } + cooldown
+            )
+        }
+    suspend fun revertLastAdaptation(planId: String): Boolean =
+        operation("Reverting last adaptationΓÇª") {
+            val current = mutable.value
+            val plan = current.plans.find { it.id == planId }
+                ?: throw PlanConstraint("This plan is unavailable.")
+            val revisions = current.adaptationRevisions[planId].orEmpty()
+            val latest = revisions.lastOrNull { it.revertedAtDate == null }
+                ?: throw PlanConstraint("No adaptation revision is available to revert.")
+            val reverted = Engine15PlanAdaptationEngine.revertRevision(plan, latest, java.time.LocalDate.now())
+            writeSupportRevisionAtomically(latest.adaptationType) {
+                savePlan(reverted.restoredPlan)
+                persistAdaptationRevisionLocked(reverted.updatedRevision)
+            }
+            val updatedList = revisions.map {
+                if (it.revisionId == latest.revisionId) reverted.updatedRevision else it
+            }
+            mutable.value = mutable.value.copy(
+                adaptationRevisions = current.adaptationRevisions + (planId to updatedList),
+                pendingAdaptationProposals = current.pendingAdaptationProposals - planId
+            )
+            reconcileActivityMatchesAndAnalysis()
+        }
+    suspend fun discardPlanPreview() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            mutable.value = mutable.value.copy(planPreview = null, planPreviewSupportReview = null, hybridPlanPreview = null)
+        }
+    }
+
+    private fun writeSupportRevisionAtomically(type: AdaptationType, write: () -> Unit) {
+        if (type != AdaptationType.RUNNER_SUPPORT_DOSE) return write()
+        val before = mutable.value
+        val db = store.writableDatabase
+        try {
+            db.beginTransaction()
+            try {
+                write()
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        } catch (failure: Exception) {
+            mutable.value = before
+            throw failure
+        }
+    }
+
+    suspend fun approvePlan(id: String, revision: Int) = operation("Activating your planΓÇª") {
+        val current = mutable.value
+        val owner = LocalPlanOwnership.activeOwner(current.account, localPlanOwner)
+        val plan = (current.planPreview?.takeIf { it.id == id } ?: current.plans.find { it.id == id })
+            ?.takeIf { it.owner == owner && it.revision == revision }
+            ?: throw PlanConstraint("This plan preview is no longer available.")
+        val reviewed = if (current.planPreview?.id == id) {
+            val latest = RunnerSupportSchedule.review(plan, current.plans)
+            if (latest != current.planPreviewSupportReview) {
+                mutable.value = mutable.value.copy(planPreviewSupportReview = latest)
+                throw PlanConstraint("The Running calendar changed. Review the updated support schedule before activating.")
+            }
+            if (latest?.blocked == true) throw PlanConstraint("No safe option for the fixed support schedule.")
+            latest?.candidate ?: plan
+        } else plan
+        val approved = PlanOperations.approve(reviewed, current.plans)
+        savePlan(approved.copy(revision = plan.revision + 1))
+        if (current.planPreview?.id == id) mutable.value = mutable.value.copy(planPreview = null)
+        reconcileActivityMatchesAndAnalysis()
+    }
+    suspend fun pausePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="paused") }
+    suspend fun archivePlan(id:String,revision:Int)=changePlan(id,revision) { it.copy(status="archived") }
+    suspend fun deletePlan(id:String,revision:Int)=operation("Deleting planΓÇª") {
+        val activeOwner=LocalPlanOwnership.activeOwner(mutable.value.account,localPlanOwner)
+        val plan=mutable.value.plans.find { it.id==id && it.owner==activeOwner }
+            ?: throw PlanConstraint("This plan is unavailable for the current local profile or account.")
+        if(plan.revision!=revision)throw PlanConstraint("The saved plan changed. Reopen it before deleting.")
+        store.deleteRecord(activeOwner,"plan",plan.id)
+        val staleDrafts=mutable.value.workoutDrafts.filter { (_,draft) -> draft.planId==plan.id && draft.owner==activeOwner }

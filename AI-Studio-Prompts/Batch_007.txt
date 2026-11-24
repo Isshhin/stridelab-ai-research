@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityProgressionPolicy_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityProgressionPolicy_part005.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityWorkoutDryRun_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15RunHistory_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15RunningDebriefAnalyzer_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15ScheduleReview_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15ScheduleReview_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15SessionLocks_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15SessionPresentation_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15StaticMultiDisciplinePlanner_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15StaticMultiDisciplinePlanner_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15StrengthWorkoutComposer_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15TimeOnlyRunWalkBuilder_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15TimeOnlyRunWalkBuilder_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15UserWorkoutAuthoring_part001.txt

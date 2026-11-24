@@ -1,0 +1,316 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 6
+LINES: 1492-1802
+--------------------------------------------------
+    internal suspend fun backupGarminCloud(maxRecords: Int = 12): Int =
+        withContext(Dispatchers.IO) {
+            require(maxRecords in 1..24)
+            mutex.withLock {
+                val cloudAccount = mutable.value.account
+                    ?: throw GarminAuthenticationException("Sign in to StrideLab to use cloud backup")
+                require(garminSyncPreferences.cloudBackup(cloudAccount)) {
+                    "Enable optional Garmin cloud backup before uploading records"
+                }
+                // Local Garmin history is never rewritten just to create a
+                // cloud snapshot. Translate only a copy of the payload to the
+                // authenticated cloud owner before gateway validation/RLS.
+                val candidates = mutableListOf<Triple<String, String, String>>()
+                val db = store.readableDatabase
+                for(owner in listOf(localGarminOwner,cloudAccount).distinct()) {
+                    db.query("records", arrayOf("kind", "record_id"),
+                        "account=? AND kind IN (?,?)",
+                        arrayOf(owner, "activity", "activity_detail"),
+                        null, null, "kind ASC,record_id ASC").use { cursor ->
+                        while(cursor.moveToNext() && candidates.size < maxRecords) {
+                            val kind=cursor.getString(0)
+                            val id=cursor.getString(1)
+                            val summary = store.get(owner, "activity", id) ?: continue
+                            if (runCatching { JSONObject(summary.payload).optString("source") }
+                                    .getOrNull() != "garmin") continue
+                            val payload = if (kind == "activity_detail")
+                                store.getActivityDetailPayloadChunked(owner, id) ?: continue
+                            else summary.payload
+                            if (!GarminCloudBackupGateway.fitsUpload(payload)) continue
+                            val cloudPayload = if(owner==cloudAccount) payload else
+                                JSONObject(payload).put("user_id",cloudAccount).toString()
+                            // Large FIT streams are retained locally, not truncated.
+                            if(!GarminCloudBackupGateway.fitsUpload(cloudPayload)) continue
+                            if(garminSyncPreferences.needsCloudUpload(
+                                cloudAccount,kind,id,cloudPayload)) {
+                                candidates.add(Triple(kind,id,cloudPayload))
+                            }
+                        }
+                    }
+                    if(candidates.size>=maxRecords) break
+                }
+                var uploaded=0
+                for((kind,id,payload) in candidates) {
+                    authenticated { session -> garminCloud.upload(session,kind,id,payload) }
+                    garminSyncPreferences.acknowledgeCloudUpload(cloudAccount,kind,id,payload)
+                    uploaded++
+                }
+                uploaded
+            }
+        }
+
+    /**
+     * Insert-only cloud recovery, translated into the local Garmin namespace.
+     * Never overwrites a local original, cloud account history or FIT recording.
+     */
+    internal suspend fun restoreGarminCloud(): Int = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val cloudAccount = mutable.value.account
+                ?: throw GarminAuthenticationException("Sign in to StrideLab to restore cloud backup")
+            require(garminSyncPreferences.cloudBackup(cloudAccount)) {
+                "Enable optional Garmin cloud backup before restoring"
+            }
+            // A different cloud login must never resume another user's offsets.
+            val restoreKey = "garmin-restore:" + cloudAccount
+            var restored=0
+            for(kind in listOf("activity","activity_detail")) {
+                val size=if(kind=="activity") 25 else 1
+                var offset=garminSyncPreferences.restoreOffset(restoreKey,kind)
+                val batches=if(kind=="activity") 2 else 10
+                for(batch in 0 until batches) {
+                    val page=authenticated { session ->
+                        garminCloud.readPage(session,kind,offset,size)
+                    }
+                    for(row in page) {
+                        val exists = if (kind == "activity_detail")
+                            store.getActivityDetailPayloadChunked(localGarminOwner, row.recordId) != null
+                        else store.get(localGarminOwner,kind,row.recordId) != null
+                        if (exists) continue
+                        if(kind=="activity_detail" &&
+                            store.get(localGarminOwner,"activity",row.recordId)==null) continue
+                        val localPayload = JSONObject(row.payload)
+                            .put("user_id",localGarminOwner).toString()
+                        // Recheck the translated local identity, source and ID.
+                        if(kind=="activity") {
+                            val activity=ActivityRecord.parse(localPayload,localGarminOwner)
+                            require(activity.id==row.recordId && activity.source=="garmin")
+                            store.applyRemotePage(localGarminOwner,kind,
+                                listOf(TrainingStore.RemoteRecord(row.recordId,localPayload,null)),
+                                null,System.currentTimeMillis())
+                        } else {
+                            ActivityDetail.parse(JSONObject(localPayload),localGarminOwner,row.recordId)
+                            store.saveLocalGarminRecording(localGarminOwner, row.recordId, localPayload,
+                                System.currentTimeMillis())
+                        }
+                        restored++
+                    }
+                    offset+=page.size
+                    garminSyncPreferences.setRestoreOffset(restoreKey,kind,offset)
+                    if(page.size<size) {
+                        garminSyncPreferences.setRestoreOffset(restoreKey,kind,0)
+                        break
+                    }
+                }
+            }
+            if(restored>0)loadLocalGarminCache()
+            restored
+        }
+    }
+
+    /**
+     * One on-demand Garmin FIT import for a cached source record. The original
+     * Garmin summary is never replaced, and Activity Detail is saved offline
+     * only after FIT checksum, source, dates, GPS and account have been checked.
+     */
+    internal suspend fun loadGarminGps(id:String,source:GarminPersonalSource) =
+        operation("Loading recorded Garmin activityΓÇª") {
+            mutable.value = mutable.value.copy(garminRecordingLoad = GarminRecordingLoad(id))
+            try {
+                val account = source.accountId
+                if(account != localGarminOwner && account != mutable.value.account)
+                    throw GarminAuthenticationException("Garmin source does not belong to this profile")
+                val activity = mutable.value.activities.firstOrNull {
+                    it.id == id && it.source == "garmin" &&
+                        ((it.id in mutable.value.localGarminIds)==(account==localGarminOwner))
+                } ?: throw GarminProtocolException("Garmin source is not saved for this profile")
+                cacheGarminRecording(account, activity, source, upgradeCadence = true)
+            } catch (error: CancellationException) {
+                mutable.value = mutable.value.copy(garminRecordingLoad = null)
+                throw error
+            } catch (error: Exception) {
+                val message = (error as? GarminException)?.let { GarminConnectionStatus.fromError(it).error }
+                    ?: "Garmin recording could not be loaded. Retry when connected."
+                mutable.value = mutable.value.copy(garminRecordingLoad = GarminRecordingLoad(id, message))
+                throw error
+            }
+        }
+
+    /** Sync keeps the original cache. Explicit on-demand load may only upgrade
+     * verified cadence, never replace existing GPS/pace/HR/lap measurements. */
+    private fun cacheGarminRecording(
+        account: String, activity: ActivityRecord, source: GarminPersonalSource,
+        upgradeCadence: Boolean = false
+    ): ActivityDetail {
+        require(activity.source == "garmin")
+        val id = activity.id
+        val savedPayload: String?
+        val previous = try {
+            savedPayload = store.getActivityDetailPayloadChunked(account,id)
+            GarminGpsDetail.cachedRecording(savedPayload, account, id)
+        } catch (_: Exception) {
+            throw GarminProtocolException(garminCacheReadError)
+        }
+        if(previous != null && (!upgradeCadence ||
+            (previous.runningDynamicsChecked && previous.samples.any { it.cadenceSpm != null } &&
+                previous.workoutSteps.isNotEmpty() &&
+                previous.sourceWorkoutReferences.isNotEmpty()))) {
+            publishCachedDetail(id, mutable.value.details + (id to previous))
+            if (upgradeCadence) reconcileActivityMatchesAndAnalysis()
+            return previous
+        }
+        val original = store.get(account, "activity", id)
+            ?: throw GarminProtocolException("Garmin source record is unavailable")
+        val metadata = JSONObject(original.payload)
+        if (metadata.optString("source") != "garmin" ||
+            metadata.optString("id") != id ||
+            metadata.optString("user_id") != account)
+            throw GarminProtocolException("Garmin source ownership could not be verified")
+        val savedExternal = metadata.optString("external_id")
+            .takeIf { it.isNotBlank() }
+        val savedNumeric = metadata.optLong("garmin_activity_id", 0L)
+            .takeIf { it > 0L }
+        val legacy = if (savedExternal == null && savedNumeric == null)
+            source.resolveLegacySource(account, activity) else null
+        val externalId = savedExternal ?: legacy?.externalId
+            ?: savedNumeric?.toString()
+            ?: throw GarminProtocolException("Garmin source identity is unavailable")
+        val numericId = savedNumeric ?: legacy?.numericActivityId
+        val archive = source.downloadFitForSource(account, externalId, numericId)
+        val bytes = try {
+            GarminFitArchive.extractSingleFit(archive)
+        } catch (_: Exception) {
+            throw GarminProtocolException("Garmin FIT archive could not be safely unpacked")
+        }
+        val fit = try {
+            FitActivityDecoder.decode(bytes, account)
+        } catch (_: Exception) {
+            throw GarminProtocolException("Garmin FIT file failed validation; existing history was retained")
+        }
+        // The separate Garmin workout endpoint is reference context, not proof
+        // that any defined step was actually completed. Never block FIT
+        // import if optional workout metadata is unavailable.
+        val workoutRefs = if (upgradeCadence) runCatching {
+            source.workoutDefinitionsForSource(account, externalId, numericId)
+        }.getOrDefault(emptyList()) else emptyList()
+        val raw = try {
+            GarminGpsDetail.payload(account, activity, fit, System.currentTimeMillis(), workoutRefs)
+        } catch (_: Exception) {
+            throw GarminProtocolException("Garmin FIT source, timing or distance could not be verified")
+        }
+        val parsed = try {
+            ActivityDetail.parse(raw, account, id)
+        } catch (_: Exception) {
+            throw GarminProtocolException("Garmin recording samples failed validation")
+        }
+        val storedPayload = if (previous != null) {
+            // Cadence or actual FIT workout-step evidence may be added to an existing
+            // cache, but only when its sample/lap identity matches exactly.
+            // Previously imported GPS, pace, HR and source summaries remain untouched.
+            val oldRaw = JSONObject(requireNotNull(savedPayload))
+            val merged = try {
+                GarminGpsDetail.mergeRecordedCadence(oldRaw, raw, account, id)
+            } catch (_: Exception) {
+                throw GarminProtocolException(
+                    "Garmin FIT samples changed; saved GPS and measurements were retained")
+            }
+            if (merged == null) {
+                publishCachedDetail(id, mutable.value.details + (id to previous))
+                reconcileActivityMatchesAndAnalysis()
+                return previous
+            }
+            merged
+        } else raw
+        val checked = if (previous != null)
+            ActivityDetail.parse(storedPayload, account, id) else parsed
+        // Keep the validated original Garmin FIT bytes for future local backup.
+        // Old previously cached recordings may not have original FIT bytes.
+        // Never replace a different cached FIT source or modify a saved summary.
+        try {
+            FitImportCache(appContext).saveSelected(bytes, account)
+            store.saveLocalGarminRecording(account, id, storedPayload.toString(), System.currentTimeMillis())
+        } catch (_: Exception) {
+            throw GarminProtocolException("Garmin recording could not be saved to the offline cache. Retry loading it.")
+        }
+        publishCachedDetail(id, mutable.value.details + (id to checked))
+        reconcileActivityMatchesAndAnalysis()
+        return checked
+    }
+
+    private val garminCacheReadError
+        get() = "The saved Garmin recording could not be read. The original was retained."
+
+    private fun publishCachedDetail(id: String, details: Map<String, ActivityDetail>) {
+        val current = mutable.value
+        mutable.value = current.copy(details = details,
+            garminRecordingLoad = current.garminRecordingLoad?.takeUnless { it.activityId == id })
+    }
+
+    private data class ExecutionPersistenceBundle(
+        val matches: Map<String, ActivityMatchRecord>,
+        val analyses: Map<String, WorkoutExecutionAnalysis>,
+        val diagnostics: Map<String, AthleteDiagnosticSnapshot>,
+        val pendingProposals: Map<String, PlanAdaptationProposal>,
+        val revisions: Map<String, List<PlanAdaptationRevision>>,
+        val cooldowns: List<AdaptationCooldownRecord>
+    )
+
+    private fun loadExecutionRecords(owner: String): ExecutionPersistenceBundle {
+        val matches = LinkedHashMap<String, ActivityMatchRecord>()
+        store.readableDatabase.query(
+            "records", arrayOf("record_id", "payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(owner, "workout", "activity-match-%"),
+            null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                runCatching {
+                    val decoded = ActivityMatchRecord.decode(JSONObject(cursor.getString(1)), owner)
+                    require(cursor.getString(0) == activityMatchRecordId(decoded.activityId))
+                    decoded
+                }.onSuccess { matches[it.activityId] = it }
+            }
+        }
+        val analyses = LinkedHashMap<String, WorkoutExecutionAnalysis>()
+        store.readableDatabase.query(
+            "records", arrayOf("record_id", "payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(owner, "workout", "execution-analysis-%"),
+            null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                runCatching {
+                    val decoded = WorkoutExecutionAnalysis.decode(JSONObject(cursor.getString(1)), owner)
+                    require(cursor.getString(0) == executionAnalysisRecordId(decoded.plannedSessionId))
+                    decoded
+                }.onSuccess { analyses[it.plannedSessionId] = it }
+            }
+        }
+        val diagnostics = LinkedHashMap<String, AthleteDiagnosticSnapshot>()
+        store.readableDatabase.query(
+            "records", arrayOf("record_id", "payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(owner, "workout", "athlete-diagnostic-%"),
+            null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                runCatching {
+                    val decoded = AthleteDiagnosticSnapshot.decode(JSONObject(cursor.getString(1)), owner)
+                    require(cursor.getString(0) == athleteDiagnosticRecordId(decoded.planId))
+                    decoded
+                }.onSuccess { diagnostics[it.planId] = it }
+            }
+        }
+        val today = java.time.LocalDate.now()
+        val pendingProposals = LinkedHashMap<String, PlanAdaptationProposal>()
+        store.readableDatabase.query(
+            "records", arrayOf("record_id", "payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(owner, "workout", "adaptation-proposal-%"),
+            null, null, null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {

@@ -1,0 +1,222 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 4
+LINES: 830-1046
+--------------------------------------------------
+                    "No coach-generated dry-run was constructed because this family came from explicit user direction."
+                qualityDryRun == null ->
+                    "The $familyName structure could not be linked to a valid calendar slot."
+                paceWarnings.isNotEmpty() -> paceWarnings.joinToString(" ")
+                else ->
+                    "A development-only $familyName Intro structure was dry-run for week ${qualityDryRun.weekNumber}: ${qualityDryRun.totalSeconds} seconds total, ${qualityDryRun.workSeconds} seconds work. For unresolved slots, quality distance and weekly mileage remain unknown. Quality slots (week / slot / total metres): ${qualityDryRun.alternatives.joinToString { "${it.weekNumber} / ${it.slotNumber} / ${(it.originalEasyDistanceKm * 1000).toInt()}" + (it.distanceFailureCode?.let { code -> " ($code)" } ?: "") }}."
+            }
+            return Engine15IndependentPlanDecision.Deferred(
+                "QUALITY_GENERATION_NOT_QUALIFIED",
+                "${selection.explanation} This family choice remains a provisional engineering rule, not a qualified prescription. $dryRunNote Coach-generated quality remains non-executable until family, dose, intensity and distance policies are qualified.",
+                selection,
+                qualityDryRun
+            )
+            }
+        }
+
+        val customPattern=Regex("w([1-9][0-9]*)-run(0|[1-9][0-9]*)")
+        val mappedQuality=request.userDefinedQualityWorkouts.map { (key,workout) ->
+            val match=customPattern.matchEntire(key)
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "A user-defined workout must target a stable w<week>-run<slot> identifier.")
+            val week=match.groupValues[1].toIntOrNull()
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout week is outside the supported calendar range.")
+            val slot=match.groupValues[2].toIntOrNull()
+                ?: return defer("USER_WORKOUT_SLOT_INVALID", "The workout slot is outside the supported calendar range.")
+            if(week !in 1..request.weeks || slot !in 0 until request.runDays)
+                return defer("USER_WORKOUT_SLOT_INVALID", "A user-defined workout refers to a week or running slot outside this plan.")
+            if(workout.mixedSegments!=null && workout.reconciledDistanceMeters==null)
+                return defer("USER_DEFINED_MIXED_DISTANCE_UNRECONCILED", "Timed/mixed-unit workouts need an explicit per-step distance basis before they can reconcile to weekly mileage; no recovery distance was inferred.")
+            val purposes=workout.mixedSegments?.map { it.purpose } ?: workout.segments.map { it.purpose }
+            val workIndices=purposes.indices.filter { purposes[it]=="WORK" }
+            if(workout.role!="QUALITY" || workout.family==null || workIndices.isEmpty() ||
+                purposes.firstOrNull()!="WARM_UP" || purposes.lastOrNull()!="COOL_DOWN" ||
+                purposes.drop(1).dropLast(1).any { it in setOf("WARM_UP","COOL_DOWN") } ||
+                purposes.indices.any { i -> purposes[i]=="RECOVERY" &&
+                    (workIndices.none { it<i } || workIndices.none { it>i }) })
+                return defer("USER_WORKOUT_STRUCTURE_INVALID", "A user-defined quality workout needs warm-up, one or more ordered work steps, recoveries only between work steps, and cooldown.")
+            key to workout
+        }.toMap()
+        for(week in 1..request.weeks) {
+            val customCount=mappedQuality.keys.count { customPattern.matchEntire(it)?.groupValues?.get(1)?.toInt()==week }
+            val shouldHaveQuality=if(experimentalTempo.isNotEmpty() || volume.weeks[week - 1].kind == Engine15IndependentVolumePlanner.WeekKind.RECOVERY) 0 else request.qualityCount
+            if(customCount!=shouldHaveQuality)
+                return defer("USER_WORKOUT_FREQUENCY_MISMATCH", "Provide exactly the requested number of user-defined workouts for each loading week and none for scheduled recovery weeks.")
+        }
+        val qualityById=mutableMapOf<String,RunningPrescription>()
+        for(session in sessions) {
+            val match=Regex(".*-(w[1-9][0-9]*-run(?:0|[1-9][0-9]*))$").matchEntire(session.id) ?: continue
+            mappedQuality[match.groupValues[1]]?.let { workout ->
+                val workoutMeters=workout.reconciledDistanceMeters ?: workout.segments.sumOf { it.meters }
+                if(session.kind=="long" || session.distanceKm==null ||
+                    kotlin.math.abs(workoutMeters/1000.0-session.distanceKm)>1e-6)
+                    return defer("USER_WORKOUT_DISTANCE_CONFLICT", "The complete user-defined workout distance (${"%.1f".format(java.util.Locale.US,workoutMeters/1000.0)} km) must exactly fit its scheduled run slot (${session.distanceKm} km), including warm-up, every work and recovery step, and cooldown.")
+                if(request.qualityDays.isNotEmpty() && session.date.dayOfWeek.value !in request.qualityDays)
+                    return defer("USER_WORKOUT_DAY_CONFLICT", "The selected workout slot does not land on one of the requested quality weekdays.")
+                if(volume.weeks[match.groupValues[1].substringAfter('w').substringBefore('-').toInt()-1].kind==Engine15IndependentVolumePlanner.WeekKind.RECOVERY)
+                    return defer("USER_WORKOUT_RECOVERY_WEEK", "Quality workouts are deferred during scheduled recovery weeks; choose an easy session or move it to a loading week.")
+                qualityById[session.id]=workout
+            }
+        }
+        if(qualityById.size!=mappedQuality.size)
+            return defer("USER_WORKOUT_SLOT_NOT_FOUND", "A user-defined workout could not be matched to a generated running session.")
+        val qualitySessions=sessions.filter { it.id in qualityById }.map { session ->
+            val workout=qualityById.getValue(session.id)
+            session.copy(quality=true,kind="quality",title="User-defined ${workout.family} workout",
+                runningPrescription=workout,
+                steps=workout.mixedSegments?.mapIndexed { i,step ->
+                    val extent=if(step.meters!=null) "${step.meters} m" else "${step.seconds} s"
+                    val equivalent=step.distanceEquivalentMeters?.let { " ($it m user-supplied distance equivalent)" }.orEmpty()
+                    "${i+1}. $extent${equivalent} ${step.purpose.lowercase().replace('_',' ')} ΓÇö ${step.effort}."
+                } ?: workout.segments.mapIndexed { i,step -> "${i+1}. ${step.meters} m ${step.purpose.lowercase().replace('_',' ')} ΓÇö ${step.effort}." },
+                reason="User-defined workout structure and intensity targets are preserved as supplied; no coach qualification or athlete-specific intensity validation is claimed." +
+                    if(workout.reconciledDistanceMeters!=null) " Timed steps use explicit user-supplied distance equivalents; none were inferred." else "")
+        }
+        if(qualitySessions.any { quality -> sessions.any { other -> other.id!=quality.id && conflict(quality,other) } })
+            return defer("USER_WORKOUT_SPACING_CONFLICT", "A user-defined quality workout is too close to another quality session or the long run.")
+        if(qualitySessions.any { quality -> external.sessions.any { other ->
+                other.hardLowerOrFull && kotlin.math.abs(ChronoUnit.DAYS.between(quality.date,other.date))<2
+            } })
+            return defer("USER_WORKOUT_EXTERNAL_SPACING_CONFLICT", "A user-defined quality workout is too close to a known external hard session.")
+        val replacements = (qualitySessions + experimentalTempo).associateBy { it.id }
+        val preEnrichSessions = sessions.map { replacements[it.id] ?: it }
+        val assembledSessions = if (enrichArchetypes) {
+            enrichNonQualitySessions(preEnrichSessions, request, volume)
+        } else {
+            preEnrichSessions
+        }
+
+        val macroPhases = if (adaptiveQualityMode || enrichArchetypes) {
+            Engine15MacrocyclePeriodization.assignPhases(request, volume)
+        } else emptyMap()
+
+        val snapshot = PlanSnapshot(
+            id = id,
+            owner = owner,
+            engineVersion = ENGINE15_VERSION,
+            policyId = ENGINE15_INDEPENDENT_CANDIDATE_POLICY,
+            createdAt = now,
+            request = request,
+            sessions = assembledSessions,
+            explanations = buildList {
+                add("Independent Engine 1.5 running candidate; no Engine 1.0 generation or validation was used.")
+                add("Mileage basis: ${athlete.basis}; reported/recorded history remains provisional and is not source-authenticated.")
+                if (macroPhases.isNotEmpty()) {
+                    add(Engine15MacrocyclePeriodization.phaseSummary(macroPhases))
+                    addAll(Engine15MacrocyclePeriodization.feasibilityAdvisories(request, volume))
+                }
+                athlete.activityEvidence?.let { evidence ->
+                    add("ACTIVITY_EVIDENCE_CONTEXT v${evidence.version}: ${evidence.recordedRunCount} recorded runs; " +
+                        "longest recorded in the recent window: ${evidence.longestRecordedRunLast28DaysKm?.let { "%.1f km".format(java.util.Locale.US, it) } ?: "not available"}; " +
+                        "source coverage is ${evidence.sourceCoverage}. This evidence is descriptive only and did not set weekly capacity, quality eligibility, workout dose, or intensity.")
+                }
+                if(request.userDirectedPlanning)
+                    add("Weekly volume follows the user-requested workload, with scheduled recovery weeks. This is not validated athlete capacity; coach-recommended progression remains available for comparison.")
+                if(experimentalTempo.isNotEmpty() && qualityBuildAdvisory != null) add(qualityBuildAdvisory)
+                if(experimentalTempo.isNotEmpty()) add("Structured quality workouts use estimated pace zones and perceived-effort cues. Review and approve before starting.")
+                if(qualityById.isNotEmpty()) add("Quality workout steps and any intensity targets were explicitly user-defined; no automatic coach selection or intensity prescription was used. Timed steps are included in mileage only when explicit per-step distance equivalents were supplied.")
+                if(request.userDirectedPlanning) volume.weeks.flatMap { it.constraintCodes }.distinct()
+                    .filter { it in setOf("REQUESTED_TARGET_ABOVE_COACH_RECOMMENDED","PROVISIONAL_SESSION_EXPOSURE_WARNING","RETURN_FROM_BREAK_RECOMMENDATION_EXCEEDED") }
+                    .takeIf { it.isNotEmpty() }?.let { add("Conservative recommendations exceeded by user request: ${it.joinToString()}; review before approval.") }
+                add("M4B owns weekly volume and recovery weeks; M5A owns easy/long workout distances; M6A/M6C/M6D own date placement, interference review and periodization audit.")
+                add("Duration is an estimate from the entered planning pace. No pace or heart-rate target is prescribed.")
+                add("Preview only: executable, production-ready and production-authorized are all false.")
+                volume.shortfallToRequestedTargetKm?.takeIf { it > 0.01 }?.let {
+                    add("Requested target shortfall: ${"%.1f".format(java.util.Locale.US, it)} km/week; the candidate does not add unreviewed mileage to close it.")
+                }
+                addAll(volume.reasons)
+            },
+            name = "Engine 1.5 independent running preview",
+            experimentalQualityPolicy = QUALITY_POLICY.takeIf { experimentalTempo.isNotEmpty() && applyTempoExposureGate },
+            experimentalQualityExposureSeconds = experimentalQualityExposureSeconds
+        )
+        check(sessions.all { it.date >= request.start && it.date < request.start.plusWeeks(request.weeks.toLong()) })
+        check(sessions.groupBy { it.date }.values.all { it.size == 1 })
+        check(sessions.groupBy { ChronoUnit.DAYS.between(request.start, it.date) / 7L }
+            .all { (index, rows) -> kotlin.math.abs(rows.sumOf { it.distanceKm!! } - volume.weeks[index.toInt()].proposedKm!!) < 1e-6 })
+        return Engine15IndependentPlanDecision.Candidate(snapshot, volume, periodization)
+    }
+
+    internal fun enrichNonQualitySessions(
+        sessions: List<PlannedSession>,
+        request: PlanRequest,
+        volume: Engine15IndependentVolumePlanner.Result
+    ): List<PlannedSession> {
+        val zones = Engine15PaceZoneEstimator.estimate(request)
+        val (easyMin, easyMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(zones, RunningStepIntent.AEROBIC_EASY)
+        val (recMin, recMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(zones, RunningStepIntent.RECOVERY)
+        val (steadyMin, steadyMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(zones, RunningStepIntent.STEADY)
+        val (strideMin, strideMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(zones, RunningStepIntent.STRIDE)
+
+        val phasesByWeek = Engine15MacrocyclePeriodization.assignPhases(request, volume)
+        val recoveryWeeks = volume.weeks.filter {
+            it.kind == Engine15IndependentVolumePlanner.WeekKind.RECOVERY
+        }.map { it.index + 1 }.toSet()
+        val taperWeeks = volume.weeks.filter {
+            "RACE_TAPER_VOLUME_REDUCTION" in it.constraintCodes ||
+                phasesByWeek[it.index + 1] == Engine15MacroPhase.TAPER
+        }.map { it.index + 1 }.toSet()
+        val loadingOrdinalByWeek = volume.weeks
+            .filter {
+                val wkNum = it.index + 1
+                it.kind != Engine15IndependentVolumePlanner.WeekKind.RECOVERY && wkNum !in taperWeeks
+            }
+            .mapIndexed { idx, wk -> (wk.index + 1) to idx }
+            .toMap()
+        val hardOrLongDates = sessions.filter { it.quality || it.kind == "long" }.map { it.date }.toSet()
+
+        // Pick up to one fresh easy day per eligible loading OR taper week for Easy Run + Strides.
+        val strideConfigBySessionId = HashMap<String, Pair<Int, Int>>() // sessionId -> (reps, recSec)
+        for (weekNum in 1..request.weeks) {
+            val phase = phasesByWeek[weekNum] ?: Engine15MacroPhase.BUILD
+            if (phase == Engine15MacroPhase.RECOVERY) continue
+            val isTaperWeek = phase == Engine15MacroPhase.TAPER
+            if (!isTaperWeek && (request.experience == 0 || request.returning) && weekNum <= 2) continue
+            val loadingOrd = loadingOrdinalByWeek[weekNum]
+            val includeStridesThisWeek = when {
+                isTaperWeek -> !request.returning
+                loadingOrd == null -> false
+                request.goal in setOf("Half marathon", "Marathon") -> loadingOrd % 2 == 0
+                else -> true
+            }
+            if (!includeStridesThisWeek) continue
+            val weekStart = request.start.plusWeeks((weekNum - 1).toLong())
+            val weekEnd = weekStart.plusWeeks(1)
+            val minMetersForStrides = if (isTaperWeek) 3200 else 4000
+            val easyCandidates = sessions.filter { s ->
+                s.date >= weekStart && s.date < weekEnd &&
+                    !s.quality && s.kind == "easy" &&
+                    s.runningPrescription?.role == "EASY" &&
+                    s.distanceKm != null && kotlin.math.round(s.distanceKm * 1000.0).toInt() >= minMetersForStrides
+            }
+            if (easyCandidates.isEmpty()) continue
+            val chosen = easyCandidates.filter { s ->
+                s.date.minusDays(1) !in hardOrLongDates && s.date.plusDays(1) !in hardOrLongDates
+            }.maxByOrNull { it.distanceKm!! } ?: easyCandidates.maxByOrNull { it.distanceKm!! } ?: continue
+            val totalM = kotlin.math.round(chosen.distanceKm!! * 1000.0).toInt()
+            val reps = when {
+                isTaperWeek -> 4
+                request.experience == 0 || request.returning -> 4
+                request.experience == 1 -> 6
+                totalM >= 6000 -> 8
+                else -> 6
+            }
+            val recSec = if (isTaperWeek || reps > 6) 75 else 60
+            val strideM = kotlin.math.round(20.0 * 1000.0 / zones.fastIntervals.midpointSecondsPerKm).toInt().coerceIn(40, 140)
+            val recM = kotlin.math.round(recSec * 1000.0 / zones.recovery.midpointSecondsPerKm).toInt().coerceIn(50, 260)
+            val blockM = reps * (strideM + recM)
+            val mainM = totalM - blockM
+            val estMainMin = kotlin.math.ceil(mainM * zones.easy.midpointSecondsPerKm / 60_000.0).toInt()
+            val estStrideMin = (reps * (20 + recSec) + 59) / 60
+            if (mainM >= 2000 && (!request.timeBudgetEnabled || estMainMin + estStrideMin <= request.minutes)) {
+                strideConfigBySessionId[chosen.id] = reps to recSec
+            }
+        }
+
+        return sessions.map { s ->
+            if (s.quality || s.distanceKm == null) return@map s
+            val weekNum = (ChronoUnit.DAYS.between(request.start, s.date).toInt() / 7) + 1

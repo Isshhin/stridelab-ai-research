@@ -1,0 +1,59 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15M28CoachingAuditTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 361-414
+--------------------------------------------------
+            if (sc.request.qualityCount > 0 && qualityWorkSeconds.isEmpty()) {
+                flags += "Requested qualityCount=${sc.request.qualityCount}, but 0 quality sessions generated (silently dropped to aerobic)"
+            } else if (qualityWorkSeconds.size >= 4 && qualityWorkSeconds.distinct().size == 1) {
+                flags += "Quality work dose is completely FLAT (${qualityWorkSeconds.first()}s every single week)"
+            }
+
+            if (sc.request.experience == 0 && qualityWorkSeconds.firstOrNull()?.let { it > 20 * 60 } == true) {
+                flags += "Beginner W1 quality work dose too high (${qualityWorkSeconds.first()}s > 20m)"
+            }
+
+            if (weeklyKms.size >= 8) {
+                val peak = weeklyKms.maxOrNull() ?: 0.0
+                val last = weeklyKms.last()
+                val hasDip = weeklyKms.drop(1).dropLast(1).any { it < peak * 0.90 }
+                if (!hasDip) flags += "No mid-plan recovery/deload dip (<90% of peak)"
+                if (sc.request.goal in listOf("Half marathon", "Marathon") && last > peak * 0.85) {
+                    flags += "Final week (${String.format(Locale.US, "%.1f", last)} km) does not taper below 85% of peak (${String.format(Locale.US, "%.1f", peak)} km)"
+                }
+            }
+
+            if (!(zones.easy.midpointSecondsPerKm > zones.tempo.midpointSecondsPerKm &&
+                    zones.tempo.midpointSecondsPerKm > zones.threshold.midpointSecondsPerKm &&
+                    zones.threshold.midpointSecondsPerKm > zones.intervals.midpointSecondsPerKm)) {
+                flags += "Pace zones out of order!"
+            }
+
+            if (flags.isEmpty()) {
+                sb.appendLine("- **Audit Status:** PASS (0 rubric flags)")
+            } else {
+                sb.appendLine("- **Audit Flags (${flags.size}):**")
+                flags.forEach { f ->
+                    sb.appendLine("  - $f")
+                    findingsSummary += "[${sc.id}] $f"
+                    totalFindings++
+                }
+            }
+            sb.appendLine()
+        }
+
+        sb.appendLine("---")
+        sb.appendLine("## Summary: $totalFindings total audit flags across 15 scenarios")
+        findingsSummary.forEach { sb.appendLine("- $it") }
+
+        val reportFile = File("F:\\StrideLab\\Current-App\\stridelab-engine15-dev\\research\\engine15\\M28A_COACHING_AUDIT_20261121.md")
+        reportFile.parentFile?.mkdirs()
+        reportFile.writeText(sb.toString())
+        println("M28A Audit written to ${reportFile.absolutePath} with $totalFindings flags.")
+        assertEquals(
+            "M28A coaching audit detected rubric violations:\n${findingsSummary.joinToString("\n")}",
+            0,
+            totalFindings
+        )
+    }
+}

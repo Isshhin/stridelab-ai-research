@@ -1,0 +1,63 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15M5TimedDistanceReconciler.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 344-401
+--------------------------------------------------
+/** Compare implied averages and physiological / zone pace bounds without setting a hard pace target. */
+internal fun Engine15M5ArithmeticMatch.qualityPaceWarning(
+    zones: Engine15ProvisionalPaceZones? = null
+): String? {
+    val familyName = family.name.lowercase().replaceFirstChar(Char::uppercase)
+    val work = segments.filter { it.purpose == WorkoutPurpose.WORK && it.target != WorkoutTarget.HILLS }
+    fun Engine15M5TimedDistanceSegment.pace() = seconds * 1000 / assertedMeters
+    val warnings = mutableListOf<String>()
+
+    if (work.isNotEmpty()) {
+        val slowestWork = work.maxOf { it.pace() }
+        segments.filter { it.target == WorkoutTarget.EASY && it.pace() * 1.05 < slowestWork }
+            .forEach { easy ->
+                val phase = easy.purpose.name.lowercase().replace('_', ' ')
+                warnings += "The asserted $phase implies ${formatTempoImpliedPace(easy.pace())}, faster than $familyName work at ${formatTempoImpliedPace(slowestWork)}. Check the metres for both steps."
+            }
+    }
+
+    for (seg in segments) {
+        val pace = seg.pace()
+        val phase = seg.purpose.name.lowercase().replace('_', ' ')
+        if (zones != null) {
+            if (seg.target == WorkoutTarget.HILLS) {
+                if (pace < zones.hillShort.fastSecondsPerKm * 0.80 || pace > zones.hillLong.slowSecondsPerKm * 1.25) {
+                    warnings += "The asserted $phase implies ${formatTempoImpliedPace(pace)}, outside the expected uphill effort band."
+                }
+            } else {
+                val range = zones.forTarget(seg.target)
+                if (pace < range.fastSecondsPerKm * 0.82 || pace > range.slowSecondsPerKm * 1.22) {
+                    warnings += "The asserted $phase implies ${formatTempoImpliedPace(pace)}, outside the expected ${range.formatRange()} band."
+                }
+            }
+        } else {
+            val isWork = seg.purpose == WorkoutPurpose.WORK
+            val minPace = if (isWork) 150.0 else 180.0
+            val maxPace = if (isWork) 780.0 else 900.0
+            if (pace < minPace || pace > maxPace) {
+                warnings += "The asserted $phase implies implausible ${formatTempoImpliedPace(pace)} pace for $familyName."
+            }
+        }
+    }
+    return warnings.distinct().joinToString(" ").ifEmpty { null }
+}
+
+internal fun Engine15M5ArithmeticMatch.bookendSafetyWarning(): String? {
+    val warmupSec = segments.firstOrNull { it.purpose == WorkoutPurpose.WARM_UP }?.seconds ?: 0.0
+    val cooldownSec = segments.lastOrNull { it.purpose == WorkoutPurpose.COOL_DOWN }?.seconds ?: 0.0
+    if (warmupSec < 480.0 - 1e-6) {
+        return "Warm-up duration (${(warmupSec / 60.0).toInt()} min) is below the 8 min safety floor."
+    }
+    if (cooldownSec < 300.0 - 1e-6) {
+        return "Cool-down duration (${(cooldownSec / 60.0).toInt()} min) is below the 5 min safety floor."
+    }
+    return null
+}
+
+internal fun formatTempoImpliedPace(secondsPerKm: Double) =
+    "%.2f min/km".format(java.util.Locale.US, secondsPerKm / 60)

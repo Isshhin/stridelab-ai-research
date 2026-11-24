@@ -1,0 +1,387 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-382
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import java.time.Instant
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+import kotlin.math.abs
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+
+/**
+ * Step 01 Automated Coaching Acceptance Suite:
+ * - Tier 1: Structural & mathematical invariants across 8 diverse athlete profiles.
+ * - Tier 2: Periodization, non-stagnation, taper, and progression quality invariants.
+ * - Persisted Targets: Verification of RunningStepV2 stepIntent, pace bounds, and optional HR bounds.
+ * - Tier 3 Output: Prints week-by-week summaries for the 4 anchor profiles.
+ */
+class Engine15CoachingAcceptanceTest {
+    private val owner = "step01-acceptance-runner"
+    private val monday = LocalDate.of(2026, 11, 23)
+    private val now = Instant.parse("2026-11-23T06:00:00Z")
+
+    private data class AthleteProfile(
+        val name: String,
+        val request: PlanRequest
+    )
+
+    private fun profiles(): List<AthleteProfile> = listOf(
+        AthleteProfile(
+            name = "Beginner_5K",
+            request = PlanRequest(
+                goal = "Improve 5K",
+                experience = 0,
+                start = monday,
+                weeks = 8,
+                runDays = 3,
+                days = setOf(2, 4, 6),
+                longDay = 6,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 18.0,
+                longestKm = 7.0,
+                targetWeeklyKm = 24.0,
+                planningPace = 420.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Intermediate_10K",
+            request = PlanRequest(
+                goal = "Improve 10K",
+                experience = 1,
+                start = monday,
+                weeks = 10,
+                runDays = 4,
+                days = setOf(1, 2, 4, 6),
+                longDay = 6,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 35.0,
+                longestKm = 12.0,
+                targetWeeklyKm = 46.0,
+                planningPace = 345.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Advanced_5K",
+            request = PlanRequest(
+                goal = "Improve 5K",
+                experience = 2,
+                start = monday,
+                weeks = 8,
+                runDays = 5,
+                days = setOf(1, 2, 3, 5, 7),
+                longDay = 7,
+                qualityCount = 2,
+                qualityDays = setOf(2, 5),
+                weeklyKm = 55.0,
+                longestKm = 16.0,
+                targetWeeklyKm = 64.0,
+                planningPace = 295.0,
+                benchmarkDistanceMeters = 5000,
+                benchmarkDurationSeconds = 1140,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Half_Marathon_Build",
+            request = PlanRequest(
+                goal = "Half marathon",
+                experience = 1,
+                start = monday,
+                weeks = 12,
+                runDays = 4,
+                days = setOf(2, 4, 5, 7),
+                longDay = 7,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 35.0,
+                longestKm = 13.0,
+                targetWeeklyKm = 52.0,
+                planningPace = 350.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Marathon_Build",
+            request = PlanRequest(
+                goal = "Marathon",
+                experience = 2,
+                start = monday,
+                weeks = 16,
+                runDays = 5,
+                days = setOf(1, 2, 4, 5, 7),
+                longDay = 7,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 45.0,
+                longestKm = 18.0,
+                targetWeeklyKm = 72.0,
+                planningPace = 335.0,
+                benchmarkDistanceMeters = 21097,
+                benchmarkDurationSeconds = 5880,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Returning_Runner",
+            request = PlanRequest(
+                goal = "Aerobic foundation",
+                experience = 1,
+                returning = true,
+                start = monday,
+                weeks = 8,
+                runDays = 4,
+                days = setOf(1, 3, 5, 7),
+                longDay = 7,
+                qualityCount = 0,
+                weeklyKm = 40.0,
+                longestKm = 14.0,
+                targetWeeklyKm = 40.0,
+                planningPace = 370.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "High_Mileage_Builder",
+            request = PlanRequest(
+                goal = "Aerobic foundation",
+                experience = 2,
+                start = monday,
+                weeks = 12,
+                runDays = 6,
+                days = setOf(1, 2, 3, 4, 5, 7),
+                longDay = 7,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 60.0,
+                longestKm = 20.0,
+                targetWeeklyKm = 74.0,
+                planningPace = 325.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        ),
+        AthleteProfile(
+            name = "Time_Constrained_Runner",
+            request = PlanRequest(
+                goal = "Improve 10K",
+                experience = 1,
+                start = monday,
+                weeks = 10,
+                runDays = 4,
+                days = setOf(1, 2, 4, 6),
+                longDay = 6,
+                qualityCount = 1,
+                qualityDays = setOf(2),
+                weeklyKm = 26.0,
+                longestKm = 10.0,
+                targetWeeklyKm = 32.0,
+                planningPace = 350.0,
+                minutes = 45,
+                longRunMinutes = 90,
+                dailyMinutes = 90,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = true
+            )
+        )
+    )
+
+    private fun weekSessions(plan: PlanSnapshot, weekIndex: Int): List<PlannedSession> {
+        val ws = plan.request.start.plusWeeks(weekIndex.toLong())
+        val we = ws.plusWeeks(1)
+        return plan.sessions.filter { it.date >= ws && it.date < we }.sortedBy { it.date }
+    }
+
+    @Test
+    fun tier1StructuralInvariantsHoldAcrossAllEightProfiles() {
+        val failures = mutableListOf<String>()
+        for (profile in profiles()) {
+            val req = profile.request
+            val plan = try {
+                Engine15IndependentPlanGenerator.generateWithHistory(
+                    req, owner, emptyList(), "accept-${profile.name}", now
+                )
+            } catch (t: Throwable) {
+                failures += "[${profile.name}] generateWithHistory failed: ${t.message}"
+                continue
+            }
+
+            try {
+                val approved = PlanOperations.approve(plan, listOf(plan))
+                Engine15IndependentPlanGenerator.validateSaved(approved)
+                val decoded = PlanSnapshot.decode(approved.encode(), owner)
+                if (decoded != approved) {
+                    failures += "[${profile.name}] JSON round-trip mismatch"
+                }
+            } catch (t: Throwable) {
+                failures += "[${profile.name}] approve/validateSaved failed: ${t.message}"
+            }
+
+            // Single run per date, valid date range, allowed weekday
+            val byDate = plan.sessions.groupBy { it.date }
+            if (byDate.values.any { it.size > 1 }) {
+                failures += "[${profile.name}] multiple runs scheduled on the same date"
+            }
+            if (plan.sessions.any {
+                    it.date < req.start ||
+                        it.date >= req.start.plusWeeks(req.weeks.toLong()) ||
+                        it.date.dayOfWeek.value !in req.days
+                }
+            ) {
+                failures += "[${profile.name}] session outside valid date/weekday bounds"
+            }
+
+            // Hard-session spacing >= 2 days
+            val sorted = plan.sessions.sortedBy { it.date }
+            for (i in sorted.indices) {
+                for (j in i + 1 until sorted.size) {
+                    if (Engine15IndependentPlanGenerator.conflict(sorted[i], sorted[j])) {
+                        failures += "[${profile.name}] hard/long spacing conflict between ${sorted[i].id} and ${sorted[j].id}"
+                    }
+                }
+            }
+
+            // Baseline & reversible -2..+2 difficulty scaling
+            if (plan.sessions.any { it.difficultyStep != 0 || it.difficultyBaseline != null }) {
+                failures += "[${profile.name}] initial plan has non-zero difficultyStep or non-null difficultyBaseline"
+            }
+            val sampleSession = plan.sessions.firstOrNull { it.quality } ?: plan.sessions.first()
+            for (delta in listOf(-2, -1, 0, 1, 2)) {
+                val scaled = Engine15WorkoutDifficultyAdjuster.adjust(sampleSession, req, delta)
+                if (!Engine15WorkoutDifficultyAdjuster.matchesAdjusted(scaled, req)) {
+                    failures += "[${profile.name}] matchesAdjusted failed at delta=$delta"
+                }
+            }
+
+            // Weekly mileage conservation + non-zero quality when requested
+            val taperLen = Engine15IndependentVolumePlanner.raceTaperLength(req.goal, req.weeks)
+            for (w in 0 until req.weeks) {
+                val ws = weekSessions(plan, w)
+                if (ws.size != req.runDays) {
+                    failures += "[${profile.name}] W${w + 1} expected ${req.runDays} runs, got ${ws.size}"
+                }
+                val sumKm = ws.sumOf { it.distanceKm ?: 0.0 }
+                if (sumKm <= 0.0 || abs(sumKm - ws.sumOf { (it.runningPrescription?.meters ?: 0) / 1000.0 }) > 0.25) {
+                    failures += "[${profile.name}] W${w + 1} distance mismatch sumKm=$sumKm"
+                }
+
+                val isSuppressedPreTaper = Engine15IndependentVolumePlanner.isSuppressedPreTaperRecovery(req.goal, req.weeks, w)
+                val isRecovery = (w % 4 == 3) && !isSuppressedPreTaper
+                val isTaper = taperLen > 0 && w >= req.weeks - taperLen
+                val isFinalTaper = taperLen > 0 && w == req.weeks - 1
+                if (req.qualityCount > 0 && !isRecovery && !isFinalTaper) {
+                    val expectedQ = if (isTaper) minOf(1, req.qualityCount) else req.qualityCount
+                    val actualQ = ws.count { it.quality }
+                    if (actualQ != expectedQ) {
+                        failures += "[${profile.name}] W${w + 1} quality erased/mismatched: expected $expectedQ got $actualQ"
+                    }
+                }
+            }
+
+            if (profile.name == "Time_Constrained_Runner") {
+                val overWeekday = plan.sessions.filter { it.kind != "long" && it.minutes > 45 }
+                val overLong = plan.sessions.filter { it.kind == "long" && it.minutes > 90 }
+                if (overWeekday.isNotEmpty() || overLong.isNotEmpty()) {
+                    failures += "[${profile.name}] exceeded duration limits (weekday=${overWeekday.map { it.minutes }}, long=${overLong.map { it.minutes }})"
+                }
+            }
+
+            // Safe warm-up (>= 8 min) and cool-down (>= 5 min) floors on every quality session
+            plan.sessions.filter { it.quality }.forEach { qSession ->
+                val segs = qSession.runningPrescription?.mixedSegments.orEmpty()
+                val wuSec = segs.firstOrNull { it.purpose == "WARM_UP" }?.seconds ?: 0
+                val cdSec = segs.lastOrNull { it.purpose == "COOL_DOWN" }?.seconds ?: 0
+                if (wuSec < 8 * 60 || cdSec < 5 * 60) {
+                    failures += "[${profile.name}] ${qSession.id} violated WU/CD floor (wu=${wuSec}s, cd=${cdSec}s)"
+                }
+            }
+        }
+        if (failures.isNotEmpty()) {
+            fail("Tier 1 structural invariant failures:\n${failures.joinToString("\n")}")
+        }
+    }
+
+    @Test
+    fun tier2CoachingInvariantsHoldAcrossAllEightProfiles() {
+        val failures = mutableListOf<String>()
+        val plansByName = profiles().mapNotNull { profile ->
+            runCatching {
+                profile.name to Engine15IndependentPlanGenerator.generateWithHistory(
+                    profile.request, owner, emptyList(), "coach-${profile.name}", now
+                )
+            }.onFailure {
+                failures += "[${profile.name}] failed to generate: ${it.message}"
+            }.getOrNull()
+        }.toMap()
+
+        // 1. Non-stagnation: quality work doses progress across build blocks
+        for (name in listOf("Intermediate_10K", "Advanced_5K", "Half_Marathon_Build", "Marathon_Build", "High_Mileage_Builder")) {
+            val plan = plansByName[name] ?: continue
+            val loadingQuality = plan.sessions.filter { it.quality }
+                .filter { s ->
+                    val w = (ChronoUnit.DAYS.between(plan.request.start, s.date) / 7L).toInt()
+                    val taperLen = Engine15IndependentVolumePlanner.raceTaperLength(plan.request.goal, plan.request.weeks)
+                    taperLen == 0 || w < plan.request.weeks - taperLen
+                }
+            val workSeconds = loadingQuality.map { s ->
+                s.runningPrescription?.mixedSegments?.filter { it.purpose == "WORK" }?.sumOf { it.seconds ?: 0 } ?: 0
+            }
+            val distinctDoses = loadingQuality.mapIndexed { idx, s ->
+                "${s.runningPrescription?.family}:${workSeconds[idx]}"
+            }.distinct()
+            if (distinctDoses.size < 2 || workSeconds.maxOrNull()!! <= workSeconds.first()) {
+                failures += "[$name] quality prescriptions stagnated across loading weeks: $distinctDoses"
+            }
+        }
+
+        // 2. Half_Marathon_Build progression, long-run build & taper
+        plansByName["Half_Marathon_Build"]?.let { hm ->
+            val weeklyKm = (0 until hm.request.weeks).map { w -> weekSessions(hm, w).sumOf { it.distanceKm ?: 0.0 } }
+            val peakKm = weeklyKm.maxOrNull() ?: 0.0
+            val peakLong = hm.sessions.filter { it.kind == "long" }.maxOfOrNull { it.distanceKm ?: 0.0 } ?: 0.0
+            if (peakKm < 46.0) failures += "[Half_Marathon_Build] peak weekly km too low ($peakKm < 46.0)"
+            if (peakLong < 16.0) failures += "[Half_Marathon_Build] peak long run too short ($peakLong < 16.0)"
+            if (weeklyKm[10] <= weeklyKm[11] || weeklyKm[11] >= peakKm * 0.70) {
+                failures += "[Half_Marathon_Build] improper 2-week taper (W11=${weeklyKm[10]}, W12=${weeklyKm[11]}, peak=$peakKm)"
+            }
+        }
+
+        // 3. Marathon_Build progression, long-run build & 3-week taper
+        plansByName["Marathon_Build"]?.let { fm ->
+            val weeklyKm = (0 until fm.request.weeks).map { w -> weekSessions(fm, w).sumOf { it.distanceKm ?: 0.0 } }
+            val peakKm = weeklyKm.maxOrNull() ?: 0.0
+            val peakLong = fm.sessions.filter { it.kind == "long" }.maxOfOrNull { it.distanceKm ?: 0.0 } ?: 0.0
+            if (peakKm < 64.0) failures += "[Marathon_Build] peak weekly km too low ($peakKm < 64.0)"
+            if (peakLong < 26.0) failures += "[Marathon_Build] peak long run too short ($peakLong < 26.0)"
+            if (!(weeklyKm[13] > weeklyKm[14] && weeklyKm[14] > weeklyKm[15]) || weeklyKm[15] >= peakKm * 0.65) {
+                failures += "[Marathon_Build] improper 3-week taper (W14=${weeklyKm[13]}, W15=${weeklyKm[14]}, W16=${weeklyKm[15]}, peak=$peakKm)"
+            }
+        }
+
+        // 4. Intermediate_10K build & 2-week taper
+        plansByName["Intermediate_10K"]?.let { p10k ->
+            val weeklyKm = (0 until p10k.request.weeks).map { w -> weekSessions(p10k, w).sumOf { it.distanceKm ?: 0.0 } }
+            val peakKm = weeklyKm.maxOrNull() ?: 0.0

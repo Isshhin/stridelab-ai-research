@@ -1,0 +1,99 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DailyLoadShaper.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 349-442
+--------------------------------------------------
+     * rounding so every slot lies in [minTenths, maxTenthsByIndex[i]] and the sum matches
+     * [targetSum] to exact 0.1 km precision.
+     */
+    private fun allocateWeightedTenths(
+        sessions: List<PlannedSession>,
+        weights: List<Double>,
+        targetSum: Int,
+        minTenthsByIndex: IntArray,
+        maxTenthsByIndex: IntArray
+    ): IntArray {
+        val n = sessions.size
+        val result = IntArray(n)
+        val locked = BooleanArray(n)
+        var remaining = targetSum
+
+        while (true) {
+            val freeIndices = (0 until n).filter { !locked[it] }
+            if (freeIndices.isEmpty()) break
+            val weightSum = freeIndices.sumOf { weights[it] }.coerceAtLeast(1e-9)
+            var worstIdx = -1
+            var worstClamp = 0
+            var worstViolation = 0.0
+            for (i in freeIndices) {
+                val exact = remaining * (weights[i] / weightSum)
+                val lowViolation = minTenthsByIndex[i] - exact
+                val highViolation = exact - maxTenthsByIndex[i]
+                if (lowViolation > 1e-9 && lowViolation > worstViolation) {
+                    worstIdx = i
+                    worstClamp = minTenthsByIndex[i]
+                    worstViolation = lowViolation
+                } else if (highViolation > 1e-9 && highViolation > worstViolation) {
+                    worstIdx = i
+                    worstClamp = maxTenthsByIndex[i]
+                    worstViolation = highViolation
+                }
+            }
+            if (worstIdx < 0) break
+            result[worstIdx] = worstClamp
+            locked[worstIdx] = true
+            remaining -= worstClamp
+        }
+
+        val free = (0 until n).filter { !locked[it] }
+        if (free.isNotEmpty()) {
+            val weightSum = free.sumOf { weights[it] }.coerceAtLeast(1e-9)
+            val fractions = HashMap<Int, Double>(free.size)
+            for (i in free) {
+                val exact = remaining * (weights[i] / weightSum)
+                val base = floor(exact + 1e-9).toInt().coerceIn(minTenthsByIndex[i], maxTenthsByIndex[i])
+                result[i] = base
+                fractions[i] = exact - base
+            }
+            val plusOrder = free.sortedWith(
+                compareByDescending<Int> { fractions[it] ?: 0.0 }
+                    .thenByDescending { weights[it] }
+                    .thenBy { sessions[it].date }
+            )
+            val minusOrder = free.sortedWith(
+                compareBy<Int> { fractions[it] ?: 0.0 }
+                    .thenBy { weights[it] }
+                    .thenByDescending { sessions[it].date }
+            )
+            var residual = targetSum - result.sum()
+            while (residual > 0) {
+                val candidate = plusOrder.firstOrNull { result[it] < maxTenthsByIndex[it] }
+                    ?: (0 until n).first { result[it] < maxTenthsByIndex[it] }
+                result[candidate]++
+                residual--
+            }
+            while (residual < 0) {
+                val candidate = minusOrder.firstOrNull { result[it] > minTenthsByIndex[it] }
+                    ?: (0 until n).first { result[it] > minTenthsByIndex[it] }
+                result[candidate]--
+                residual++
+            }
+        } else {
+            var residual = targetSum - result.sum()
+            while (residual > 0) {
+                val candidate = (0 until n).first { result[it] < maxTenthsByIndex[it] }
+                result[candidate]++
+                residual--
+            }
+            while (residual < 0) {
+                val candidate = (0 until n).first { result[it] > minTenthsByIndex[it] }
+                result[candidate]--
+                residual++
+            }
+        }
+        check(result.sum() == targetSum) {
+            "Daily load shaping sum ${result.sum()} failed to reconcile with target $targetSum tenths."
+        }
+        return result
+    }
+}

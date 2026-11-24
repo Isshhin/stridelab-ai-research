@@ -1,0 +1,352 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 5
+LINES: 1261-1607
+--------------------------------------------------
+                    steppedSteps = filtered.toMutableList().apply {
+                        set(cdIdx, cd.copy(distanceEquivalentMeters = newEq))
+                    }
+                    newDistKm = session.distanceKm
+                }
+            }
+            val rescaledSteps = steppedSteps.map { step ->
+                val (nMin, nMax) = scalePaceBounds(step.stepIntent, step.targetPaceMinSecPerKm, step.targetPaceMaxSecPerKm)
+                step.copy(targetPaceMinSecPerKm = nMin, targetPaceMaxSecPerKm = nMax)
+            }
+            rx.copy(mixedSegments = rescaledSteps)
+        } else {
+            val rescaledSegs = rx.segments.map { seg ->
+                val (nMin, nMax) = scalePaceBounds(seg.stepIntent, seg.targetPaceMinSecPerKm, seg.targetPaceMaxSecPerKm)
+                seg.copy(targetPaceMinSecPerKm = nMin, targetPaceMaxSecPerKm = nMax)
+            }
+            rx.copy(segments = rescaledSegs)
+        }
+
+        val paceAdjustedMinutes = (session.minutes * paceFactor).roundToInt().coerceAtLeast(15)
+        return session.copy(
+            minutes = paceAdjustedMinutes,
+            runningPrescription = updatedRx,
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+    }
+
+    private fun rebuildBridgeOrAerobicWeek(
+        sessions: List<PlannedSession>,
+        targetWeekKm: Double,
+        longestCapKm: Double,
+        allowSingleTouchTempo: Boolean,
+        effectiveFromDate: LocalDate,
+        linkedSessionIds: Set<String>
+    ): List<PlannedSession> {
+        if (sessions.isEmpty()) return emptyList()
+        var qualityTouchUsed = false
+        val simplified = sessions.map { s ->
+            val protected = s.date.isBefore(effectiveFromDate) || s.status == "completed" ||
+                s.linkedActivityId != null || s.id in linkedSessionIds
+            if (protected || s.discipline != "run") return@map s
+
+            if (s.quality) {
+                if (allowSingleTouchTempo && !qualityTouchUsed) {
+                    qualityTouchUsed = true
+                    stepDownQualityToEntryTouch(s)
+                } else {
+                    convertQualityToEasyOrStrides(s, withStrides = s.kind != "recovery")
+                }
+            } else {
+                s
+            }
+        }
+        return scaleWeekSessionsToBudget(simplified, targetWeekKm, longestCapKm)
+    }
+
+    private fun stepDownQualityToEntryTouch(session: PlannedSession): PlannedSession {
+        val totalMeters = ((session.distanceKm ?: 8.0) * 1000.0).roundToInt().coerceAtLeast(5000)
+        val wuMeters = 2000
+        val cdMeters = 2000
+        val workMeters = (totalMeters - wuMeters - cdMeters).coerceAtLeast(1000)
+        val wuTarget = session.runningPrescription?.segments?.firstOrNull()?.let { it.targetPaceMinSecPerKm to it.targetPaceMaxSecPerKm }
+            ?: (340 to 365)
+        val workTarget = session.runningPrescription?.segments?.firstOrNull { it.purpose == "WORK" }
+            ?.let { it.targetPaceMinSecPerKm to it.targetPaceMaxSecPerKm }
+            ?: (265 to 285)
+        val rx = RunningPrescription(
+            role = "QUALITY",
+            family = "Tempo",
+            segments = listOf(
+                RunningSegment("WARM_UP", wuMeters, "Easy warm-up", RunningStepIntent.WARMUP, wuTarget.first, wuTarget.second),
+                RunningSegment("WORK", workMeters, "Controlled re-entry tempo touch", RunningStepIntent.TEMPO, workTarget.first, workTarget.second),
+                RunningSegment("COOL_DOWN", totalMeters - wuMeters - workMeters, "Easy cool-down", RunningStepIntent.COOLDOWN, wuTarget.first, wuTarget.second)
+            )
+        )
+        return session.copy(
+            title = "Re-Entry Controlled Tempo",
+            kind = "tempo",
+            quality = true,
+            runningPrescription = rx,
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+    }
+
+    private fun convertQualityToEasyOrStrides(session: PlannedSession, withStrides: Boolean): PlannedSession {
+        val totalMeters = ((session.distanceKm ?: 8.0) * 1000.0).roundToInt().coerceAtLeast(3000)
+        val wuBounds = session.runningPrescription?.segments?.firstOrNull()
+            ?.let { it.targetPaceMinSecPerKm to it.targetPaceMaxSecPerKm }
+            ?: session.runningPrescription?.mixedSegments?.firstOrNull()
+                ?.let { it.targetPaceMinSecPerKm to it.targetPaceMaxSecPerKm }
+            ?: (335 to 365)
+        val rx = RunningPrescription(
+            role = "EASY",
+            family = null,
+            segments = listOf(
+                RunningSegment(
+                    purpose = "EASY",
+                    meters = totalMeters,
+                    effort = if (withStrides) "Easy aerobic + light strides" else "Easy aerobic",
+                    stepIntent = RunningStepIntent.AEROBIC_EASY,
+                    targetPaceMinSecPerKm = wuBounds.first,
+                    targetPaceMaxSecPerKm = wuBounds.second
+                )
+            )
+        )
+        return session.copy(
+            title = if (withStrides) "Easy Aerobic + Light Strides" else "Easy Aerobic Run",
+            kind = "easy",
+            quality = false,
+            runningPrescription = rx,
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+    }
+
+    private fun scaleWeekSessionsToBudget(
+        sessions: List<PlannedSession>,
+        targetWeekKm: Double,
+        longestCapKm: Double? = null
+    ): List<PlannedSession> {
+        if (sessions.isEmpty()) return emptyList()
+        val runIndices = sessions.indices.filter {
+            sessions[it].discipline == "run" && sessions[it].distanceKm != null &&
+                sessions[it].status !in setOf("missed", "skipped")
+        }
+        if (runIndices.isEmpty()) return sessions
+
+        val targetTenths = (targetWeekKm * 10.0).roundToInt().coerceAtLeast(runIndices.size * 20)
+        val rawTenths = runIndices.map { idx ->
+            ((sessions[idx].distanceKm ?: 0.0) * 10.0).roundToInt().coerceAtLeast(20)
+        }
+        val rawSum = rawTenths.sum().coerceAtLeast(1)
+        val maxLongTenths = longestCapKm?.let { (it * 10.0).roundToInt().coerceAtLeast(20) }
+
+        val allocated = IntArray(runIndices.size) { i ->
+            val scaled = ((rawTenths[i].toDouble() / rawSum) * targetTenths).roundToInt().coerceAtLeast(20)
+            if (maxLongTenths != null && sessions[runIndices[i]].kind == "long") {
+                minOf(scaled, maxLongTenths)
+            } else {
+                scaled
+            }
+        }
+        var diff = targetTenths - allocated.sum()
+        // Rebalance strictly on easy/non-long sessions first to conserve exact weekly budget.
+        val adjustableOrder = runIndices.indices.sortedWith(
+            compareBy<Int> { if (sessions[runIndices[it]].kind == "long") 1 else 0 }
+                .thenByDescending { rawTenths[it] }
+        )
+        var guard = 0
+        while (diff != 0 && guard < 1000) {
+            var changed = false
+            for (pos in adjustableOrder) {
+                if (diff == 0) break
+                val isLong = sessions[runIndices[pos]].kind == "long"
+                if (diff > 0) {
+                    if (!isLong || maxLongTenths == null || allocated[pos] < maxLongTenths) {
+                        allocated[pos] += 1
+                        diff -= 1
+                        changed = true
+                    }
+                } else if (allocated[pos] > 20) {
+                    allocated[pos] -= 1
+                    diff += 1
+                    changed = true
+                }
+            }
+            if (!changed) break
+            guard++
+        }
+
+        val mutable = sessions.toMutableList()
+        runIndices.forEachIndexed { pos, idx ->
+            mutable[idx] = rescaleSessionMeters(sessions[idx], allocated[pos] * 100)
+        }
+        return mutable
+    }
+
+    private fun rescaleSessionMeters(session: PlannedSession, newMeters: Int): PlannedSession {
+        val oldMeters = ((session.distanceKm ?: (newMeters / 1000.0)) * 1000.0).roundToInt().coerceAtLeast(1)
+        val rx = session.runningPrescription ?: return session.copy(
+            distanceKm = newMeters / 1000.0,
+            minutes = maxOf(15, ((session.minutes.toDouble() / oldMeters) * newMeters).roundToInt()),
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+
+        val ratio = newMeters.toDouble() / oldMeters
+        val newRx = if (rx.mixedSegments != null && rx.reconciledDistanceMeters != null) {
+            val rawSegMeters = rx.mixedSegments.map { step ->
+                val baseM = step.meters ?: step.distanceEquivalentMeters ?: 100
+                (baseM * ratio).roundToInt().coerceAtLeast(50)
+            }.toMutableList()
+            val remainder = newMeters - rawSegMeters.sum()
+            val padIdx = rx.mixedSegments.indexOfFirst { it.purpose in setOf("EASY", "COOL_DOWN") }
+                .takeIf { it >= 0 } ?: 0
+            rawSegMeters[padIdx] = (rawSegMeters[padIdx] + remainder).coerceAtLeast(50)
+            val updatedSteps = rx.mixedSegments.mapIndexed { i, step ->
+                if (step.meters != null) step.copy(meters = rawSegMeters[i])
+                else step.copy(distanceEquivalentMeters = rawSegMeters[i])
+            }
+            rx.copy(mixedSegments = updatedSteps, reconciledDistanceMeters = newMeters)
+        } else if (rx.segments.isNotEmpty()) {
+            val rawSegMeters = rx.segments.map { seg ->
+                (seg.meters * ratio).roundToInt().coerceAtLeast(100)
+            }.toMutableList()
+            val remainder = newMeters - rawSegMeters.sum()
+            val padIdx = rx.segments.indexOfFirst { it.purpose in setOf("EASY", "COOL_DOWN", "WARM_UP") }
+                .takeIf { it >= 0 } ?: 0
+            rawSegMeters[padIdx] = (rawSegMeters[padIdx] + remainder).coerceAtLeast(100)
+            val updatedSegs = rx.segments.mapIndexed { i, seg -> seg.copy(meters = rawSegMeters[i]) }
+            rx.copy(segments = updatedSegs)
+        } else rx
+
+        return session.copy(
+            distanceKm = newMeters / 1000.0,
+            minutes = maxOf(15, ((session.minutes.toDouble() / oldMeters) * newMeters).roundToInt()),
+            runningPrescription = newRx,
+            difficultyStep = 0,
+            difficultyBaseline = null
+        )
+    }
+
+    private fun buildPlanDiff(
+        original: PlanSnapshot,
+        candidate: PlanSnapshot,
+        effectiveFromDate: LocalDate,
+        affectedSessionCount: Int,
+        paceDiffs: List<AdaptationPaceDiff>,
+        gate: ValidationOutcome,
+        weekNotes: Map<Int, String>
+    ): PlanAdaptationDiff {
+        val phases = resolveMacroPhases(original)
+
+        val remainingOrig = original.sessions.filter { !it.date.isBefore(effectiveFromDate) && it.discipline == "run" }
+        val remainingCand = candidate.sessions.filter { !it.date.isBefore(effectiveFromDate) && it.discipline == "run" }
+        val kmBefore = remainingOrig.sumOf { it.distanceKm ?: 0.0 }
+        val kmAfter = remainingCand.sumOf { it.distanceKm ?: 0.0 }
+
+        val origByWk = original.sessions.filter { it.discipline == "run" }
+            .groupBy { weekIndexOf(original.request.start, it.date) }
+        val candByWk = candidate.sessions.filter { it.discipline == "run" }
+            .groupBy { weekIndexOf(candidate.request.start, it.date) }
+
+        val weekDiffs = ArrayList<AdaptationWeekDiff>()
+        for (wk in 0 until original.request.weeks) {
+            val oList = origByWk[wk].orEmpty()
+            val cList = candByWk[wk].orEmpty()
+            val oKm = oList.sumOf { it.distanceKm ?: 0.0 }
+            val cKm = cList.sumOf { it.distanceKm ?: 0.0 }
+            val oQ = oList.count { it.quality }
+            val cQ = cList.count { it.quality }
+            val note = weekNotes[wk]
+            if (note != null || abs(oKm - cKm) > 0.05 || oQ != cQ) {
+                val basePhase = phases[wk + 1]?.name ?: "BUILD"
+                val afterPhase = if (note?.contains("recovery", ignoreCase = true) == true) "RECOVERY" else basePhase
+                weekDiffs += AdaptationWeekDiff(
+                    weekIndex = wk,
+                    phaseBefore = basePhase,
+                    phaseAfter = afterPhase,
+                    plannedKmBefore = round2(oKm),
+                    plannedKmAfter = round2(cKm),
+                    qualityCountBefore = oQ,
+                    qualityCountAfter = cQ,
+                    summaryNote = note ?: "Adjusted Week ${wk + 1} to ${formatKm(cKm)}"
+                )
+            }
+        }
+
+        return PlanAdaptationDiff(
+            effectiveFromDate = effectiveFromDate,
+            affectedSessionCount = affectedSessionCount,
+            totalRemainingKmBefore = round2(kmBefore),
+            totalRemainingKmAfter = round2(kmAfter),
+            weekDiffs = weekDiffs,
+            paceDiffs = paceDiffs,
+            safetyChecksPassed = gate.passed,
+            invariantWarnings = gate.warnings
+        )
+    }
+
+    private fun resolveLinkedSessionIds(
+        plan: PlanSnapshot,
+        matchesByActivityId: Map<String, ActivityMatchRecord>
+    ): Set<String> {
+        val ids = HashSet<String>()
+        plan.sessions.forEach { if (it.linkedActivityId != null) ids += it.id }
+        matchesByActivityId.values.forEach { match ->
+            if (match.matchStatus in setOf(ActivityMatchStatus.AUTO_LINKED, ActivityMatchStatus.MANUALLY_LINKED)) {
+                match.plannedSessionId?.let { ids += it }
+            }
+        }
+        return ids
+    }
+
+    private fun computeTrailingLongestKm(
+        activities: List<ActivityRecord>,
+        asOfDate: LocalDate,
+        zoneId: ZoneId
+    ): Double {
+        val windowStart = asOfDate.minusDays(29)
+        return activities
+            .filter { DashboardSummary.isRun(it) }
+            .filter { it.startedAt.atZone(zoneId).toLocalDate() in windowStart..asOfDate }
+            .maxOfOrNull { (it.distanceM ?: 0.0) / 1000.0 }
+            ?: 0.0
+    }
+
+    private fun hasActiveTypeCooldown(
+        planId: String,
+        type: AdaptationType,
+        cooldowns: List<AdaptationCooldownRecord>,
+        asOfDate: LocalDate
+    ): Boolean = cooldowns.any {
+        it.planId == planId && it.adaptationType == type && !asOfDate.isAfter(it.cooldownUntilDate)
+    }
+
+    private fun isDisruptionSuppressed(
+        fingerprint: String,
+        cooldowns: List<AdaptationCooldownRecord>,
+        existingProposals: List<PlanAdaptationProposal>,
+        asOfDate: LocalDate
+    ): Boolean {
+        val blockedByCooldown = cooldowns.any {
+            it.disruptionFingerprint == fingerprint && !asOfDate.isAfter(it.cooldownUntilDate)
+        }
+        if (blockedByCooldown) return true
+        return existingProposals.any {
+            it.disruptionFingerprint == fingerprint &&
+                it.status in setOf(AdaptationProposalStatus.DISMISSED, AdaptationProposalStatus.APPLIED)
+        }
+    }
+
+    private fun estimateBaseEasyPace(plan: PlanSnapshot): Double? =
+        plan.sessions.asSequence()
+            .filter { it.discipline == "run" && !it.quality }
+            .mapNotNull { it.runningPrescription?.segments?.firstOrNull()?.targetPaceMinSecPerKm }
+            .firstOrNull()?.toDouble()
+
+    private fun weekIndexOf(start: LocalDate, date: LocalDate): Int =
+        ChronoUnit.DAYS.between(start, date).toInt().let { if (it < 0) -1 else it / 7 }
+
+    private fun tenthsFloor(km: Double): Double = floor(km * 10.0 + 1e-8) / 10.0
+    private fun round2(v: Double): Double = kotlin.math.round(v * 100.0) / 100.0
+    private fun formatKm(km: Double): String = String.format(Locale.US, "%.1f km", km)
+}

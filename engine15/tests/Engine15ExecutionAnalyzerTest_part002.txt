@@ -1,0 +1,146 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzerTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 388-528
+--------------------------------------------------
+        val detail = ActivityDetail("act-hr-steady", samples, emptyList(), 1L)
+        val activity = activitySummary("act-hr-steady", 10_000.0, 3_495.0, 350.0, 145.0)
+        val hrZones = ExecutionHrZoneProfile(115, 134, 152, 166, 180, 194)
+
+        val withHr = Engine15ExecutionAnalyzer.analyze(session, activity, detail, hrZones)
+        val withoutHr = Engine15ExecutionAnalyzer.analyze(session, activity, detail, null)
+
+        assertNotNull(withHr.hrZoneCompliancePct)
+        assertNotNull(withHr.aerobicDecouplingPct)
+        assertTrue((withHr.hrZoneCompliancePct ?: 0.0) > 85.0)
+        assertTrue((withHr.aerobicDecouplingPct ?: 0.0) > 5.0)
+
+        // Strictly null when no verified HR profile is supplied (never fabricates 220 - age).
+        assertNull(withoutHr.hrZoneCompliancePct)
+        assertNull(withoutHr.aerobicDecouplingPct)
+    }
+
+    @Test
+    fun workoutExecutionAnalysisJsonRoundTripAndLegacyPlanSnapshotCompat() {
+        val session = thresholdSession()
+        val activity = activitySummary("act-rt", 10_000.0, 3000.0, 300.0, 155.0)
+        val original = Engine15ExecutionAnalyzer.analyze(session, activity, null, null, 1_750_000_000_000L)
+        val encoded = original.encode(owner = "local-owner-1")
+        val decoded = WorkoutExecutionAnalysis.decode(encoded, expectedOwner = "local-owner-1")
+        assertEquals(original, decoded)
+
+        // Verify pre-Step-04 PlanSnapshot JSON without any new execution fields decodes cleanly.
+        val legacySessionJson = session.encode().apply {
+            remove("difficultyStep")
+            remove("difficultyBaseline")
+        }
+        val request = PlanRequest(
+            goal = "Improve 10K",
+            experience = 1,
+            start = date,
+            weeks = 8,
+            runDays = 4,
+            days = setOf(2, 4, 6, 7),
+            longDay = 7,
+            qualityCount = 1,
+            qualityDays = setOf(2),
+            weeklyKm = 32.0,
+            longestKm = 12.0,
+            targetWeeklyKm = 40.0
+        )
+        val legacySnapshotJson = JSONObject()
+            .put("schemaVersion", PLAN_SCHEMA)
+            .put("id", "plan-legacy")
+            .put("user_id", "local-owner-1")
+            .put("engineVersion", "1.5")
+            .put("policyId", "engine15")
+            .put("createdAt", Instant.parse("2026-11-20T06:00:00Z").toString())
+            .put("request", request.encode())
+            .put("sessions", JSONArray().put(legacySessionJson))
+            .put("explanations", JSONArray())
+            .put("status", "approved")
+            .put("feedback", JSONArray())
+            .put("revision", 1)
+        val decodedPlan = PlanSnapshot.decode(legacySnapshotJson, "local-owner-1")
+        assertEquals(1, decodedPlan.sessions.size)
+        assertEquals("s-threshold-10k", decodedPlan.sessions.single().id)
+    }
+
+    @Test
+    fun printSampleExecutionAnalysisOutputsForFourScenarios() {
+        // 1. Clean threshold
+        val s1 = thresholdSession()
+        val d1 = ActivityDetail(
+            "a1",
+            buildSamplesFromBlocks(
+                listOf(
+                    Triple(10, 70.0, Triple(350.0, 138.0, 50.0)),
+                    Triple(20, 78.6, Triple(262.0, 169.0, 50.0)),
+                    Triple(10, 71.0, Triple(355.0, 145.0, 50.0))
+                )
+            ),
+            listOf(
+                ActivityLap(0, 2000.0, 700.0, 350.0, 138.0, startSeconds = 0.0),
+                ActivityLap(1, 6000.0, 1572.0, 262.0, 169.0, startSeconds = 700.0),
+                ActivityLap(2, 2000.0, 710.0, 355.0, 145.0, startSeconds = 2272.0)
+            ),
+            1L
+        )
+        val r1 = Engine15ExecutionAnalyzer.analyze(s1, activitySummary("a1", 10_000.0, 2982.0, 298.0, 155.0), d1)
+
+        // 2. Easy day too fast
+        val s2 = easySession()
+        val d2 = ActivityDetail("a2", buildSamplesFromBlocks(listOf(Triple(30, 88.0, Triple(265.0, 168.0, 20.0)))), emptyList(), 1L)
+        val r2 = Engine15ExecutionAnalyzer.analyze(s2, activitySummary("a2", 10_000.0, 2650.0, 265.0, 168.0), d2)
+
+        // 3. 10 km easy on threshold day
+        val s3 = thresholdSession()
+        val d3 = ActivityDetail(
+            "a3",
+            buildSamplesFromBlocks(listOf(Triple(36, 100.0, Triple(360.0, 138.0, 30.0)))),
+            listOf(
+                ActivityLap(0, 5000.0, 1800.0, 360.0, 137.0, startSeconds = 0.0),
+                ActivityLap(1, 5000.0, 1800.0, 360.0, 139.0, startSeconds = 1800.0)
+            ),
+            1L
+        )
+        val r3 = Engine15ExecutionAnalyzer.analyze(s3, activitySummary("a3", 10_000.0, 3600.0, 360.0, 138.0), d3)
+
+        // 4. Marathon-pace long run
+        val s4 = marathonLongSession()
+        val d4 = ActivityDetail(
+            "a4",
+            buildSamplesFromBlocks(
+                listOf(
+                    Triple(28, 175.0, Triple(350.0, 145.0, 30.0)),
+                    Triple(12, 144.0, Triple(288.0, 163.0, 30.0))
+                )
+            ),
+            listOf(
+                ActivityLap(0, 14_000.0, 4_900.0, 350.0, 145.0, startSeconds = 0.0),
+                ActivityLap(1, 6_000.0, 1_728.0, 288.0, 163.0, startSeconds = 4_900.0)
+            ),
+            1L
+        )
+        val r4 = Engine15ExecutionAnalyzer.analyze(s4, activitySummary("a4", 20_000.0, 6628.0, 331.0, 150.0), d4)
+
+        val rows = listOf(
+            "CLEAN_THRESHOLD" to r1,
+            "EASY_DAY_TOO_FAST" to r2,
+            "EASY_10K_ON_THRESHOLD_DAY" to r3,
+            "MARATHON_PACE_LONG_RUN" to r4
+        )
+        println("=== STEP 04 SAMPLE EXECUTION ANALYSES ===")
+        for ((label, a) in rows) {
+            println(
+                "$label | tier=${a.evidenceTier} | verdict=${a.verdict} | volRatio=${a.volumeRatio} | " +
+                    "workAdh=${a.workStepPaceAdherencePct} | qVerified=${a.qualityStimulusVerified} | " +
+                    "bias=${a.paceBias} | summary=${a.coachingSummary}"
+            )
+        }
+        assertEquals(ExecutionVerdict.ON_TARGET, r1.verdict)
+        assertEquals(ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST, r2.verdict)
+        assertEquals(ExecutionVerdict.VOLUME_ONLY_MATCH, r3.verdict)
+        assertEquals(ExecutionVerdict.ON_TARGET, r4.verdict)
+    }
+}

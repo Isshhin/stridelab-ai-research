@@ -1,0 +1,100 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityFamilySelection.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 263-357
+--------------------------------------------------
+                        "Improve 10K", "Half marathon", "General fitness" -> IndependentQualityFamily.THRESHOLD
+                        "Marathon" -> IndependentQualityFamily.TEMPO
+                        "Aerobic foundation" -> IndependentQualityFamily.FARTLEK
+                        else -> return result(Engine15QualitySelectionDecision.UNSUPPORTED, reason = "RUNNING_GOAL_UNSUPPORTED",
+                            explanation = "The goal has no family mapping in the bounded selection matrix.", athlete = athlete)
+                    }
+                }
+            } else {
+                if (request.returning) IndependentQualityFamily.TEMPO else when (request.goal) {
+                    "Improve 5K" -> if (request.experience == 2)
+                        IndependentQualityFamily.INTERVALS else IndependentQualityFamily.TEMPO
+                    "Improve 10K", "Half marathon" -> if (request.experience == 2)
+                        IndependentQualityFamily.THRESHOLD else IndependentQualityFamily.TEMPO
+                    "General fitness", "Aerobic foundation", "Marathon" -> IndependentQualityFamily.TEMPO
+                    else -> return result(Engine15QualitySelectionDecision.UNSUPPORTED, reason = "RUNNING_GOAL_UNSUPPORTED",
+                        explanation = "The goal has no family mapping in the bounded selection matrix.", athlete = athlete)
+                }
+            }
+            family = if (adaptiveMode && request.allowedQualityTypes.isNotEmpty() &&
+                request.allowedQualityTypes.none { it.equals(matrixFamily.name, ignoreCase = true) }
+            ) {
+                val allowedValues = supported.entries.filter { (label, _) ->
+                    request.allowedQualityTypes.any { it.equals(label, ignoreCase = true) }
+                }.map { it.value }
+                if (request.experience == 0 || request.returning) {
+                    allowedValues.firstOrNull { it != IndependentQualityFamily.INTERVALS } ?: allowedValues.firstOrNull() ?: matrixFamily
+                } else {
+                    allowedValues.firstOrNull() ?: matrixFamily
+                }
+            } else matrixFamily
+            basis = Engine15QualitySelectionBasis.GOAL_EXPERIENCE_MATRIX
+            qualification = Engine15FamilyPolicyQualification.PROVISIONAL_ENGINEERING_RULE
+        }
+
+        val familyName = family.name.lowercase().replaceFirstChar(Char::uppercase)
+        if (request.allowedQualityTypes.isNotEmpty() &&
+            request.allowedQualityTypes.none { it.equals(familyName, ignoreCase = true) })
+            return result(Engine15QualitySelectionDecision.DEFERRED, reason = "QUALITY_SELECTED_FAMILY_NOT_ALLOWED",
+                explanation = "The selected family is excluded by the request's allowed-family set; no substitute was selected.", athlete = athlete,
+                rules = listOf("NO_SILENT_FAMILY_SUBSTITUTION"))
+
+        val baseline = athlete.status.name.lowercase().replace('_', ' ')
+        val selectedExposure = exposure.single { it.family == family }
+        val explicit = basis == Engine15QualitySelectionBasis.EXPLICIT_USER_PREFERENCE
+        return result(
+            decision = Engine15QualitySelectionDecision.FAMILY_CANDIDATE,
+            qualification = qualification,
+            basis = basis,
+            reason = null,
+            explanation = if (explicit)
+                "$familyName is shown because the runner explicitly chose it. This records user direction only; it is not a coach recommendation or workout prescription."
+            else "$familyName is a provisional family candidate from the Engine 1.5 goal/experience matrix for '${request.goal}' (experience ${request.experience}). The positive running baseline is ${athlete.typicalWeeklyKm} km/week ($baseline; ${athlete.confidence}); it supplies evidence context, not a mileage cutoff. This engineering rule is unqualified and does not prescribe a workout.",
+            family = family,
+            candidateSlots = candidateSlots,
+            athlete = athlete,
+            evidenceIds = selectedExposure.evidenceSessionIds,
+            provenance = selectedExposure.provenance.takeIf {
+                selectedExposure.confidence == IndependentQualityExposureConfidence.REPEATED_DEVICE_RECORDS_ASSERTED
+            },
+            exposureConfidence = selectedExposure.confidence,
+            repeatedWorkSeconds = selectedExposure.provisionalRepeatedWorkSeconds,
+            rules = listOf(
+                if (explicit) "EXPLICIT_USER_FAMILY_CHOICE" else "GOAL_EXPERIENCE_MATRIX_PROVISIONAL",
+                "PRIOR_QUALITY_EXPOSURE_IS_CONTEXT_NOT_ELIGIBILITY",
+                "NO_WEEKLY_MILEAGE_THRESHOLD_APPLIED",
+                "QUALITY_EVIDENCE_NOT_SOURCE_VERIFIED",
+                "CALENDAR_LOCKS_AND_HARD_SESSION_SPACING_CHECKED",
+                "RECOVERY_WEEKS_EXCLUDED",
+                "M2_TEMPLATE_NOT_SELECTED"
+            ) + selectedExposure.ruleIds,
+            qualificationNotes = listOf(
+                "No reviewed research record qualifies this goal/experience-to-family mapping; it is a provisional engineering rule.",
+                "The experience value is a user-declared category, not an independently measured ability.",
+                "M3 exposure is descriptive only because source/session identity and completed step purpose are not source-verified.",
+                "The family candidate does not authorize a template, workout structure, work dose, recovery dose, intensity target or execution."
+            )
+        )
+    }
+
+    private fun Engine15M6CExternalSession.asPlannedSession() = PlannedSession(
+        id = id,
+        date = date,
+        discipline = when (discipline) {
+            Engine15M6CDiscipline.STRENGTH -> "str"
+            Engine15M6CDiscipline.CALISTHENICS -> "cal"
+            Engine15M6CDiscipline.CONDITIONING -> "cond"
+        },
+        title = "Existing session",
+        minutes = 0,
+        distanceKm = null,
+        kind = "external",
+        lower = load == Engine15M6CLoad.LOWER_BODY,
+        quality = load == Engine15M6CLoad.FULL_BODY_HARD
+    )
+}

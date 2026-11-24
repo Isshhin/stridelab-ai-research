@@ -1,0 +1,247 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 4
+LINES: 1013-1254
+--------------------------------------------------
+                        ws.filter { it.kind == "long" }.all {
+                            it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.STEADY_AEROBIC_LONG_RUN.id
+                        }
+                    )
+                }
+            }
+            assertTrue(plan.explanations.any { it.startsWith("MACROCYCLE_PHASES:") })
+        }
+    }
+
+    @Test
+    fun step03BeginnerAndReturningBaseWeightingAndFeasibilityAdvisories() {
+        val beginner5k = profiles().first { it.name == "Beginner_5K" }.request
+        val returning10k = profiles().first { it.name == "Intermediate_10K" }.request.copy(
+            returning = true,
+            experience = 1
+        )
+        for ((label, req) in listOf("Beginner_5K" to beginner5k, "Returning_10K" to returning10k)) {
+            val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+                req, owner, emptyList(), "step03-base-$label", now
+            )
+            Engine15IndependentPlanGenerator.validateSaved(plan)
+            val athlete = Engine15AthleteBaseline.assess(req)
+            val volume = Engine15IndependentVolumePlanner.propose(
+                athlete,
+                Engine15IndependentVolumePlanner.Input(
+                    weeks = req.weeks,
+                    runningDays = req.runDays,
+                    targetWeeklyKm = req.targetWeeklyKm,
+                    returning = req.returning,
+                    raceGoal = req.goal,
+                    experience = req.experience,
+                    useMultiFactorProgression = true
+                )
+            )
+            val phases = Engine15MacrocyclePeriodization.assignPhases(req, volume)
+            val loadingCount = phases.values.count { it == Engine15MacroPhase.BASE || it == Engine15MacroPhase.BUILD || it == Engine15MacroPhase.PEAK }
+            val baseCount = phases.values.count { it == Engine15MacroPhase.BASE }
+            assertEquals("[$label] Conservative athlete must have 0 PEAK weeks", 0, phases.values.count { it == Engine15MacroPhase.PEAK })
+            assertTrue("[$label] BASE share ($baseCount / $loadingCount) must be >= 50%", baseCount * 2 >= loadingCount)
+        }
+
+        // Compressed 8w low-baseline Marathon emits deterministic advisories while keeping plan safe
+        val compressedMarathon = PlanRequest(
+            goal = "Marathon",
+            experience = 1,
+            start = monday,
+            weeks = 8,
+            runDays = 4,
+            days = setOf(1, 3, 5, 7),
+            longDay = 7,
+            qualityCount = 1,
+            qualityDays = setOf(3),
+            weeklyKm = 24.0,
+            longestKm = 10.0,
+            targetWeeklyKm = 55.0,
+            planningPace = 360.0,
+            policyChoice = "engine15",
+            recentMileageBasis = "SELF_REPORTED_AVERAGE",
+            timeBudgetEnabled = false
+        )
+        val compressedPlan = Engine15IndependentPlanGenerator.generateWithHistory(
+            compressedMarathon, owner, emptyList(), "step03-compressed-fm", now
+        )
+        Engine15IndependentPlanGenerator.validateSaved(compressedPlan)
+        assertTrue(compressedPlan.explanations.any { it.startsWith("GOAL_HORIZON_SHORT:") })
+        assertTrue(compressedPlan.explanations.any { it.startsWith("GOAL_READINESS_ADVISORY:") })
+    }
+
+    @Test
+    fun step03TaperVolumeReductionPreservesNeuromuscularStrides() {
+        for (name in listOf("Beginner_5K", "Intermediate_10K", "Half_Marathon_Build", "Marathon_Build")) {
+            val req = profiles().first { it.name == name }.request
+            val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+                req, owner, emptyList(), "step03-taper-$name", now
+            )
+            Engine15IndependentPlanGenerator.validateSaved(plan)
+            val taperLen = Engine15IndependentVolumePlanner.raceTaperLength(req.goal, req.weeks)
+            assertTrue(taperLen >= 1)
+            val finalWeek = weekSessions(plan, req.weeks - 1)
+            assertTrue("[$name] Final taper week should have 0 quality sessions", finalWeek.none { it.quality })
+            assertTrue(
+                "[$name] Final taper week must preserve 4x20s neuromuscular strides",
+                finalWeek.any { s ->
+                    s.runningPrescription?.archetypeId == Engine15WorkoutArchetype.EASY_RUN_WITH_STRIDES.id &&
+                        s.runningPrescription?.mixedSegments?.count { it.stepIntent == RunningStepIntent.STRIDE } == 4
+                }
+            )
+            assertTrue(
+                "[$name] Taper long runs must stay Steady Aerobic Long Run",
+                (req.weeks - taperLen until req.weeks).flatMap { weekSessions(plan, it) }
+                    .filter { it.kind == "long" }
+                    .all { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.STEADY_AEROBIC_LONG_RUN.id }
+            )
+        }
+    }
+
+    @Test
+    fun step03TrainYourWayNonTaperThreeToOneCycling() {
+        val gfReq = PlanRequest(
+            goal = "General fitness",
+            experience = 1,
+            start = monday,
+            weeks = 12,
+            runDays = 4,
+            days = setOf(1, 3, 5, 7),
+            longDay = 7,
+            qualityCount = 1,
+            qualityDays = setOf(3),
+            weeklyKm = 36.0,
+            longestKm = 12.0,
+            targetWeeklyKm = 44.0,
+            planningPace = 345.0,
+            policyChoice = "engine15",
+            recentMileageBasis = "SELF_REPORTED_AVERAGE",
+            timeBudgetEnabled = false
+        )
+        val afReq = gfReq.copy(goal = "Aerobic foundation", weeks = 8, weeklyKm = 32.0, longestKm = 11.0, targetWeeklyKm = 40.0)
+        for ((label, req) in listOf("General_Fitness" to gfReq, "Aerobic_Foundation" to afReq)) {
+            val plan = Engine15IndependentPlanGenerator.generateWithHistory(req, owner, emptyList(), "step03-tyw-$label", now)
+            Engine15IndependentPlanGenerator.validateSaved(plan)
+            val athlete = Engine15AthleteBaseline.assess(req)
+            val volume = Engine15IndependentVolumePlanner.propose(
+                athlete,
+                Engine15IndependentVolumePlanner.Input(
+                    weeks = req.weeks,
+                    runningDays = req.runDays,
+                    targetWeeklyKm = req.targetWeeklyKm,
+                    raceGoal = req.goal,
+                    experience = req.experience,
+                    useMultiFactorProgression = true
+                )
+            )
+            val phases = Engine15MacrocyclePeriodization.assignPhases(req, volume)
+            assertEquals("[$label] Train Your Way must have 0 TAPER weeks", 0, phases.values.count { it == Engine15MacroPhase.TAPER })
+            assertEquals("[$label] Train Your Way must have 0 PEAK weeks", 0, phases.values.count { it == Engine15MacroPhase.PEAK })
+            for (wk in 1..req.weeks) {
+                if (wk % 4 == 0) assertEquals(Engine15MacroPhase.RECOVERY, phases[wk])
+                else assertTrue(phases[wk] in setOf(Engine15MacroPhase.BASE, Engine15MacroPhase.BUILD))
+            }
+            assertTrue(plan.explanations.any { it.startsWith("MACROCYCLE_PHASES:") })
+        }
+    }
+
+    @Test
+    fun printAnchorProfilesSummary() {
+        val anchorNames = setOf("Beginner_5K", "Intermediate_10K", "Half_Marathon_Build", "Marathon_Build")
+        val gfProfile = AthleteProfile(
+            name = "Train_Your_Way_General_Fitness",
+            request = PlanRequest(
+                goal = "General fitness",
+                experience = 1,
+                start = monday,
+                weeks = 12,
+                runDays = 4,
+                days = setOf(1, 3, 5, 7),
+                longDay = 7,
+                qualityCount = 1,
+                qualityDays = setOf(3),
+                weeklyKm = 36.0,
+                longestKm = 12.0,
+                targetWeeklyKm = 44.0,
+                planningPace = 345.0,
+                policyChoice = "engine15",
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                timeBudgetEnabled = false
+            )
+        )
+        val summaryProfiles = profiles().filter { it.name in anchorNames } + gfProfile
+        for (profile in summaryProfiles) {
+            val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+                profile.request, owner, emptyList(), "summary-${profile.name}", now
+            )
+            val athlete = Engine15AthleteBaseline.assess(profile.request)
+            val volume = Engine15IndependentVolumePlanner.propose(
+                athlete,
+                Engine15IndependentVolumePlanner.Input(
+                    weeks = profile.request.weeks,
+                    runningDays = profile.request.runDays,
+                    targetWeeklyKm = profile.request.targetWeeklyKm,
+                    returning = profile.request.returning,
+                    raceGoal = profile.request.goal,
+                    experience = profile.request.experience,
+                    useMultiFactorProgression = true
+                )
+            )
+            val phases = Engine15MacrocyclePeriodization.assignPhases(profile.request, volume)
+            println("=== ${profile.name} (${profile.request.goal}, ${profile.request.weeks}w, ${profile.request.runDays}d, start=${profile.request.weeklyKm}km -> target=${profile.request.targetWeeklyKm}km) ===")
+            println("  ${Engine15MacrocyclePeriodization.phaseSummary(phases)}")
+            for (w in 0 until profile.request.weeks) {
+                val ws = weekSessions(plan, w)
+                val totalKm = ws.sumOf { it.distanceKm ?: 0.0 }
+                val longSession = ws.firstOrNull { it.kind == "long" }
+                val longKm = longSession?.distanceKm
+                val tag = phases[w + 1]?.name ?: "BUILD"
+                val qSummary = ws.filter { it.quality }.joinToString("; ") { q ->
+                    val segs = q.runningPrescription?.mixedSegments.orEmpty()
+                    val works = segs.filter { it.purpose == "WORK" }
+                    val recs = segs.filter { it.purpose == "RECOVERY" }
+                    val wuMin = segs.firstOrNull { it.purpose == "WARM_UP" }?.seconds?.div(60) ?: 0
+                    val cdMin = segs.lastOrNull { it.purpose == "COOL_DOWN" }?.seconds?.div(60) ?: 0
+                    val workDesc = when {
+                        works.map { it.meters to it.seconds }.distinct().size > 1 ->
+                            works.joinToString("-") { "${it.meters ?: it.distanceEquivalentMeters}m" }
+                        works.firstOrNull()?.meters != null -> {
+                            val rStr = recs.firstOrNull()?.let { r ->
+                                if (r.meters != null) "/${r.meters}m" else "/${r.seconds}s"
+                            }.orEmpty()
+                            "${works.size}x${works.first().meters}m$rStr"
+                        }
+                        works.size > 1 -> {
+                            val wS = works.first().seconds!!
+                            val wTxt = if (wS % 60 == 0) "${wS / 60}m" else "${wS}s"
+                            val rS = recs.firstOrNull()?.seconds ?: 0
+                            val rTxt = if (rS > 0) "/${rS}s" else ""
+                            "${works.size}x$wTxt$rTxt"
+                        }
+                        else -> "${(works.firstOrNull()?.seconds ?: 0) / 60}m"
+                    }
+                    val workPace = works.firstOrNull()?.let { s ->
+                        if (s.targetPaceMinSecPerKm != null && s.targetPaceMaxSecPerKm != null) {
+                            "${Engine15PaceRange.formatPace(s.targetPaceMinSecPerKm!!.toDouble())}-${Engine15PaceRange.formatPace(s.targetPaceMaxSecPerKm!!.toDouble())}/km"
+                        } else "-"
+                    } ?: "-"
+                    "${q.title} [$workDesc] (WU ${wuMin}m/CD ${cdMin}m, $workPace)"
+                }.ifEmpty { "Easy/Recovery only" }
+                val longStr = longKm?.let { km ->
+                    val segs = longSession.runningPrescription?.segments.orEmpty()
+                    val finishNote = if (segs.size >= 2) {
+                        val finishM = segs.last().meters
+                        val fTag = if (segs.last().stepIntent == RunningStepIntent.RACE_PACE) "RP" else "Steady"
+                        " (${longSession.title} +${String.format(Locale.US, "%.1f", finishM / 1000.0)}km $fTag)"
+                    } else ""
+                    String.format(Locale.US, "%.1f km%s", km, finishNote)
+                } ?: "-"
+                val stridesCount = ws.count { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.EASY_RUN_WITH_STRIDES.id }
+                val recCount = ws.count { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.RECOVERY_RUN.id }
+                println(String.format(Locale.US, "W%02d [%s]: %.1f km | Long: %s | Strides:%d Rec:%d | %s", w + 1, tag, totalKm, longStr, stridesCount, recCount, qSummary))
+            }
+        }
+    }
+}

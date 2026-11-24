@@ -1,0 +1,326 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15CoachingAcceptanceTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 383-703
+--------------------------------------------------
+            if (peakKm < 42.0) failures += "[Intermediate_10K] peak weekly km too low ($peakKm < 42.0)"
+            if (weeklyKm[8] <= weeklyKm[9]) failures += "[Intermediate_10K] W9 (${weeklyKm[8]}) should exceed W10 taper (${weeklyKm[9]})"
+        }
+
+        // 5. Beginner_5K & Advanced_5K final taper week
+        for (k in listOf("Beginner_5K", "Advanced_5K")) {
+            plansByName[k]?.let { p5k ->
+                val weeklyKm = (0 until p5k.request.weeks).map { w -> weekSessions(p5k, w).sumOf { it.distanceKm ?: 0.0 } }
+                val peakKm = weeklyKm.maxOrNull() ?: 0.0
+                if (weeklyKm.last() >= peakKm * 0.90) {
+                    failures += "[$k] missing 5K final taper cut (W8=${weeklyKm.last()}, peak=$peakKm)"
+                }
+            }
+        }
+
+        // 6. High_Mileage_Builder: no arbitrary initial regression & realistic build
+        plansByName["High_Mileage_Builder"]?.let { hi ->
+            val weeklyKm = (0 until hi.request.weeks).map { w -> weekSessions(hi, w).sumOf { it.distanceKm ?: 0.0 } }
+            if (weeklyKm.first() < 56.0) failures += "[High_Mileage_Builder] W1 dropped too far below 60 km (${weeklyKm.first()})"
+            if ((weeklyKm.maxOrNull() ?: 0.0) < 68.0) failures += "[High_Mileage_Builder] peak km too low (${weeklyKm.maxOrNull()})"
+        }
+
+        // 7. Returning_Runner: conservative re-entry & ramp cap
+        plansByName["Returning_Runner"]?.let { ret ->
+            val weeklyKm = (0 until ret.request.weeks).map { w -> weekSessions(ret, w).sumOf { it.distanceKm ?: 0.0 } }
+            if (weeklyKm.first() > 26.0) failures += "[Returning_Runner] W1 too aggressive (${weeklyKm.first()} > 26.0)"
+            if ((weeklyKm.maxOrNull() ?: 99.0) > 32.0) failures += "[Returning_Runner] peak too high (${weeklyKm.maxOrNull()} > 32.0)"
+        }
+
+        if (failures.isNotEmpty()) {
+            fail("Tier 2 coaching invariant failures:\n${failures.joinToString("\n")}")
+        }
+    }
+
+    @Test
+    fun tier1PersistedTargetsCheck() {
+        val profile = profiles().first { it.name == "Marathon_Build" }
+        val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+            profile.request, owner, emptyList(), "persist-targets", now
+        )
+        val approved = PlanOperations.approve(plan, listOf(plan))
+        val qualitySteps = approved.sessions.filter { it.quality }.flatMap { it.runningPrescription!!.mixedSegments!! }
+        assertTrue(qualitySteps.isNotEmpty())
+        assertTrue(
+            "Expected persisted stepIntent on every quality step",
+            qualitySteps.all { it.stepIntent != null }
+        )
+        assertTrue(
+            "Expected persisted min<=max pace bounds on every quality step",
+            qualitySteps.all {
+                it.targetPaceMinSecPerKm != null &&
+                    it.targetPaceMaxSecPerKm != null &&
+                    it.targetPaceMinSecPerKm!! <= it.targetPaceMaxSecPerKm!!
+            }
+        )
+        assertTrue(
+            "HR targets must remain strictly null without athlete HR zone profile",
+            qualitySteps.all { it.targetHrMinBpm == null && it.targetHrMaxBpm == null }
+        )
+
+        // Full JSON serialization / SQLite restoration lifecycle check
+        val decoded = PlanSnapshot.decode(JSONObject(approved.encode().toString()), owner)
+        assertEquals(approved, decoded)
+        Engine15IndependentPlanGenerator.validateSaved(decoded)
+
+        // Legacy pre-Step-01 JSON fixture compatibility check (strip new optional RunningStepV2 fields)
+        val legacyJson = JSONObject(approved.encode().toString())
+        val rawSessions = legacyJson.getJSONArray("sessions")
+        for (i in 0 until rawSessions.length()) {
+            val sJson = rawSessions.getJSONObject(i)
+            val rxJson = sJson.optJSONObject("runningPrescription") ?: continue
+            val segs = rxJson.optJSONArray("segments") ?: continue
+            for (j in 0 until segs.length()) {
+                val seg = segs.getJSONObject(j)
+                seg.remove("stepIntent")
+                seg.remove("targetPaceMinSecPerKm")
+                seg.remove("targetPaceMaxSecPerKm")
+                seg.remove("targetHrMinBpm")
+                seg.remove("targetHrMaxBpm")
+            }
+        }
+        val decodedLegacy = PlanSnapshot.decode(legacyJson, owner)
+        val legacyQualitySteps = decodedLegacy.sessions.filter { it.quality }
+            .flatMap { it.runningPrescription!!.mixedSegments!! }
+        assertTrue(legacyQualitySteps.all {
+            it.stepIntent == null && it.targetPaceMinSecPerKm == null && it.targetHrMinBpm == null
+        })
+        Engine15IndependentPlanGenerator.validateSaved(decodedLegacy)
+
+        // Difficulty adjuster (-2..+2) preserves stepIntent & pace bounds on scaled workouts
+        val qualitySession = approved.sessions.first { it.quality }
+        for (delta in listOf(-1, 1, 2)) {
+            val scaled = Engine15WorkoutDifficultyAdjuster.adjust(qualitySession, profile.request, delta)
+            val scaledSteps = scaled.runningPrescription!!.mixedSegments!!
+            assertTrue(scaledSteps.all {
+                it.stepIntent != null &&
+                    it.targetPaceMinSecPerKm != null &&
+                    it.targetPaceMaxSecPerKm != null &&
+                    it.targetPaceMinSecPerKm!! <= it.targetPaceMaxSecPerKm!! &&
+                    it.targetHrMinBpm == null &&
+                    it.targetHrMaxBpm == null
+            })
+            assertTrue(Engine15WorkoutDifficultyAdjuster.matchesAdjusted(scaled, profile.request))
+        }
+        val reset = Engine15WorkoutDifficultyAdjuster.adjust(
+            Engine15WorkoutDifficultyAdjuster.adjust(qualitySession, profile.request, 2),
+            profile.request,
+            0
+        )
+        assertEquals(qualitySession, reset)
+
+        // Verified 5-zone HR profile populates optional HR bounds; missing profile keeps them strictly null
+        assertNull(Engine15PaceZoneEstimator.hrBoundsForIntent(null, RunningStepIntent.THRESHOLD))
+        val verifiedZones = ActivitySourceHeartRateZones(190, 172, 50, "percent_hrr", listOf(130, 148, 162, 174, 190))
+        val thresholdHr = Engine15PaceZoneEstimator.hrBoundsForIntent(verifiedZones, RunningStepIntent.THRESHOLD)
+        assertEquals(163 to 174, thresholdHr)
+    }
+
+    @Test
+    fun tier1QualityReconciliationLadderStepDownAndExplicitDeferral() {
+        // Step 3: tight 34-min weekday limit forces lower-dose rung step-down in the same family,
+        // preserving quality workouts and >= 8 min WU / >= 5 min CD without erasing qualityCount to 0.
+        val tightStepDownReq = PlanRequest(
+            goal = "Improve 10K",
+            experience = 1,
+            start = monday,
+            weeks = 6,
+            runDays = 4,
+            days = setOf(1, 2, 4, 6),
+            longDay = 6,
+            qualityCount = 1,
+            qualityDays = setOf(2),
+            weeklyKm = 30.0,
+            longestKm = 11.0,
+            targetWeeklyKm = 30.0,
+            planningPace = 300.0,
+            minutes = 36,
+            longRunMinutes = 75,
+            dailyMinutes = 90,
+            policyChoice = "engine15",
+            recentMileageBasis = "SELF_REPORTED_AVERAGE",
+            timeBudgetEnabled = true
+        )
+        val steppedPlan = Engine15IndependentPlanGenerator.generateWithHistory(
+            tightStepDownReq, owner, emptyList(), "ladder-stepdown", now
+        )
+        val approvedStepped = PlanOperations.approve(steppedPlan, listOf(steppedPlan))
+        Engine15IndependentPlanGenerator.validateSaved(approvedStepped)
+        val steppedQuality = approvedStepped.sessions.filter { it.quality }
+        assertTrue("Expected quality sessions preserved via Step 3 step-down", steppedQuality.isNotEmpty())
+        steppedQuality.forEach { q ->
+            val segs = q.runningPrescription!!.mixedSegments!!
+            val totalSec = segs.sumOf { it.seconds ?: 0 }
+            val wuSec = segs.first { it.purpose == "WARM_UP" }.seconds!!
+            val cdSec = segs.last { it.purpose == "COOL_DOWN" }.seconds!!
+            assertTrue("Expected WU >= 8m, got ${wuSec}s", wuSec >= 8 * 60)
+            assertTrue("Expected CD >= 5m, got ${cdSec}s", cdSec >= 5 * 60)
+            assertTrue("Expected session total ${totalSec}s <= 36m", totalSec <= 36 * 60)
+        }
+
+        // Step 4: impossible 18-min quality session limit (while easy distance still fits 18m) must explicitly defer instead of erasing quality to 0.
+        val impossibleQualityReq = tightStepDownReq.copy(
+            weeklyKm = 12.0,
+            longestKm = 6.0,
+            targetWeeklyKm = 12.0,
+            minutes = 18
+        )
+        val deferred = Engine15IndependentPlanGenerator.previewAutoReconciled(
+            impossibleQualityReq, owner, "ladder-defer", now
+        )
+        assertTrue("Expected explicit Deferred result, got $deferred", deferred is Engine15IndependentPlanDecision.Deferred)
+        assertEquals(
+            "QUALITY_RECONCILIATION_UNSAFE_OR_INFEASIBLE",
+            (deferred as Engine15IndependentPlanDecision.Deferred).reasonCode
+        )
+        val err = assertThrows(PlanConstraint::class.java) {
+            Engine15IndependentPlanGenerator.generateWithHistory(
+                impossibleQualityReq, owner, emptyList(), "ladder-defer-gen", now
+            )
+        }
+        assertTrue(err.message.orEmpty().contains("QUALITY_RECONCILIATION_UNSAFE_OR_INFEASIBLE"))
+    }
+
+    @Test
+    fun step02EnergySystemRecoveryRatiosAndUphillHillCuesAreEnforced() {
+        val gfReq = PlanRequest(
+            goal = "General fitness",
+            experience = 1,
+            start = monday,
+            weeks = 12,
+            runDays = 4,
+            days = setOf(1, 3, 5, 7),
+            longDay = 7,
+            qualityCount = 1,
+            qualityDays = setOf(3),
+            weeklyKm = 36.0,
+            longestKm = 12.0,
+            targetWeeklyKm = 44.0,
+            planningPace = 345.0,
+            policyChoice = "engine15",
+            recentMileageBasis = "SELF_REPORTED_AVERAGE",
+            timeBudgetEnabled = false
+        )
+        val allReqs = (profiles().filter {
+            it.name in setOf("Beginner_5K", "Intermediate_10K", "Advanced_5K", "Half_Marathon_Build", "Marathon_Build")
+        }.map { it.name to it.request }) + ("Train_Your_Way_General_Fitness" to gfReq)
+
+        var sawHill = false
+        var sawShortTrack = false
+        var sawThreshold = false
+        var sawBrokenTempo = false
+        var sawStrides = false
+        var sawRecovery = false
+
+        for ((name, req) in allReqs) {
+            val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+                req, owner, emptyList(), "step02-ratios-$name", now
+            )
+            val zones = Engine15PaceZoneEstimator.estimate(req)
+
+            // Recovery Runs: Easy max + 15-30 s/km
+            plan.sessions.filter { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.RECOVERY_RUN.id }
+                .forEach { rec ->
+                    sawRecovery = true
+                    val seg = rec.runningPrescription!!.segments.single()
+                    assertEquals(RunningStepIntent.RECOVERY, seg.stepIntent)
+                    assertTrue(
+                        "[$name] Recovery run paceMin ${seg.targetPaceMinSecPerKm} must be >= easyMax (${zones.easy.slowSecondsPerKm}) + 14s",
+                        seg.targetPaceMinSecPerKm!! >= zones.easy.slowSecondsPerKm.toInt() + 14
+                    )
+                }
+
+            // Easy Run + Strides: 20s stride with 60-90s recovery (1:3..1:4.5)
+            plan.sessions.filter { it.runningPrescription?.archetypeId == Engine15WorkoutArchetype.EASY_RUN_WITH_STRIDES.id }
+                .forEach { st ->
+                    sawStrides = true
+                    val mixed = st.runningPrescription!!.mixedSegments!!
+                    val strides = mixed.filter { it.stepIntent == RunningStepIntent.STRIDE }
+                    val recs = mixed.filter { it.purpose == "RECOVERY" }
+                    assertTrue("[$name] Expected 4..8 strides, got ${strides.size}", strides.size in 4..8)
+                    assertTrue(strides.all { it.seconds == 20 })
+                    assertTrue("[$name] Expected 60-90s stride recovery, got ${recs.map { it.seconds }}", recs.all { it.seconds in 60..90 })
+                }
+
+            for (q in plan.sessions.filter { it.quality }) {
+                val arch = Engine15WorkoutArchetype.fromId(q.runningPrescription?.archetypeId)
+                val segs = q.runningPrescription!!.mixedSegments!!
+                val works = segs.filter { it.purpose == "WORK" }
+                val recs = segs.filter { it.purpose == "RECOVERY" }
+
+                when (arch) {
+                    Engine15WorkoutArchetype.SHORT_TRACK_REPEATS -> {
+                        sawShortTrack = true
+                        assertTrue("[$name] Expected 400m repeats", works.all { it.meters == 400 })
+                        assertTrue(
+                            "[$name] Short Track Repeats must use 200m or 60-75s recovery (never flat 120s), got $recs",
+                            recs.all { it.meters == 200 || (it.seconds in 60..75) }
+                        )
+                    }
+                    Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS -> {
+                        val allDist = works.all { it.meters != null }
+                        if (allDist) {
+                            assertTrue(works.all { it.meters in setOf(800, 1000) })
+                            assertTrue(recs.all { it.meters == 400 || (it.seconds in 90..150) })
+                        } else {
+                            assertTrue(works.all { it.seconds in 180..240 })
+                            assertTrue(recs.all { it.seconds in 120..150 })
+                        }
+                    }
+                    Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS -> {
+                        sawThreshold = true
+                        val firstWork = works.first()
+                        if (firstWork.meters == 1000 || firstWork.seconds in 240..360) {
+                            assertTrue(
+                                "[$name] 1km / 4-6m threshold intervals must use 60s recovery (never flat 120s), got ${recs.map { it.seconds }}",
+                                recs.all { it.seconds == 60 }
+                            )
+                        } else {
+                            assertTrue(
+                                "[$name] 2km / 7-10m threshold intervals must use 90s recovery (never flat 120s), got ${recs.map { it.seconds }}",
+                                recs.all { it.seconds == 90 }
+                            )
+                        }
+                    }
+                    Engine15WorkoutArchetype.BROKEN_TEMPO -> {
+                        sawBrokenTempo = true
+                        assertTrue(recs.isNotEmpty() && recs.all { it.seconds in 90..120 })
+                    }
+                    Engine15WorkoutArchetype.SHORT_HILL_SPRINTS -> {
+                        sawHill = true
+                        assertTrue(works.all { it.seconds in 45..60 })
+                        assertTrue(recs.all { it.seconds in 90..120 })
+                        assertTrue(works.all { "uphill" in it.effort.lowercase() && "grade" in it.effort.lowercase() })
+                        assertTrue(works.all { it.targetPaceMinSecPerKm!! > zones.intervals.slowSecondsPerKm.toInt() })
+                    }
+                    Engine15WorkoutArchetype.LONG_AEROBIC_HILLS -> {
+                        sawHill = true
+                        assertTrue(works.all { it.seconds in 90..120 })
+                        assertTrue(recs.all { it.seconds in 120..150 })
+                        assertTrue(works.all { "uphill" in it.effort.lowercase() && "grade" in it.effort.lowercase() })
+                        assertTrue(works.all { it.targetPaceMinSecPerKm!! > zones.intervals.slowSecondsPerKm.toInt() })
+                    }
+                    Engine15WorkoutArchetype.AEROBIC_FARTLEK -> {
+                        assertTrue(works.all { it.seconds in 120..180 })
+                        assertTrue(recs.all { it.seconds in 90..120 })
+                    }
+                    else -> {}
+                }
+            }
+        }
+        assertTrue("Expected hills to be exercised", sawHill)
+        assertTrue("Expected short track repeats to be exercised", sawShortTrack)
+        assertTrue("Expected threshold cruise intervals to be exercised", sawThreshold)
+        assertTrue("Expected broken tempo to be exercised", sawBrokenTempo)
+        assertTrue("Expected easy run + strides to be exercised", sawStrides)
+        assertTrue("Expected recovery runs to be exercised", sawRecovery)
+    }
+
+    @Test
+    fun step02DistanceBasedWorkoutsAndPyramidsReconcileExactMetersAndScaleCleanly() {
+        val adv5kReq = profiles().first { it.name == "Advanced_5K" }.request

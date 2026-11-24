@@ -1,0 +1,88 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15WorkoutDifficultyAdjuster.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 3
+LINES: 670-752
+--------------------------------------------------
+        } else if (targetStep > 0 && newMinutes <= base.minutes && maxMin >= base.minutes + 2) {
+            newMinutes = (base.minutes + 2).coerceAtMost(maxMin)
+        }
+        val mainMinutes = (newMinutes - 10).coerceAtLeast(2)
+        val warmupMinutes = if (newMinutes >= 12) 5 else 2
+        val cooldownMinutes = (newMinutes - warmupMinutes - mainMinutes).coerceAtLeast(1)
+        val adjustedExercises = base.exercises.map { ex ->
+            ex.copy(seconds = newMinutes * 60)
+        }
+        return base.copy(
+            minutes = newMinutes,
+            exercises = adjustedExercises,
+            steps = listOf(
+                "$warmupMinutes min easy walking or marching",
+                "$mainMinutes min comfortable low-impact conditioning; take breaks to stay conversational",
+                "$cooldownMinutes min easy walking or marching"
+            ),
+            reason = appendNote(
+                base.reason,
+                "Adjusted to ${labelFor(targetStep)}: scaled total conditioning duration to $newMinutes min."
+            ),
+            difficultyStep = targetStep,
+            difficultyBaseline = baseline
+        )
+    }
+
+    private fun distributePositiveInts(
+        targetSum: Int,
+        weights: List<Double>,
+        minEach: Int = 1
+    ): IntArray {
+        val n = weights.size
+        require(n > 0 && targetSum >= n * minEach)
+        val result = IntArray(n) { minEach }
+        val pool = targetSum - n * minEach
+        if (pool == 0) return result
+        val weightSum = weights.sum().coerceAtLeast(1e-9)
+        val fractions = DoubleArray(n)
+        var assigned = 0
+        for (i in 0 until n) {
+            val exact = pool * (weights[i] / weightSum)
+            val whole = floor(exact).toInt().coerceAtMost(120000 - result[i])
+            result[i] += whole
+            fractions[i] = exact - whole
+            assigned += whole
+        }
+        var leftover = pool - assigned
+        val order = (0 until n).sortedWith(compareByDescending<Int> { fractions[it] }.thenByDescending { weights[it] })
+        var cursor = 0
+        while (leftover > 0) {
+            val idx = order[cursor % n]
+            if (result[idx] < 120000) {
+                result[idx]++
+                leftover--
+            }
+            cursor++
+        }
+        return result
+    }
+
+    private fun timeBudgetMaxKm(request: PlanRequest): Double {
+        var capTenths = floor((request.minutes * 60.0) / request.planningPace.coerceAtLeast(180.0) * 10.0 + 1e-8)
+            .toInt().coerceAtLeast(10)
+        while (capTenths > 10 && ceil((capTenths / 10.0) * request.planningPace / 60.0).toInt() > request.minutes) {
+            capTenths--
+        }
+        return capTenths / 10.0
+    }
+
+    private fun roundTenths(km: Double): Double = (km * 10.0).roundToInt() / 10.0
+
+    private fun formatMetersAsKm(meters: Int): String {
+        val km = meters / 1000.0
+        return if (km < 1.0 && meters % 100 != 0) {
+            String.format(Locale.US, "%.2f km", km)
+        } else {
+            String.format(Locale.US, "%.1f km", km)
+        }
+    }
+
+    private fun appendNote(baseReason: String, note: String): String =
+        if (baseReason.isBlank()) note else "${baseReason.trimEnd()} $note"
+}

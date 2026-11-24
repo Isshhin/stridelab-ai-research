@@ -1,0 +1,303 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 5
+LINES: 1194-1491
+--------------------------------------------------
+            catch (e: PlanConstraint) { mutable.value = mutable.value.copy(message=e.message); false }
+            catch (e: GarminException) {
+                val error=GarminConnectionStatus.fromError(e)
+                mutable.value=mutable.value.copy(message=error.heading()+": "+error.error.orEmpty())
+                false
+            }
+            catch (e: ServiceFailure) {
+                mutable.value = mutable.value.copy(message = e.message, needsSignIn = e.requiresSignIn || mutable.value.needsSignIn); false
+            } catch (_: java.io.IOException) {
+                mutable.value = mutable.value.copy(message = "Connection or secure storage is unavailable. Saved activities are retained; retry when connected."); false
+            } catch (_: Exception) {
+                mutable.value = mutable.value.copy(message = "This operation could not be verified. Existing records were retained. Please retry."); false
+            } finally { mutable.value = mutable.value.copy(busy = false, task = null) }
+        }
+    }
+    suspend fun signUp(name: String, email: String, password: String) = operation("Creating accountΓÇª") {
+        require(name.isNotBlank() && email.isNotBlank() && password.isNotEmpty())
+        gateway.signUp(name, email, password)
+        // Signup does not activate an account or persist an unverified token.
+        mutable.value = mutable.value.copy(
+            message = "Account request submitted. Verify your email if required, then sign in."
+        )
+    }
+    suspend fun requestPasswordReset(email: String) = operation("Requesting password resetΓÇª") {
+        require(email.isNotBlank())
+        gateway.requestPasswordReset(email)
+        // Avoid account enumeration: the same confirmation is shown to everyone.
+        mutable.value = mutable.value.copy(
+            message = "If this address has an account, reset instructions will be sent by email."
+        )
+    }
+    suspend fun signIn(email: String, password: String) = operation("Signing in securelyΓÇª") {
+        require(email.isNotBlank() && password.isNotEmpty())
+        val session = try {
+            gateway.signIn(email, password).also { gateway.verify(it) }
+        } catch(e: ServiceFailure) {
+            // A failed login attempt must not invalidate a different, still-active session.
+            throw ServiceFailure(e.status, e.message ?: "Sign-in was not accepted", requiresSignIn = false)
+        }
+        vault.save(session) // No account activation unless encryption succeeds.
+        copyLegacyGarminConnection(session.account)
+        check(preferences.edit().putString("active", session.account).commit())
+        mutable.value = TrainingState(initializing = false, account = session.account,
+            localPlanOwner = localPlanOwner, busy = true,
+            loginGeneration = mutable.value.loginGeneration + 1)
+        loadCache(session.account)
+        // Authentication is complete even if this first cache refresh fails.
+        fetchActivities()
+    }
+    private fun session(): NativeSession {
+        val account = mutable.value.account ?: throw IllegalStateException("Sign in first")
+        val saved = try { vault.read(account) } catch (_: java.io.IOException) {
+            throw ServiceFailure(401,"Your saved session could not be verified. Sign in again; cached activities are retained.")
+        } ?: throw ServiceFailure(401,"Sign in again to synchronize. Saved activities remain available.")
+        val current = if(saved.expiresAtSeconds <= System.currentTimeMillis()/1000 + 90) renew(saved) else saved
+        return current
+    }
+    private fun renew(saved: NativeSession): NativeSession {
+        val fresh = gateway.refresh(saved)
+        if(fresh.account != saved.account || fresh.account != mutable.value.account) throw ServiceFailure(401,"The renewed session did not match this account. Sign in again; cached data is retained.")
+        vault.save(fresh)
+        return fresh
+    }
+    private fun <T> authenticated(action: (NativeSession) -> T): T {
+        val current = session()
+        return try { action(current) } catch(e: ServiceFailure) {
+            if(e.status != 401) throw e
+            // Retry exactly once after an authentication rejection, not after timeouts/5xx.
+            action(renew(current))
+        }
+    }
+    private fun fetchActivities() {
+        val account = mutable.value.account ?: throw IllegalStateException("Sign in first")
+        var before: ActivityRecord? = null
+        var received = 0
+        val seen = HashSet<String>()
+        while(true) {
+            val page = authenticated { gateway.activities(it, before) }
+            require(page.length() <= 200)
+            val rows = ArrayList<TrainingStore.RemoteRecord>()
+            var last: ActivityRecord? = null
+            for(i in 0 until page.length()) {
+                val raw = page.getJSONObject(i)
+                val parsed = ActivityRecord.parse(raw.toString(), account)
+                require((last ?: before)?.let { parsed.isBefore(it) } != false) { "History page is not in stable cursor order" }
+                require(seen.add(parsed.id)) { "Repeated page; synchronization stopped safely" }
+                // Advance the history cursor across retired-source rows,
+                // but never re-import new Intervals.icu activities.
+                if(ActiveActivitySources.accepts(parsed.source))
+                    rows += TrainingStore.RemoteRecord(parsed.id, raw.toString(), null)
+                last = parsed
+            }
+            val completed = page.length() == 0 // A short page can reflect a lower server page limit.
+            val marker = if(completed) JSONObject().put("completedAt", System.currentTimeMillis()).toString() else null
+            store.applyRemotePage(account, "activity", rows, marker, System.currentTimeMillis())
+            received += page.length()
+            mutable.value = mutable.value.copy(task = "Checking history ┬╖ $received activities")
+            loadCache(account) // Each complete page is already durable, including partial failure.
+            if(completed) break
+            require(last != null && last != before)
+            before = last
+        }
+        // Shared by manual refresh, sign-in, provider sync and background work.
+        // Success updates the cache timestamp in place; banners are for actionable problems.
+        mutable.value = mutable.value.copy(needsSignIn = false)
+    }
+    suspend fun refresh() = operation("Refreshing historyΓÇª") { fetchActivities() }
+    /**
+     * Explicit, foreground Garmin source sync. Source summaries are cached under
+     * provider-derived IDs for offline Activity browsing. No backend mutation,
+     * automatic provider merge, training-plan change, or invented measurements.
+     * The repository lock preserves sign-out and account isolation throughout.
+     */
+    internal suspend fun syncGarmin(
+        source: GarminPersonalSource,
+        pageLimit: Int = 100,
+        detailLimit: Int = 24
+    ): GarminConnectionStatus = withContext(Dispatchers.IO) {
+        require(pageLimit in 1..100 && detailLimit in 0..24)
+        mutex.withLock {
+            // The source must use this installation's local Garmin owner or
+            // the currently signed-in legacy owner. Never accept another ID.
+            val account=source.accountId
+            if(account!=localGarminOwner && account!=mutable.value.account)
+                throw GarminAuthenticationException("Garmin connection does not belong to this local profile")
+            // Zone refresh is independent from activity import and manual zone settings.
+            // A failed request retains cached BPM floors and cannot fail the run sync.
+            val zoneStore=GarminZonePreferenceStore(appContext)
+            val lastZoneSync=zoneStore.load(account)?.syncedAtMillis ?: 0L
+            val now=System.currentTimeMillis()
+            if(now-lastZoneSync>=24L*60*60*1000) {
+                runCatching {
+                    GarminHeartRateZones.forRunning(source.heartRateZones(account))?.let {
+                        zoneStore.save(account,it,now)
+                    }
+                }
+            }
+            var cursor:String?=null
+            var pages=0
+            var imported=0
+            val seen=HashSet<String>()
+            do {
+                if(pages>=pageLimit) {
+                    if (pageLimit == 100) throw GarminProtocolException(
+                        "Garmin history exceeds the bounded 10,000-record sync. Earlier pages are saved; contact support for the remaining range.")
+                    break // Bounded automatic check; manual sync still covers all history.
+                }
+                val page=source.activities(account,cursor,100)
+                if(page.accountId!=account)throw GarminProtocolException(
+                    "Garmin activity page belongs to a different account")
+                val rows=ArrayList<TrainingStore.RemoteRecord>()
+                for(input in page.records) {
+                    if(input.accountId!=account || input.provider!="garmin")
+                        throw GarminProtocolException("Garmin returned incompatible source identity")
+                    val raw=try { GarminHistoryImport.payload(input) }
+                        catch(error:Exception) { throw GarminProtocolException(
+                            "Garmin returned an activity that cannot be saved safely") }
+                    val id=raw.getString("id")
+                    if(!seen.add(id))throw GarminProtocolException(
+                        "Garmin returned a duplicate activity across pages")
+                    val old=store.get(account,"activity",id)
+                    if(old!=null) {
+                        val existing=JSONObject(old.payload)
+                        if(existing.optString("source")!="garmin" ||
+                            existing.optString("external_id")!=input.externalId)
+                            throw GarminProtocolException("Garmin activity ID conflicts with saved history")
+                        continue // Source-owned original remains unchanged on repeated sync.
+                    }
+                    rows+=TrainingStore.RemoteRecord(id,raw.toString(),null)
+                }
+                store.applyRemotePage(account,"activity",rows,null,System.currentTimeMillis())
+                imported+=rows.size
+                if(account==localGarminOwner) loadLocalGarminCache()
+                else loadCache(account) // Durable, offline-accessible after each completed page.
+                pages++
+                val next=page.nextCursor
+                if(next!=null && (next==cursor || next.toIntOrNull()==null))
+                    throw GarminProtocolException("Garmin pagination did not advance safely")
+                cursor=next
+            } while(cursor!=null)
+            // An explicit sync also caches a bounded number of genuine FIT
+            // recordings for Garmin runs. The next tap resumes from missing
+            // details; no previously saved source summary is modified.
+            val pending = mutable.value.activities.filter { activity ->
+                activity.source == "garmin" && DashboardSummary.isRun(activity) &&
+                    (activity.id in mutable.value.localGarminIds)==(account==localGarminOwner) &&
+                    activity.id.startsWith("garmin-") &&
+                    !mutable.value.details.containsKey(activity.id)
+            }
+            var completedDetails = 0
+            var failedDetails = 0
+            var interruption: String? = null
+            // Prefer missing recordings even when startup has left the memory detail cache empty.
+            // Existing rows remain eligible for placeholder repair and validation.
+            val savedRecordingIds = HashSet<String>()
+            store.readableDatabase.query("records", arrayOf("record_id"),
+                "account=? AND kind=?", arrayOf(account, "activity_detail"), null, null, null
+            ).use { rows ->
+                while (rows.moveToNext()) savedRecordingIds.add(rows.getString(0))
+            }
+            val orderedPending = pending.sortedWith(
+                compareBy<ActivityRecord> { !garminSyncPreferences.readyForDetail(account, it.id) }
+                    .thenBy { it.id in savedRecordingIds }
+            )
+            for (activity in orderedPending.take(detailLimit)) {
+                try {
+                    cacheGarminRecording(account, activity, source)
+                    garminSyncPreferences.clearDetailFailure(account, activity.id)
+                    completedDetails++
+                } catch (error: GarminAuthenticationException) {
+                    failedDetails++
+                    interruption = GarminConnectionStatus.fromError(error).error
+                    break
+                } catch (error: GarminRateLimitException) {
+                    failedDetails++
+                    interruption = GarminConnectionStatus.fromError(error).error
+                    break
+                } catch (error: GarminNetworkException) {
+                    failedDetails++
+                    interruption = GarminConnectionStatus.fromError(error).error
+                    break
+                } catch (error: GarminServiceException) {
+                    failedDetails++
+                    interruption = GarminConnectionStatus.fromError(error).error
+                    break
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    // Malformed FIT, missing numeric IDs, and source mismatches
+                    // are held behind healthy records for the next day.
+                    garminSyncPreferences.noteDetailFailure(account, activity.id)
+                    failedDetails++
+                }
+            }
+            val remaining = pending.count {
+                !mutable.value.details.containsKey(it.id)
+            }
+            if (pageLimit == 100) garminSyncPreferences.acknowledgeManualGarminSync(account)
+            reconcileActivityMatchesAndAnalysis()
+            GarminConnectionStatus(
+                state = "connected",
+                lastSuccessfulSync = java.time.Instant.now(),
+                importedCount = imported,
+                error = interruption,
+                detailsImported = completedDetails,
+                detailsRemaining = remaining,
+                failedDetails = failedDetails
+            )
+        } }
+
+    /**
+     * WorkManager and app-resume share this due-time claim. Automatic checks
+     * intentionally fetch at most 200 latest summaries and 3 FIT files so a
+     * background task does not monopolize the device or hit Garmin aggressively.
+     * User-initiated manual sync retains its existing full-history behavior.
+     */
+    internal suspend fun automaticGarminAndBackup(foreground: Boolean): Boolean =
+        withContext(Dispatchers.IO) {
+            val ready = state.first { !it.initializing }
+            val account = localGarminOwner
+            var success = true
+            val interval = if (foreground) 30L * 60_000 else 6L * 60 * 60_000
+            if (garminSyncPreferences.automatic(account)) {
+                val source = GarminPersonalSource(
+                    account, GarminCredentialVault(appContext), GarminPersonalClient())
+                val connected = runCatching { source.status().state == "connected" }
+                    .getOrDefault(false)
+                // Do not consume the automatic-check window while Garmin is
+                // disconnected; a newly linked account should remain eligible.
+                if (connected &&
+                    garminSyncPreferences.claim(account, "garmin", interval)) {
+                    try {
+                        val result = syncGarmin(source, pageLimit = 2, detailLimit = 3)
+                        if (result.error != null) success = false
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        // The original offline cache stays intact. An app-resume
+                        // check never overwrites foreground error messages.
+                        success = false
+                    }
+                }
+            }
+            if (ready.account != null && !ready.needsSignIn &&
+                garminSyncPreferences.cloudBackup(ready.account) &&
+                garminSyncPreferences.claim(ready.account, "cloud", interval)) {
+                try {
+                    backupGarminCloud(maxRecords = 6)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    success = false
+                }
+            }
+            success
+        }
+
+    /** Cloud backup requires StrideLab sign-in; Garmin itself remains local. */

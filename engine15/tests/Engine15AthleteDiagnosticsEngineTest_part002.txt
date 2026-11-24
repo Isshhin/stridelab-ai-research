@@ -1,0 +1,110 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngineTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 364-468
+--------------------------------------------------
+            "voq-$w" to qualityAnalysis("voq-$w", "voa-$w", ExecutionVerdict.VOLUME_ONLY_MATCH, 355.0, verified = false)
+        }
+        val snap = Engine15AthleteDiagnosticsEngine.evaluate(basePlan(sessions), acts, matches, analyses, null, asOf, zone)
+
+        assertEquals(3, snap.qualityExecution.evaluatedQualityCount)
+        assertEquals(3, snap.qualityExecution.volumeOnlySubstitutionCount)
+        assertEquals(0, snap.qualityExecution.verifiedHitCount)
+        assertEquals(0.0, snap.qualityExecution.verifiedHitRatePct!!, 0.01)
+    }
+
+    @Test
+    fun strictHrGateAndSummaryOnlyConfidenceDowngrade() {
+        val sessions = (0 until 4).map { w -> qualitySession("sum-q-$w", asOf.minusDays(21L - w * 7L), 10.0) }
+        val acts = (0 until 4).map { w -> runActivity("sum-a-$w", asOf.minusDays(21L - w * 7L), 10.0, 45.0, 270.0, 168.0) }
+        val matches = (0 until 4).associate { w -> "sum-a-$w" to linkedMatch("sum-a-$w", "sum-q-$w") }
+        val analyses = (0 until 4).associate { w ->
+            "sum-q-$w" to qualityAnalysis("sum-q-$w", "sum-a-$w", ExecutionVerdict.ON_TARGET, 256.0, verified = false, tier = ExecutionEvidenceTier.SUMMARY_ONLY)
+        }
+        val snap = Engine15AthleteDiagnosticsEngine.evaluate(basePlan(sessions), acts, matches, analyses, null, asOf, zone)
+
+        // Missing HR profile -> strictly null metrics
+        assertFalse(snap.aerobicEfficiency.hrDataAvailable)
+        assertEquals(AerobicEfficiencyTrend.UNAVAILABLE, snap.aerobicEfficiency.trend)
+        assertNull(snap.aerobicEfficiency.earlyWindowEf)
+        assertNull(snap.aerobicEfficiency.recentWindowEf)
+        assertNull(snap.aerobicEfficiency.efChangePct)
+        assertNull(snap.aerobicEfficiency.medianDecouplingPct)
+
+        // SUMMARY_ONLY quality runs cannot unlock HIGH/MODERATE confidence or pace recalibration
+        assertEquals(DiagnosticConfidence.LOW, snap.qualityExecution.confidence)
+        assertTrue(snap.overallConfidence <= DiagnosticConfidence.LOW)
+        assertNotEquals(RecalibrationAdvisory.SUGGEST_FASTER_CHECK, snap.recalibrationAdvisory)
+    }
+
+    @Test
+    fun pendingConfirmationRunsCountTowardPhysicalLoadWithoutInflatingQuality() {
+        val s1 = qualitySession("pend-q1", asOf.minusDays(5), 10.0)
+        val a1 = runActivity("pend-a1", asOf.minusDays(5), 18.0, 100.0, 333.0, 150.0)
+        val pendingMatch = ActivityMatchRecord(
+            activityId = "pend-a1",
+            plannedSessionId = "pend-q1",
+            matchStatus = ActivityMatchStatus.NEEDS_CONFIRMATION,
+            confidenceScore = 0.72,
+            dateOffsetDays = 0,
+            reasonCodes = listOf("MEDIUM_CONFIDENCE_CONFIRMATION")
+        )
+        // Even if a stale analysis exists, unconfirmed match must NOT enter qualityExecution.
+        val staleAnalysis = qualityAnalysis("pend-q1", "pend-a1", ExecutionVerdict.ON_TARGET, 258.0, verified = true)
+
+        val snap = Engine15AthleteDiagnosticsEngine.evaluate(
+            basePlan(listOf(s1)),
+            listOf(a1),
+            mapOf("pend-a1" to pendingMatch),
+            mapOf("pend-q1" to staleAnalysis),
+            null,
+            asOf,
+            zone
+        )
+
+        assertEquals(1, snap.pendingConfirmationCount)
+        assertEquals(18.0, snap.volumeTolerance.completedKm, 0.01)
+        assertEquals(18.0, snap.volumeTolerance.longest30dKm, 0.01)
+        assertEquals(0, snap.qualityExecution.evaluatedQualityCount)
+        assertEquals(0, snap.qualityExecution.verifiedHitCount)
+    }
+
+    @Test
+    fun diagnosticSnapshotJsonRoundTripPreservesAllFieldsAndRejectsBadOwner() {
+        val original = buildConsistentProgressor()
+        val encoded = original.encode(owner = "diag-owner")
+        val decoded = AthleteDiagnosticSnapshot.decode(encoded, expectedOwner = "diag-owner")
+        assertEquals(original, decoded)
+
+        var rejected = false
+        try {
+            AthleteDiagnosticSnapshot.decode(encoded, expectedOwner = "wrong-owner")
+        } catch (_: IllegalArgumentException) {
+            rejected = true
+        }
+        assertTrue(rejected)
+    }
+
+    @Test
+    fun printCoachingReviewOutputsForFourScenarios() {
+        val scenarios = listOf(
+            "1_SPARSE_NEW_ATHLETE" to buildSparseNewAthlete(),
+            "2_CONSISTENT_PROGRESSOR" to buildConsistentProgressor(),
+            "3_GRAY_ZONE_RUNNER" to buildGrayZoneRunner(),
+            "4_STRUGGLING_FATIGUING_RUNNER" to buildStrugglingFatiguingRunner()
+        )
+        println("=== STEP 05 ATHLETE DIAGNOSTIC SCENARIOS ===")
+        for ((name, d) in scenarios) {
+            println(
+                "$name | overall=${d.overallConfidence} | advisory=${d.recalibrationAdvisory} | " +
+                    "vol=${d.volumeTolerance.completedKm}/${d.volumeTolerance.plannedKm}km (${d.volumeTolerance.exposureStatus}) | " +
+                    "qual=${d.qualityExecution.verifiedHitCount}/${d.qualityExecution.evaluatedQualityCount} (${d.qualityExecution.paceTrend}, conf=${d.qualityExecution.confidence}) | " +
+                    "easyTooFast=${d.easyDiscipline.tooFastCount}/${d.easyDiscipline.evaluatedEasyCount} (risk=${d.easyDiscipline.hiddenFatigueRisk}) | " +
+                    "ef=${d.aerobicEfficiency.trend} (${d.aerobicEfficiency.efChangePct}%)"
+            )
+            d.insights.forEach { insight ->
+                println("  - [${insight.severity}] ${insight.code}: ${insight.message}")
+            }
+        }
+    }
+}

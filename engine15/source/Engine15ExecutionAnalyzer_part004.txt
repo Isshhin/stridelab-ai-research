@@ -1,0 +1,236 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 4
+LINES: 1183-1413
+--------------------------------------------------
+        val valid = breakdowns.mapNotNull { b ->
+            val p = b.actualPaceSecPerKm ?: return@mapNotNull null
+            val w = (b.actualSeconds ?: 1).toDouble().coerceAtLeast(1.0)
+            p to w
+        }
+        if (valid.isEmpty()) return null
+        return valid.sumOf { it.first * it.second } / valid.sumOf { it.second }
+    }
+
+    private fun weightedBreakdownAdherence(breakdowns: List<ExecutionStepBreakdown>): Double? {
+        val valid = breakdowns.mapNotNull { b ->
+            val a = b.paceAdherencePct ?: return@mapNotNull null
+            val w = (b.actualSeconds ?: 1).toDouble().coerceAtLeast(1.0)
+            a to w
+        }
+        if (valid.isEmpty()) return null
+        return valid.sumOf { it.first * it.second } / valid.sumOf { it.second }
+    }
+
+    private fun computeAltitudeGain(samples: List<IndexedSample>): Double? {
+        val alts = samples.mapNotNull { it.sample.altitude?.takeIf { a -> a.isFinite() } }
+        if (alts.size < 2) return null
+        var gain = 0.0
+        for (i in 1 until alts.size) {
+            val delta = alts[i] - alts[i - 1]
+            if (delta in 0.2..40.0) gain += delta
+        }
+        return round1(gain)
+    }
+
+    private fun overallPace(
+        activity: ActivityRecord,
+        timeline: List<IndexedSample>,
+        actualKm: Double?,
+        actualDurationSec: Double?
+    ): Double? {
+        activity.recordedPace?.takeIf { it.isFinite() && it in 120.0..1200.0 }?.let { return it }
+        activity.garminMovingPaceSPerKm?.takeIf { it.isFinite() && it in 120.0..1200.0 }?.let { return it }
+        if (timeline.isNotEmpty()) {
+            weightedPace(timeline, timeline.indices)?.let { return it }
+        }
+        if (actualKm != null && actualKm > 0.0 && actualDurationSec != null && actualDurationSec > 0.0) {
+            return (actualDurationSec / actualKm).takeIf { it in 120.0..1200.0 }
+        }
+        return null
+    }
+
+    private fun computeVolumeRatio(
+        plannedKm: Double?,
+        actualKm: Double?,
+        plannedMinutes: Int?,
+        actualMinutes: Double?
+    ): Double {
+        if (plannedKm != null && plannedKm > 0.0 && actualKm != null && actualKm > 0.0) {
+            return actualKm / plannedKm
+        }
+        if (plannedMinutes != null && plannedMinutes > 0 && actualMinutes != null && actualMinutes > 0.0) {
+            return actualMinutes / plannedMinutes.toDouble()
+        }
+        return 0.0
+    }
+
+    private fun computeHrCompliancePct(
+        steps: List<PlannedStepTarget>,
+        timeline: List<IndexedSample>,
+        profile: ExecutionHrZoneProfile?
+    ): Double? {
+        if (profile == null || timeline.size < 10) return null
+        val hrSamples = timeline.filter { it.sample.hr != null && it.sample.hr.isFinite() && it.sample.hr > 0.0 }
+        if (hrSamples.size < 10) return null
+
+        val primaryStep = steps.firstOrNull { it.isTargetedWork } ?: steps.firstOrNull()
+        val (minBpm, maxBpm) = resolveTargetHrBounds(primaryStep, profile) ?: return null
+        val totalWeight = hrSamples.sumOf { it.dtSec.coerceAtLeast(1.0) }.coerceAtLeast(1.0)
+        val inZoneWeight = hrSamples
+            .filter { (it.sample.hr ?: 0.0) in (minBpm - 3).toDouble()..(maxBpm + 3).toDouble() }
+            .sumOf { it.dtSec.coerceAtLeast(1.0) }
+        return ((inZoneWeight / totalWeight) * 100.0).coerceIn(0.0, 100.0)
+    }
+
+    private fun resolveTargetHrBounds(
+        step: PlannedStepTarget?,
+        profile: ExecutionHrZoneProfile
+    ): Pair<Int, Int>? {
+        if (step?.targetHrMinBpm != null && step.targetHrMaxBpm != null) {
+            return step.targetHrMinBpm to step.targetHrMaxBpm
+        }
+        val intent = step?.stepIntent ?: return null
+        return when (intent) {
+            RunningStepIntent.RECOVERY -> profile.z1FloorBpm to (profile.z2FloorBpm - 1)
+            RunningStepIntent.WARMUP,
+            RunningStepIntent.COOLDOWN,
+            RunningStepIntent.AEROBIC_EASY -> profile.z1FloorBpm to (profile.z3FloorBpm - 1)
+            RunningStepIntent.STEADY -> profile.z2FloorBpm to (profile.z4FloorBpm - 1)
+            RunningStepIntent.TEMPO,
+            RunningStepIntent.RACE_PACE -> profile.z3FloorBpm to (profile.z5FloorBpm - 1)
+            RunningStepIntent.THRESHOLD -> profile.z4FloorBpm to (profile.z5FloorBpm - 1)
+            RunningStepIntent.VO2_INTERVAL,
+            RunningStepIntent.HILL,
+            RunningStepIntent.STRIDE -> profile.z4FloorBpm to (profile.maxHrBpm ?: 240)
+        }
+    }
+
+    private fun computeAerobicDecouplingPct(
+        session: PlannedSession,
+        timeline: List<IndexedSample>,
+        profile: ExecutionHrZoneProfile?,
+        actualDurationSec: Double?
+    ): Double? {
+        if (profile == null || session.quality || timeline.size < 20) return null
+        if ((actualDurationSec ?: 0.0) < 1800.0 && (session.minutes < 30)) return null
+        val paired = timeline.filter {
+            val p = it.sample.pace
+            val hr = it.sample.hr
+            p != null && p.isFinite() && p in 120.0..1200.0 &&
+                hr != null && hr.isFinite() && hr > 40.0
+        }
+        if (paired.size < 20) return null
+        val startT = paired.first().sample.seconds
+        val endT = paired.last().sample.seconds
+        if (endT - startT < 1200.0) return null
+        val midT = startT + (endT - startT) / 2.0
+
+        val firstHalf = paired.filter { it.sample.seconds <= midT }
+        val secondHalf = paired.filter { it.sample.seconds > midT }
+        val ef1 = efficiencyFactor(firstHalf) ?: return null
+        val ef2 = efficiencyFactor(secondHalf) ?: return null
+        if (ef1 <= 0.0) return null
+        return ((ef1 - ef2) / ef1) * 100.0
+    }
+
+    private fun efficiencyFactor(samples: List<IndexedSample>): Double? {
+        if (samples.size < 5) return null
+        val totalW = samples.sumOf { it.dtSec.coerceAtLeast(1.0) }.coerceAtLeast(1.0)
+        val avgSpeedMps = samples.sumOf {
+            (1000.0 / it.sample.pace!!) * it.dtSec.coerceAtLeast(1.0)
+        } / totalW
+        val avgHr = samples.sumOf {
+            it.sample.hr!! * it.dtSec.coerceAtLeast(1.0)
+        } / totalW
+        return if (avgHr > 0.0) avgSpeedMps / avgHr else null
+    }
+
+    private fun buildInsufficientSummary(session: PlannedSession): String =
+        "${session.title} lacks distance and duration telemetry for execution grading."
+
+    private fun buildCoachingSummary(
+        session: PlannedSession,
+        verdict: ExecutionVerdict,
+        plannedKm: Double?,
+        actualKm: Double?,
+        plannedMinutes: Int?,
+        actualMinutes: Double?,
+        targetPaceMin: Int?,
+        targetPaceMax: Int?,
+        actualWorkPace: Double?,
+        elevationGainM: Double?,
+        decouplingPct: Double?
+    ): String {
+        val volumeText = when {
+            plannedKm != null && actualKm != null ->
+                String.format(Locale.US, "%.1f/%.1f km", actualKm, plannedKm)
+            plannedMinutes != null && actualMinutes != null ->
+                String.format(Locale.US, "%.0f/%d min", actualMinutes, plannedMinutes)
+            actualKm != null -> String.format(Locale.US, "%.1f km", actualKm)
+            else -> "recorded distance"
+        }
+        val actualPaceText = actualWorkPace?.let(::formatPace) ?: "unrecorded pace"
+        val targetBandText = when {
+            targetPaceMin != null && targetPaceMax != null ->
+                "${formatPace(targetPaceMin.toDouble())}ΓÇô${formatPace(targetPaceMax.toDouble())}"
+            targetPaceMax != null -> formatPace(targetPaceMax.toDouble())
+            targetPaceMin != null -> formatPace(targetPaceMin.toDouble())
+            else -> null
+        }
+
+        val sentence1 = when (verdict) {
+            ExecutionVerdict.ON_TARGET ->
+                if (elevationGainM != null && session.runningPrescription?.family == "Hills") {
+                    "${session.title} hit target ($volumeText, ${elevationGainM.roundToInt()} m climb)."
+                } else if (targetBandText != null) {
+                    "${session.title} hit target at $actualPaceText (goal $targetBandText) over $volumeText."
+                } else {
+                    "${session.title} hit target over $volumeText."
+                }
+            ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST ->
+                if (targetBandText != null) {
+                    "${session.title} ran too fast at $actualPaceText vs. $targetBandText over $volumeText."
+                } else {
+                    "${session.title} ran faster than prescribed effort over $volumeText."
+                }
+            ExecutionVerdict.INTENSITY_MISMATCH_TOO_SLOW ->
+                if (targetBandText != null) {
+                    "${session.title} was slower than goal ($actualPaceText vs. $targetBandText) over $volumeText."
+                } else {
+                    "${session.title} missed target pace over $volumeText."
+                }
+            ExecutionVerdict.VOLUME_ONLY_MATCH ->
+                if (targetBandText != null) {
+                    "${session.title} covered $volumeText, but work stayed easy at $actualPaceText (goal $targetBandText)."
+                } else {
+                    "${session.title} covered $volumeText without hitting the prescribed work stimulus."
+                }
+            ExecutionVerdict.PARTIALLY_EXECUTED ->
+                "${session.title} finished short at $volumeText ($actualPaceText)."
+            ExecutionVerdict.INSUFFICIENT_TELEMETRY ->
+                buildInsufficientSummary(session)
+        }
+
+        val sentence2 = when {
+            verdict == ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST && !session.quality ->
+                "Keep aerobic days controlled so key sessions stay sharp."
+            verdict == ExecutionVerdict.VOLUME_ONLY_MATCH ->
+                "Credit the aerobic volume, while noting the target quality stimulus did not register."
+            decouplingPct != null ->
+                String.format(Locale.US, "Aerobic decoupling (Pa:Hr) was %.1f%%.", decouplingPct)
+            else -> null
+        }
+        return if (sentence2 != null) "$sentence1 $sentence2" else sentence1
+    }
+
+    private fun formatPace(secondsPerKm: Double): String {
+        val total = secondsPerKm.roundToInt().coerceAtLeast(1)
+        val min = total / 60
+        val sec = total % 60
+        return String.format(Locale.US, "%d:%02d/km", min, sec)
+    }
+
+    private fun round1(v: Double): Double = kotlin.math.round(v * 10.0) / 10.0
+    private fun round2(v: Double): Double = kotlin.math.round(v * 100.0) / 100.0
+}

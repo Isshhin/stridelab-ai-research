@@ -1,0 +1,101 @@
+SOURCE: ENGINE15_EXECUTION.md
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 9
+LINES: 372-467
+--------------------------------------------------
+- Confirmed the accepted/dismissed fixture root cause in `Engine15Feedback.preview`: a target must be after `asOf`, and source-to-target spacing must be 1ΓÇô4 days. The former source (yesterday) to target (next Monday) was six days on 2026-11-18. Replaced it with dates relative to `feedbackAsOf = LocalDate.now()`: source yesterday and target two days ahead (three-day spacing), valid whichever weekday the harness runs. Preview and staging use the same `feedbackAsOf`. Production eligibility was not changed.
+- Strengthened the synthetic semantics: accepted remains marked accepted; dismissal leaves no pending suggestion and persists a `Workout quality` dismissal feedback record for `future-run`. The evidence remains an explicitly completed synthetic source run with a high-effort log.
+- Built the final debug app and instrumentation APKs. External process-death harness passed **8/8 scenarios** on verified disposable `codex-engine15-quality-clean-20261118` (Android 15/API 35, emulator-5554): draft, approved, equal, completed, feedback, accepted, dismissed, activity-label. Each case reported prepare pass, process absent after force-stop, normal launcher relaunch, and offline verifier pass. No physical device was connected to or used by the test commands.
+- Focused JVM: `Engine15FeedbackTest` **11 passed, 0 failed/skipped**. APKs: `assembleDebug`, `assembleDebugAndroidTest`, and `assembleRelease` succeeded. Release `BuildConfig` has `ENGINE15_INDEPENDENT_RUNNING_ACTIVE = false`; release generation remains disabled.
+- Additional class shards on the same disposable AVD: `Engine1RepositoryTest` + `Engine15FeedbackRepositoryTest` + `LocalPlanRepositoryTest` + `TrainingRepositoryTest`: **69 passed**; `Engine15CoachControlsTest`: **15 passed**; `PlanBuilderRouteRestorationTest`: **1 passed**; `TracksideApprovedBuilderActivityUiTest`: **15 passed**; `TracksideEngineBuilderIntegrationTest`: **2 passed**; focused `TracksideResponsiveQaTest.builderGeneratesFromAvailabilityWithoutRedundantBlueprintPage`: **1 passed**; calendar-management classes `TracksideManagePlanTest`, `TracksideTrainingCalendarUiTest`, and `TracksideManageNavigationTest`: **4 passed**.
+- The builder integration test was aligned with the configured route: it now checks the independent running policy and preview sessions when the debug candidate flag is on, and retains the historical Engine 1.5 assertions when that flag is off. This removes two stale legacy-generator assertions without changing app behavior; both integration cases pass on the candidate APK.
+- Broader `TracksideResponsiveQaTest`: **25/28 passed, 3 failed**. `runningWeekLayoutKeepsWeekdayEditingUsable` reports a weekly-summary/legend overlap. `engine15WeekPreviewSeparatesRequestedStateFromGeneratedNineSessionDraft` and `engine15DraftApprovalAgendaUsesCompactNineSessionRowsAndClearsNavigation` fail before rendering because the shared synthetic mixed-plan fixture supplies 35 km/week with `LEGACY_UNSPECIFIED` mileage provenance; the active independent route rejects that ambiguous baseline. This fixture was left unchanged after a direct correction would require a separately valid combined-plan/exercise/schedule fixture. No assertion was weakened. Other unsharded instrumentation classes and the full Android suite remain unrun.
+- The eight-scenario restart harness and targeted acceptance are complete. Remaining Android blockers are the one responsive layout assertion, the two legacy mixed-plan fixtures, and unrun instrumented classes/full manual Plan Builder walkthrough. Batch 28 remains paused; PR #141 and all stacked parents remain unmerged.
+
+## Batch 28 ΓÇö Stage 2 Workout Selection & Library (`INTERVALS` + Goal-Aware Family Selection) (2026-11-21)
+
+- Added `WorkoutTarget.INTERVALS` and `IndependentQualityFamily.INTERVALS` across the Engine 1.5 independent pipeline (`IndependentWorkout.kt`, `IndependentQualityTemplates.kt`, `IndependentQualityFitnessAdapter.kt`, `Engine15M5TimedDistanceReconciler.kt`, `Engine15I5TimedDistanceFeasibility.kt`, `IndependentTimedQualityDistanceReconciliation.kt`, `Engine15QualityFamilySelection.kt`, `Engine15QualityWorkoutDryRun.kt`, `Engine15IndependentPlanGenerator.kt`).
+- Added M2 `INTERVALS` templates: `INTRO` (`10 min easy WU + 4 ├ù 2 min INTERVALS / 2 min easy recovery + 8 min easy CD`, 480 s work, 360 s recovery, 1920 s total) and `EXTENDED` (`10 min easy WU + 5 ├ù 3 min INTERVALS / 2 min easy recovery + 10 min easy CD`, 900 s work, 480 s recovery, 2580 s total), plus `IndependentQualityFitnessAdapter` enumeration (3ΓÇô8 repeats of 1ΓÇô4 min hard intervals with 2 min easy recovery).
+- Broadened provisional goal/experience family selection without silent substitution: experienced `Improve 5K` ΓåÆ `INTERVALS`, experienced `Improve 10K` / `Half marathon` ΓåÆ `THRESHOLD`, `Aerobic foundation` / `Marathon` and experience `0..1` ΓåÆ `TEMPO`; explicit user preference and `allowedQualityTypes` support `Tempo`, `Threshold`, and `Intervals`, while unsupported families (e.g. `Fartlek`) remain explicitly `UNSUPPORTED`.
+- Wired `INTERVALS` through the debug-only dry-run, M5C per-segment distance reconciliation, pace-plausibility checks, perceived-effort cues, and `validateSaved` integrity boundaries. Release BuildConfig flags remain `false`; no Engine 1.0 fallback was added.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,131 passed, 0 failed, 0 errors, 1 skipped** (total 1,132).
+  - Rollback JVM (`-PstrideEngine15Active=false -PstrideEngine15IndependentRunningActive=false`): **1,128 passed, 0 failed, 0 errors, 4 skipped** (total 1,132).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 29 ΓÇö Stage 3 Evidence-Bounded Dosage & Multi-Week Progression (2026-11-21)
+
+- Added `Engine15QualityProgressionPolicy.kt` (`stridelab.engine15.quality-progression-v1`) defining discrete, auditable multi-week quality dosage ladders for `TEMPO`, `THRESHOLD`, and `INTERVALS`:
+  - Without repeated same-family exposure (`REPEATED_DEVICE_RECORDS_ASSERTED`), holds at the conservative `INTRO` dose across all loading weeks (`HOLD_NO_REPEATED_EXPOSURE`); elapsed weeks alone never escalate quality work.
+  - With repeated same-family exposure, advances boundedly across loading mesocycles, strictly capped by `assertedRepeatedWorkSeconds + 240 s`, family ceilings, available session time (`TIME_BUDGET_CAPPED`), and race-taper reductions (`RACE_TAPER_REDUCTION`) on the final loading week for race goals (`Improve 5K`, `Improve 10K`, `Half marathon`, `Marathon`).
+- Extended debug-only experimental quality dry-run and drafting from 8 weeks to **8ΓÇô16 weeks** across `TEMPO`, `THRESHOLD`, and `INTERVALS`, with per-week segment reconciliation in `Engine15QualityWorkoutDryRun.kt` and `Engine15IndependentPlanGenerator.kt`.
+- Added optional `experimentalQualityExposureSeconds: Int? = null` on `PlanSnapshot` (encoded only when non-null) so `PlanOperations.approve` and `Engine15IndependentPlanGenerator.validateSaved` deterministically replay and validate progressive quality drafts offline without requiring ephemeral in-memory evidence.
+- Added `Engine15QualityProgressionPolicyTest.kt` (6 tests covering absent-exposure hold across 16 weeks, bounded Threshold progression + race taper, non-taper Aerobic foundation, session time-budget capping, 12-week progressive Threshold approval/validation round-trip, and 16-week Marathon Tempo horizon/recovery-week exclusion).
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,137 passed, 0 failed, 0 errors, 1 skipped** (total 1,138).
+  - Rollback JVM (`-PstrideEngine15Active=false -PstrideEngine15IndependentRunningActive=false`): **1,132 passed, 0 failed, 0 errors, 6 skipped** (total 1,138).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 30 ΓÇö Stage 4 Complete-Plan Robustness & Scenario Matrix (2026-11-21)
+
+- Added `Engine15CompletePlanRobustnessMatrixTest.kt` verifying end-to-end Engine 1.5 complete-plan integrity across:
+  - 20 horizon/frequency/goal combinations (`8, 10, 12, 16` weeks ├ù `2..6` running days ├ù all 5 running goals ├ù experience `0..2`): deterministic repeatability, exact daily/weekly mileage reconciliation, recovery-week cadence, long-run weekday placement, `PlanOperations.approve`, `PlanSnapshot` JSON round-trip, and `validateSaved`.
+  - 9 progressive quality combinations (`INTERVALS`, `THRESHOLD`, `TEMPO` ├ù `8, 12, 16` weeks with repeated asserted exposure): exact 1:1 distance replacement against easy-only base plans, recovery-week exclusion, ΓëÑ2-day quality-to-long-run spacing, race-taper holds on the final loading week, exposure-anchor persistence, and `validateSaved`.
+  - Multi-discipline external interference: hard lower-body strength on an adjacent non-running day blocks Tuesday quality (`QUALITY_SLOT_UNAVAILABLE`) while upper-body strength on the same day permits it.
+  - Adversarial tampering rejection: out-of-range or removed `experimentalQualityExposureSeconds` is rejected by `validateSaved`.
+- Extended `Engine15IndependentPlanGeneratorTest.independentGenerationCallGraphContainsNoLegacyPlannerCalls` to guard `Engine15QualityProgressionPolicy.kt` and `Engine15QualityWorkoutDryRun.kt` against any Engine 1.0 dependency.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,141 passed, 0 failed, 0 errors, 1 skipped** (total 1,142).
+  - Rollback JVM (`-PstrideEngine15Active=false -PstrideEngine15IndependentRunningActive=false`): **1,134 passed, 0 failed, 0 errors, 8 skipped** (total 1,142).
+  - APK builds: `:app:assembleDebug` and `:app:assembleRelease` **PASSED**; verified release `BuildConfig.ENGINE15_ACTIVE = false` and `ENGINE15_INDEPENDENT_RUNNING_ACTIVE = false`.
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 31 ΓÇö Stage 5 Automatic Workout Detection & Evidence Bridge (2026-11-21)
+
+- Added `Engine15WorkoutDetection.kt` (`stridelab.engine15.workout-detection-v1`) providing:
+  - Deterministic Garmin duplicate consolidation via `ActivityDisplayConsolidation` with `mergedSourceIds` tracking.
+  - Plan-intent linkage via `ActivityWorkoutIntelligence` (`LINKED_PLAN_INTENT` / `INTENT_LINKED_UNVERIFIED`) with fail-closed `AMBIGUOUS_CONFLICT` (`AMBIGUOUS_PLAN_LINKAGE`) when multiple sessions claim the same activity.
+  - Heuristic lap-structure classification (`INTERVALS`, `THRESHOLD`, `TEMPO`, `LONG_RUN`) strictly tagged `HEURISTIC_CANDIDATE` (never claiming verified physiological zones or unlabelled lap truth), defaulting to `UNKNOWN` (`INSUFFICIENT_SIGNAL`) when signal is absent.
+  - Reversible user overrides (`USER_OVERRIDE` / `USER_ASSERTED`) preserving `underlyingAutomaticKind` and `underlyingAutomaticSubtype` so removing a label cleanly reverts to automatic detection.
+  - Auditable `toQualitySegmentEvidence` bridge that converts only user-overridden or unambiguously plan-linked quality workouts with valid work segments into `IndependentQualitySegmentEvidence` (excluding unconfirmed heuristics and ambiguous conflicts; `sourceEvidenceVerified = false`).
+- Added `Engine15WorkoutDetection.kt` to the `Engine15IndependentPlanGeneratorTest` legacy-call-graph guard and added `Engine15WorkoutDetectionTest.kt`.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,144 passed, 0 failed, 0 errors, 1 skipped** (total 1,145).
+  - Rollback JVM (`-PstrideEngine15Active=false -PstrideEngine15IndependentRunningActive=false`): **1,137 passed, 0 failed, 0 errors, 8 skipped** (total 1,145).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 32 ΓÇö Stage 6 Auditable Athlete Effort Baselines (2026-11-21)
+
+- Added `Engine15AthleteEffortBaseline.kt` (`stridelab.engine15.athlete-effort-baseline-v1`) building auditable 28-day volume, confirmed easy/recovery pace & HR medians, per-family quality exposure summaries (`TEMPO`, `THRESHOLD`, `INTERVALS`), and pass-through `ActivitySourceHeartRateZones` with explicit `Engine15BaselineMetricStatus` (`AVAILABLE_REPEATED`, `SPARSE_SINGLE_OBSERVATION`, `MISSING_DATA`) and `Engine15HistoryCoverage`.
+- Enforces strict missing-data semantics: absent history is never treated as confirmed inactivity or poor fitness, physiological thresholds are never fabricated, and unconfirmed heuristic lap-structure candidates are reported separately without being promoted into progression exposure.
+- Added `Engine15AthleteEffortBaseline.kt` to the legacy-call-graph architecture guard and added `Engine15AthleteEffortBaselineTest.kt`.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,146 passed, 0 failed, 0 errors, 1 skipped** (total 1,147).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 33 ΓÇö Stage 7 History-Informed Initial Planning (2026-11-21)
+
+- Added `Engine15HistoryInformedPlanning.kt` (`stridelab.engine15.history-informed-initial-plan-v1`) bridging Stages 5 & 6 (`Engine15WorkoutDetection`, `Engine15AthleteEffortBaselineBuilder`, and `ActivityAthleteEvidence`) into `Engine15IndependentPlanGenerator.preview(...)` for static initial plan generation (Engine 1.5 only; zero Engine 2.x post-start adaptation).
+- Produces source-labeled `Engine15HistoryAdvisory` records (`MISSING_HISTORY_PRESERVES_MANUAL_INPUT`, `RECORDED_VOLUME_BELOW_DECLARED`, `RECORDED_LONGEST_RUN_SUPPORTS_BASELINE`, `CONFIRMED_QUALITY_EXPOSURE_ENABLES_BOUNDED_PROGRESSION`, `NO_CONFIRMED_QUALITY_EXPOSURE_HOLDS_INTRO`) without silently overriding manual inputs or penalizing missing device history.
+- Added `Engine15HistoryInformedPlanning.kt` to the legacy-call-graph architecture guard and added `Engine15HistoryInformedPlanningTest.kt`.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,148 passed, 0 failed, 0 errors, 1 skipped** (total 1,149).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 34 ΓÇö Stage 8 Read-Only Advisory Marathon TID Research Evaluator (2026-11-21)
+
+- Added `Engine15MarathonTidEvaluator.kt` (`stridelab.engine15.marathon-tid-evaluator-v1`): read-only advisory 3-zone Training Intensity Distribution evaluator (`LOW_INTENSITY_ONLY`, `PYRAMIDAL`, `POLARIZED`, `HIGH_INTENSITY_HEAVY`, `INCOMPLETE_PRESCRIPTION_DATA`) computed strictly from explicit prescription segment meters / `distanceEquivalentMeters` without mutating plans or fabricating physiological zones.
+- Surfaces weekly long-run share advisories (>40% single-session exposure on ΓëÑ4-day plans), short marathon horizon (<12 weeks) advisories, and unclassified volume accounting whenever quality segments lack distance equivalents.
+- Added `Engine15MarathonTidEvaluator.kt` to the legacy-call-graph architecture guard and added `Engine15MarathonTidEvaluatorTest.kt`.
+- **Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,151 passed, 0 failed, 0 errors, 1 skipped** (total 1,152).
+  - Android instrumentation and physical/emulator device walkthrough: **NOT RUN** in this batch.
+
+## Batch 35 ΓÇö Stage 9 Multi-Discipline Refinement, Stabilization & Release-Route Verification (2026-11-21)
+
+- Added `Engine15MultiDisciplineStabilizationTest.kt` verifying end-to-end Engine 1.5 independent multi-discipline generation, approval, JSON round-trip, and `validateSaved`:
+  - Solo 8-week Strength (`ENGINE15_INDEPENDENT_STRENGTH_POLICY`), Calisthenics (`ENGINE15_INDEPENDENT_CALISTHENICS_POLICY`), and Conditioning (`ENGINE15_INDEPENDENT_CONDITIONING_POLICY`) plans using the offline `ExerciseLibraryV2` catalog.
+  - 2-discipline combined plans (`run + str`, `run + cal` with explicit `allowDoubleDays = true`, and `run + cond`).
+  - Full 4-discipline combined plan (`run + str + cal + cond`, 5 sessions/week across 8 weeks) AND fail-closed `ENGINE15_COMBINED_SCHEDULE_CONFLICT` rejection when a 4th weekly hard session makes ΓëÑ2-day hard-session spacing impossible in a 7-day cycle.
+- **Final Verification (JBR 21.0.11 / Gradle 8.13):**
+  - Candidate JVM (`-PstrideEngine15Active=true -PstrideEngine15IndependentRunningActive=true`): **1,154 passed, 0 failed, 0 errors, 1 skipped** (total 1,155).

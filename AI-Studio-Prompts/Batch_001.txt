@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part005.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part006.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part007.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part008.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part009.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/ENGINE15_EXECUTION_part010.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-batch-b_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-batch-b2-multisession_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-batch-b3_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-batch-b4_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-batch-b5_part001.txt

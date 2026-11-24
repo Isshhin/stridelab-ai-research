@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentQualityTemplates_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentResearchDraft_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentResearchScenarioRunner_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentRunWeekComposer_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentRunningHistory_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentTimedQualityDistanceReconciliation_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentWeeklyEvidenceLedger_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentWeeklyMileagePlanner_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentWeeklyProgramReview_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentWorkout_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/IndependentWorkoutComposition_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/PlanScheduleValidation_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/RunningHistoryCoverage_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part002.txt

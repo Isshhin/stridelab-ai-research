@@ -1,0 +1,316 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 311-621
+--------------------------------------------------
+                session.swaps.isNotEmpty() || session.difficultyStep < 0 || session.runnerSupportDose != null
+            ) return@map session
+            val reduced = Engine15WorkoutDifficultyAdjuster.adjust(session, plan.request, -1)
+            if (reduced.minutes > session.minutes || reduced.exercises == session.exercises) return@map session
+            changed += session to reduced
+            reduced
+        }
+        if (changed.isEmpty()) return null
+        val candidate = plan.copy(sessions = sessions)
+        val raw = candidate.encode().toString()
+        if (runCatching {
+            val restored = PlanSnapshot.decode(JSONObject(raw), plan.owner)
+            require(restored.encode().toString() == raw)
+            Engine15IndependentPlanGenerator.validateSaved(restored)
+        }.isFailure) return null
+        fun dose(session: PlannedSession): String = when {
+            session.kind == "structured-plyometrics" ->
+                "${session.exercises.filter { it.id in setOf("pogo-hop", "line-bound") }.sumOf { it.sets * (it.reps ?: 0) }} ground contacts"
+            session.discipline == "cond" -> "${session.exercises.sumOf { it.sets * (it.seconds ?: 0) }} seconds of work"
+            else -> "${session.exercises.sumOf { it.sets }} sets, ${session.exercises.sumOf { it.sets * (it.reps ?: 0) }} reps, " +
+                "${session.exercises.sumOf { it.sets * (it.seconds ?: 0) }} hold seconds"
+        }
+        val weeks = changed.groupBy { weekIndexOf(plan.request.start, it.first.date) }.map { (week, changes) ->
+            AdaptationWeekDiff(week, "Scheduled", "Reduced exposure", 0.0, 0.0,
+                changes.count { it.first.quality }, changes.count { it.second.quality },
+                changes.joinToString("\n") { (before, after) -> "${before.date} ┬╖ ${before.title}: ${dose(before)} ΓåÆ ${dose(after)}" })
+        }
+        val title = if (missed) "Resume training with less volume" else "Reduce upcoming training volume"
+        val evidence = if (missed) "missed sessions" else "sessions marked as fatiguing or logged at high effort"
+        return PlanAdaptationProposal(
+            proposalId = java.util.UUID.nameUUIDFromBytes("${plan.id}:$type:$fingerprint:${plan.revision}".toByteArray()).toString(),
+            planId = plan.id, type = type, status = AdaptationProposalStatus.PENDING,
+            createdAtDate = today, effectiveFromDate = start, expiresAtDate = today.plusDays(PROPOSAL_EXPIRY_DAYS),
+            disruptionTier = DisruptionTier.NONE, disruptionFingerprint = fingerprint,
+            sourceDiagnosticDate = today, sourceConfidence = DiagnosticConfidence.MODERATE,
+            title = title,
+            coachingRationale = "${sources.values.sumOf { it.size }} $evidence. Reduce ${changed.size} upcoming sessions in place. No missed work is added.",
+            diff = PlanAdaptationDiff(start, changed.size, 0.0, 0.0, weeks, emptyList(), true, emptyList()),
+            candidatePlanJson = raw, reasonCodes = listOf("NON_RUNNING_RECOVERY")
+        )
+    }
+
+    fun applyProposal(
+        currentPlan: PlanSnapshot,
+        proposal: PlanAdaptationProposal,
+        asOfDate: LocalDate
+    ): ApplyResult {
+        require(proposal.planId == currentPlan.id) { "Proposal belongs to a different plan." }
+        require(proposal.status == AdaptationProposalStatus.PENDING) {
+            "Only a PENDING adaptation proposal can be applied."
+        }
+        require(!asOfDate.isAfter(proposal.expiresAtDate)) {
+            "This adaptation proposal expired on ${proposal.expiresAtDate}."
+        }
+        val candidateRaw = proposal.candidatePlanJson
+            ?: throw PlanConstraint("${proposal.type} is an advisory notice and cannot modify the plan.")
+
+        val decodedCandidate = PlanSnapshot.decode(JSONObject(candidateRaw), currentPlan.owner)
+        val disciplineRecovery = "NON_RUNNING_RECOVERY" in proposal.reasonCodes
+        val supportDose = proposal.type == AdaptationType.RUNNER_SUPPORT_DOSE
+        if (supportDose) {
+            require(currentPlan.status == "approved" && RunnerSupportSchedule.supports(currentPlan) &&
+                decodedCandidate.copy(sessions = currentPlan.sessions) == currentPlan &&
+                decodedCandidate.sessions.map { it.id } == currentPlan.sessions.map { it.id })
+            val changed = currentPlan.sessions.zip(decodedCandidate.sessions).single { (before, after) -> before != after }
+            val (before, after) = changed
+            val mode = after.runnerSupportDose
+            require(supportCanAdjust(before, currentPlan) && before.date == proposal.effectiveFromDate && before.date > asOfDate &&
+                (mode == RunnerSupportDose.LIGHT && after.minutes <= before.minutes ||
+                    mode == RunnerSupportDose.PROGRESS && before.runnerSupportDose == RunnerSupportDose.ENTRY))
+            require(after == supportDoseFor(currentPlan, before, requireNotNull(mode)))
+            Engine15IndependentPlanGenerator.validateSaved(decodedCandidate)
+        }
+        if (disciplineRecovery) {
+            require(decodedCandidate.revision == currentPlan.revision && currentPlan.status == "approved") {
+                "The saved plan or review date changed. Reopen the adjustment."
+            }
+            Engine15IndependentPlanGenerator.validateSaved(decodedCandidate)
+            require(decodedCandidate.copy(sessions = currentPlan.sessions) == currentPlan &&
+                decodedCandidate.sessions.map { it.id } == currentPlan.sessions.map { it.id } &&
+                currentPlan.sessions.zip(decodedCandidate.sessions).all { (before, after) ->
+                    before == after || before.discipline != "run" && before.status == "planned" &&
+                        before.date >= proposal.effectiveFromDate && before.date > asOfDate && before.linkedActivityId == null &&
+                        before.log == null && before.suggestion == null && before.id !in currentPlan.request.lockedSessionDays &&
+                        before.swaps.isEmpty() && before.difficultyStep >= 0 && after.minutes <= before.minutes &&
+                        after == Engine15WorkoutDifficultyAdjuster.adjust(before, currentPlan.request, -1)
+                }) { "The reviewed change no longer matches the current workout prescriptions." }
+        }
+        val mergedSessions = decodedCandidate.sessions.map { candidateSession ->
+            val live = currentPlan.sessions.find { it.id == candidateSession.id }
+            if (live != null && (live.status == "completed" || live.linkedActivityId != null || live.date.isBefore(proposal.effectiveFromDate))) {
+                live
+            } else {
+                candidateSession
+            }
+        }
+        val candidatePlan = decodedCandidate.copy(
+            sessions = mergedSessions,
+            revision = currentPlan.revision + 1
+        )
+        val linkedIds = currentPlan.sessions.mapNotNull { if (it.linkedActivityId != null) it.id else null }.toSet()
+        val trailingLongest = currentPlan.request.longestKm ?: 10.0
+        val gate = if (disciplineRecovery || supportDose) ValidationOutcome(true, emptyList()) else validateCandidatePlan(
+            originalPlan = currentPlan,
+            candidatePlan = candidatePlan,
+            effectiveFromDate = proposal.effectiveFromDate,
+            trailing30dLongestKm = trailingLongest,
+            linkedSessionIds = linkedIds,
+            futureEngineValidationPlan = null,
+            allowZeroMakeUpCheck = true
+        )
+        require(gate.passed) {
+            "Adaptation failed safety invariant validation: ${gate.warnings.joinToString("; ")}"
+        }
+
+        val revision = PlanAdaptationRevision(
+            revisionId = "rev-${proposal.proposalId}-$asOfDate",
+            planId = currentPlan.id,
+            proposalId = proposal.proposalId,
+            appliedAtDate = asOfDate,
+            adaptationType = proposal.type,
+            previousPlanJson = currentPlan.encode().toString(),
+            appliedPlanJson = candidatePlan.encode().toString(),
+            revertedAtDate = null
+        )
+        val cooldownDays = if (proposal.type in setOf(
+                AdaptationType.PACE_RECALIBRATION_UP,
+                AdaptationType.PACE_RECALIBRATION_DOWN
+            )
+        ) PACE_COOLDOWN_DAYS else DISRUPTION_DISMISS_COOLDOWN_DAYS
+
+        val cooldown = AdaptationCooldownRecord(
+            planId = currentPlan.id,
+            adaptationType = proposal.type,
+            lastActionStatus = AdaptationProposalStatus.APPLIED,
+            actionDate = asOfDate,
+            cooldownUntilDate = asOfDate.plusDays(cooldownDays),
+            disruptionFingerprint = proposal.disruptionFingerprint
+        )
+        return ApplyResult(
+            appliedPlan = candidatePlan,
+            revision = revision,
+            updatedProposal = proposal.copy(status = AdaptationProposalStatus.APPLIED),
+            cooldown = cooldown
+        )
+    }
+
+    fun revertRevision(
+        currentPlan: PlanSnapshot,
+        revision: PlanAdaptationRevision,
+        asOfDate: LocalDate
+    ): RevertResult {
+        require(revision.planId == currentPlan.id) { "Revision belongs to a different plan." }
+        require(revision.revertedAtDate == null) { "Revision was already reverted." }
+
+        val restoredBase = PlanSnapshot.decode(JSONObject(revision.previousPlanJson), currentPlan.owner)
+        val appliedBase = PlanSnapshot.decode(JSONObject(revision.appliedPlanJson), currentPlan.owner)
+        val previousById = restoredBase.sessions.associateBy { it.id }
+        val adjusted = appliedBase.sessions.filter { previousById[it.id] != it }.associateBy { it.id }
+        if (adjusted.isNotEmpty() && adjusted.values.all { it.discipline != "run" }) {
+            val sessions = currentPlan.sessions.map { live ->
+                val applied = adjusted[live.id] ?: return@map live
+                // An intervening log or edit owns the live prescription and its history.
+                if (live != applied || live.date.isBefore(asOfDate)) live
+                else previousById.getValue(live.id)
+            }
+            val restored = currentPlan.copy(sessions = sessions, revision = currentPlan.revision + 1)
+            Engine15IndependentPlanGenerator.validateSaved(restored)
+            return RevertResult(restored, revision.copy(revertedAtDate = asOfDate.toString()))
+        }
+        val liveById = currentPlan.sessions.associateBy { it.id }
+        val restoredSessions = restoredBase.sessions.map { origSession ->
+            val live = liveById[origSession.id]
+            if (live != null && (live.status == "completed" || live.linkedActivityId != null || live.log != null || live.runResponse != null)) {
+                origSession.copy(
+                    status = live.status,
+                    linkedActivityId = live.linkedActivityId,
+                    linkPreviousStatus = live.linkPreviousStatus,
+                    log = live.log,
+                    runResponse = live.runResponse,
+                    logRevision = maxOf(origSession.logRevision, live.logRevision)
+                )
+            } else {
+                origSession
+            }
+        }
+        val restoredPlan = restoredBase.copy(
+            sessions = restoredSessions,
+            revision = currentPlan.revision + 1
+        )
+        return RevertResult(
+            restoredPlan = restoredPlan,
+            updatedRevision = revision.copy(revertedAtDate = asOfDate.toString())
+        )
+    }
+
+    /**
+     * Mandatory Pre-Surface Invariant Gate enforcing:
+     * 1. Untouched Engine15IndependentPlanGenerator.validateSaved on any regenerated future sub-plan
+     * 2. Immutable past / completed / linked sessions
+     * 3. Exact weekly distance conservation (1e-6) and rx meter parity
+     * 4. Single run per day & >= 2-day hard spacing
+     * 5. Safe warm-up (>= 8 min) and cool-down (>= 5 min) bookends
+     * 6. 30-day single-session exposure bounds (when applicable)
+     * 7. Step 03 race taper preservation (taper stays TAPER, quality <= 1, volume never inflated)
+     * 8. Zero make-up cramming onto remaining days of the current partial week
+     * 9. Lossless PlanSnapshot JSON round-trip
+     */
+    fun validateCandidatePlan(
+        originalPlan: PlanSnapshot,
+        candidatePlan: PlanSnapshot,
+        effectiveFromDate: LocalDate,
+        trailing30dLongestKm: Double,
+        linkedSessionIds: Set<String>,
+        futureEngineValidationPlan: PlanSnapshot? = null,
+        allowZeroMakeUpCheck: Boolean = true,
+        reEntryWeekIndices: Set<Int> = emptySet()
+    ): ValidationOutcome {
+        val warnings = ArrayList<String>()
+
+        // 1. Untouched Engine 1.5 structural validation on regenerated future sub-plan (if supplied)
+        if (futureEngineValidationPlan != null) {
+            try {
+                Engine15IndependentPlanGenerator.validateSaved(futureEngineValidationPlan)
+            } catch (e: Exception) {
+                warnings += "ENGINE15_VALIDATE_SAVED_FAILED: ${e.message}"
+            }
+        }
+
+        // 2. Immutable past / completed / linked sessions
+        val origById = originalPlan.sessions.associateBy { it.id }
+        val candById = candidatePlan.sessions.associateBy { it.id }
+        for (orig in originalPlan.sessions) {
+            val isProtected = orig.date.isBefore(effectiveFromDate) ||
+                orig.status == "completed" ||
+                orig.linkedActivityId != null ||
+                orig.id in linkedSessionIds
+            if (isProtected) {
+                val cur = candById[orig.id]
+                if (cur != orig) {
+                    warnings += "IMMUTABLE_PAST_OR_LINKED_MUTATED:${orig.id}"
+                    break
+                }
+            }
+        }
+
+        // 3. Exact weekly distance conservation + per-session rx parity
+        for (s in candidatePlan.sessions.filter { it.discipline == "run" }) {
+            val rx = s.runningPrescription
+            if (rx != null && s.distanceKm != null) {
+                val rxMeters = rx.meters
+                val kmMeters = (s.distanceKm * 1000.0).roundToInt()
+                if (abs(rxMeters - kmMeters) > 1) {
+                    warnings += "SESSION_RX_DISTANCE_MISMATCH:${s.id}"
+                }
+                if (s.quality) {
+                    val steps = rx.mixedSegments
+                    if (steps != null) {
+                        val wuSec = steps.filter { it.purpose == "WARM_UP" }.sumOf { it.seconds ?: 0 }
+                        val cdSec = steps.filter { it.purpose == "COOL_DOWN" }.sumOf { it.seconds ?: 0 }
+                        if ((wuSec > 0 && wuSec < MIN_WARMUP_SECONDS) || (cdSec > 0 && cdSec < MIN_COOLDOWN_SECONDS)) {
+                            warnings += "QUALITY_BOOKEND_SAFETY_VIOLATION:${s.id}"
+                        }
+                    }
+                }
+            }
+        }
+
+        val candRuns = candidatePlan.sessions.filter { it.discipline == "run" && it.status !in setOf("missed", "skipped") }
+        // Single run per day
+        if (candRuns.groupBy { it.date }.values.any { it.size > 1 }) {
+            warnings += "MULTIPLE_RUNS_SAME_DAY"
+        }
+        // >= 2-day hard-session spacing
+        for (i in candRuns.indices) {
+            for (k in i + 1 until candRuns.size) {
+                if (Engine15IndependentPlanGenerator.conflict(candRuns[i], candRuns[k])) {
+                    warnings += "HARD_SESSION_SPACING_CONFLICT:${candRuns[i].id}:${candRuns[k].id}"
+                    break
+                }
+            }
+        }
+
+        // Exact weekly conservation against tenths sum
+        val byWeek = candRuns.groupBy { weekIndexOf(candidatePlan.request.start, it.date) }
+        for ((wk, sessions) in byWeek) {
+            val sumKm = sessions.sumOf { it.distanceKm ?: 0.0 }
+            val expectedTenthsKm = (sumKm * 10.0).roundToInt() / 10.0
+            if (abs(sumKm - expectedTenthsKm) > 1e-6) {
+                warnings += "WEEK_DISTANCE_NOT_CONSERVED:wk$wk"
+            }
+        }
+
+        // 6. 30-day single-session exposure guardrail on re-entry weeks
+        if (reEntryWeekIndices.isNotEmpty() && trailing30dLongestKm > 0.0) {
+            val exposureCap = maxOf(8.0, (trailing30dLongestKm * 1.10 * 10.0).roundToInt() / 10.0)
+            for (wk in reEntryWeekIndices) {
+                val wkMax = byWeek[wk].orEmpty().maxOfOrNull { it.distanceKm ?: 0.0 } ?: 0.0
+                if (wkMax > exposureCap + 0.05) {
+                    warnings += "REENTRY_EXPOSURE_CAP_EXCEEDED:wk$wk"
+                }
+            }
+        }
+
+        // 7. Taper preservation
+        val origPhases = resolveMacroPhases(originalPlan)
+        for ((wkNum, phase) in origPhases) {
+            if (phase != Engine15MacroPhase.TAPER) continue
+            val wkIdx = wkNum - 1
+            val origWkSessions = originalPlan.sessions.filter { weekIndexOf(originalPlan.request.start, it.date) == wkIdx }
+            val candWkSessions = byWeek[wkIdx].orEmpty()

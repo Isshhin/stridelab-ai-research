@@ -1,0 +1,61 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15DisciplineProgression.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 261-316
+--------------------------------------------------
+                (session.runnerSupportDose != null && (plan.request.timeBudgetEnabled && session.minutes > plan.request.minutes)) ||
+                base.copy(date = slot.date, runnerSupportPlacement = false, reason = slot.reason, status = slot.status, log = slot.log, missedReason = slot.missedReason,
+                    suggestion = slot.suggestion, linkedActivityId = slot.linkedActivityId, linkPreviousStatus = slot.linkPreviousStatus,
+                    swaps = slot.swaps, logRevision = slot.logRevision, runResponse = slot.runResponse) != slot ||
+                !Engine15WorkoutDifficultyAdjuster.matchesAdjusted(session, plan.request))
+                throw PlanConstraint("A saved prescription no longer matches its structured dose or calendar.")
+        }
+        if (!reschedule) checkSpacing(plan.sessions)
+        Engine15SessionLocks.validateOutput(plan.request, plan.sessions)
+    }
+
+    fun spacingConflict(a: PlannedSession, b: PlannedSession): Boolean {
+        if (!isStructured(a) && !isStructured(b)) return false
+        if (abs(ChronoUnit.DAYS.between(a.date, b.date)) >= 2) return false
+        fun hard(session: PlannedSession) = session.quality || session.kind == "long" ||
+            session.discipline != "run" && session.lower
+        return hard(a) && hard(b)
+    }
+
+    private fun checkSpacing(sessions: List<PlannedSession>) {
+        if (sessions.zipWithNext().any { (a, b) -> spacingConflict(a, b) })
+            throw PlanConstraint("Leave a full day between hard lower-body, speed and high intensity sessions.")
+    }
+}
+
+/** Separate builder tracks share the legacy resistance fields on disk. */
+internal fun strengthTrack(request: PlanRequest): String = when (request.disciplineGoal("str")) {
+    "Plyometrics" -> "plyo"
+    "Isometrics" -> "iso"
+    else -> "str"
+}
+
+internal fun chooseStrengthTrack(request: PlanRequest, track: String, deselect: Boolean): PlanRequest {
+    val goal = when (track) {
+        "plyo" -> "Plyometrics"
+        "iso" -> "Isometrics"
+        else -> "General strength"
+    }
+    return request.copy(
+        goal = when {
+            request.runDays > 0 -> request.goal
+            deselect && request.calDays > 0 -> request.disciplineGoal("cal")
+            deselect && request.conditioningDays > 0 -> request.disciplineGoal("cond")
+            deselect -> "General fitness"
+            else -> goal
+        },
+        strengthDays = if (deselect) 0 else 2,
+        disciplineGoals = if (deselect) request.disciplineGoals - "str"
+            else request.disciplineGoals + ("str" to goal),
+        weeklySlots = request.weeklySlots - "str"
+    )
+}
+
+internal fun plannedDisciplineLabel(session: PlannedSession): String =
+    if (session.discipline == "str" && session.title in setOf("Plyometrics", "Isometrics", "Strength for Runners"))
+        session.title else disciplineLabel(session.discipline)

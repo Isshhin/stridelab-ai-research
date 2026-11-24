@@ -1,0 +1,234 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/EngineContracts.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 227-455
+--------------------------------------------------
+internal data class PlannedSession(val id:String,val date:LocalDate,val discipline:String,val title:String,val minutes:Int,val distanceKm:Double?,val kind:String,val lower:Boolean=false,val quality:Boolean=false,
+    val exercises:List<ExercisePrescription> = emptyList(),val steps:List<String> = emptyList(),val reason:String="",val status:String="planned",val missedReason:String?=null,val log:WorkoutLog?=null,val suggestion:SessionSuggestion?=null,val linkedActivityId:String?=null,val linkPreviousStatus:String?=null,val swaps:List<ExerciseSwap> = emptyList(),val logRevision:Int=0,val runningPrescription:RunningPrescription?=null,val runResponse:WorkoutLog?=null,
+    val difficultyStep:Int=0,val difficultyBaseline:SessionDifficultyBaseline?=null,
+    val runnerSupportDose: RunnerSupportDose? = null, val runnerSupportPlacement: Boolean = false) {
+    init {
+        require(difficultyStep in -2..2)
+        require((difficultyStep==0)==(difficultyBaseline==null))
+        require(runnerSupportDose == null || discipline in setOf("str", "cal"))
+        require(!runnerSupportPlacement || discipline in setOf("str", "cal"))
+        runResponse?.let { require(discipline=="run" && it.minutes==null && it.distanceKm==null && it.qualityWorkKm==null && it.sets.isEmpty() && (it.effort==null || it.effort in 1..10)) }
+        runningPrescription?.let {
+            require(discipline=="run")
+            if(it.mixedSegments==null) {
+                require(distanceKm!=null && kotlin.math.abs(distanceKm*1000-it.meters)<0.001)
+            } else if(it.reconciledDistanceMeters!=null) {
+                require(distanceKm!=null && kotlin.math.abs(distanceKm*1000-it.reconciledDistanceMeters)<0.001)
+            } else {
+                // Pace-based estimate remains metadata only; it is not a target.
+                require(distanceKm==null)
+            }
+            require(quality==(it.role=="QUALITY"))
+        }
+    }
+    fun baselineSession():PlannedSession = difficultyBaseline?.let { base ->
+        copy(
+            title=base.title,
+            minutes=base.minutes,
+            distanceKm=base.distanceKm,
+            kind=base.kind,
+            quality=base.quality,
+            exercises=base.exercises,
+            steps=base.steps,
+            reason=base.reason,
+            runningPrescription=base.runningPrescription,
+            difficultyStep=0,
+            difficultyBaseline=null
+        )
+    } ?: this
+    val effectiveExercises get()=exercises.map { original -> swaps.find { it.originalId==original.id }?.replacement ?: original }
+    val effectiveMinutes get()=if(suggestion?.accepted==true) suggestion.minutes else minutes
+    val effectiveTitle get()=if(suggestion?.accepted==true) "Lighter alternative ┬╖ $title" else title
+    fun encode()=JSONObject().put("id",id).put("date",date.toString()).put("discipline",discipline).put("title",title).put("minutes",minutes).put("distanceKm",distanceKm).put("kind",kind).put("lower",lower).put("quality",quality)
+        .put("exercises",JSONArray(exercises.map { it.encode() })).put("steps",JSONArray(steps)).put("reason",reason).put("status",status).put("missedReason",missedReason).put("log",log?.encode()).put("suggestion",suggestion?.encode()).put("linkedActivityId",linkedActivityId).put("linkPreviousStatus",linkPreviousStatus).put("swaps",JSONArray(swaps.map { it.encode() })).put("logRevision",logRevision).put("runningPrescription",runningPrescription?.encode()).put("runResponse",runResponse?.encode())
+        .apply {
+            if(difficultyStep!=0) put("difficultyStep",difficultyStep)
+            if(difficultyBaseline!=null) put("difficultyBaseline",difficultyBaseline.encode())
+            runnerSupportDose?.let { put("runnerSupportDose", it.name) }
+            if (runnerSupportPlacement) put("runnerSupportPlacement", true)
+        }
+    companion object { fun decode(j:JSONObject)=PlannedSession(j.getString("id"),LocalDate.parse(j.getString("date")),j.getString("discipline"),j.getString("title"),j.getInt("minutes"),j.nullDouble("distanceKm"),j.getString("kind"),j.getBoolean("lower"),j.getBoolean("quality"),
+        j.getJSONArray("exercises").objects().map(ExercisePrescription::decode),j.getJSONArray("steps").strings(),j.getString("reason"),j.getString("status"),j.nullString("missedReason"),j.optJSONObject("log")?.let(WorkoutLog::decode),j.optJSONObject("suggestion")?.let(SessionSuggestion::decode),j.nullString("linkedActivityId"),j.nullString("linkPreviousStatus"),j.optJSONArray("swaps")?.objects()?.map(ExerciseSwap::decode) ?: emptyList(),j.optInt("logRevision",0),j.optJSONObject("runningPrescription")?.let(RunningPrescription::decode),j.optJSONObject("runResponse")?.let(WorkoutLog::decode),
+        j.optInt("difficultyStep",0),j.optJSONObject("difficultyBaseline")?.let(SessionDifficultyBaseline::decode),
+        j.nullString("runnerSupportDose")?.let(RunnerSupportDose::valueOf), j.optBoolean("runnerSupportPlacement")) }
+}
+/** Feedback overlays only the coaching interpretation; original actual measurements stay immutable. */
+internal fun PlannedSession.coachingLog():WorkoutLog? {
+    val response=runResponse ?: return log
+    val original=log ?: return response
+    return original.copy(at=maxOf(original.at,response.at),performedOn=original.performedOn ?: response.performedOn,effort=response.effort,
+        completionDifficulty=response.completionDifficulty,discomfort=response.discomfort)
+}
+internal data class PlanFeedback(val id:String,val at:Instant,val category:String,val text:String,val sessionId:String?=null) {
+    fun encode()=JSONObject().put("id",id).put("at",at.toString()).put("category",category).put("text",text).put("sessionId",sessionId)
+    companion object { fun decode(j:JSONObject)=PlanFeedback(j.getString("id"),Instant.parse(j.getString("at")),j.getString("category"),j.getString("text"),j.nullString("sessionId")) }
+}
+/** Prescriptions are persisted snapshots. Loading never re-runs a generation engine. */
+internal data class PlanSnapshot(val id:String,val owner:String,val engineVersion:String,val policyId:String,val createdAt:Instant,val request:PlanRequest,val sessions:List<PlannedSession>,val explanations:List<String>,val status:String="draft",val feedback:List<PlanFeedback> = emptyList(),val revision:Int=1,val foreignSnapshot:String?=null,val name:String?=null,val mileageOptions:Engine15MileageOptions?=null,val experimentalQualityPolicy:String?=null,val experimentalQualityExposureSeconds:Int?=null) {
+    fun encode():JSONObject {
+        if(!Engine1Engines.canManage(this) && foreignSnapshot!=null)return JSONObject(foreignSnapshot)
+        return JSONObject().put("schemaVersion",PLAN_SCHEMA).put("id",id).put("user_id",owner).put("engineVersion",engineVersion).put("policyId",policyId).put("createdAt",createdAt.toString()).put("request",request.encode())
+        .put("sessions",JSONArray(sessions.map { it.encode() })).put("explanations",JSONArray(explanations)).put("status",status).put("feedback",JSONArray(feedback.map { it.encode() })).put("revision",revision).put("name",name).put("mileageOptions",mileageOptions?.encode()).put("experimentalQualityPolicy",experimentalQualityPolicy)
+        .apply { if (experimentalQualityExposureSeconds != null) put("experimentalQualityExposureSeconds", experimentalQualityExposureSeconds) }
+    }
+    companion object {
+        fun decode(j:JSONObject,owner:String):PlanSnapshot {
+            require(j.getInt("schemaVersion")==PLAN_SCHEMA) { "Unsupported plan schema; saved snapshot retained" }
+            require(j.getString("user_id")==owner) { "Plan owner does not match" }
+            val sessions=j.getJSONArray("sessions").objects().map(PlannedSession::decode)
+            require(sessions.size<=400 && sessions.map { it.id }.distinct().size==sessions.size && sessions.all { it.logRevision>=0 })
+            return PlanSnapshot(j.getString("id"),owner,j.getString("engineVersion"),j.getString("policyId"),Instant.parse(j.getString("createdAt")),PlanRequest.decode(j.getJSONObject("request")),sessions,j.getJSONArray("explanations").strings(),j.getString("status"),j.getJSONArray("feedback").objects().map(PlanFeedback::decode),j.getInt("revision"),if(!Engine1Engines.supports(j.getString("engineVersion"),j.getString("policyId")))j.toString()else null,j.nullString("name"),j.optJSONObject("mileageOptions")?.let(Engine15MileageOptions::decode),j.nullString("experimentalQualityPolicy"),j.nullInt("experimentalQualityExposureSeconds"))
+        }
+    }
+}
+internal fun JSONObject.nullInt(key:String)=if(isNull(key)) null else getInt(key)
+internal fun JSONObject.nullDouble(key:String)=if(isNull(key)) null else getDouble(key)
+internal fun JSONObject.nullString(key:String)=if(isNull(key)) null else getString(key)
+internal fun JSONArray.objects()=(0 until length()).map { getJSONObject(it) }
+internal fun JSONArray.strings()=(0 until length()).map { getString(it) }
+
+/** Planned distance, not measured execution, threshold or fitness evidence. */
+internal data class RunningSegment(
+    val purpose:String,
+    val meters:Int,
+    val effort:String,
+    val stepIntent:RunningStepIntent?=null,
+    val targetPaceMinSecPerKm:Int?=null,
+    val targetPaceMaxSecPerKm:Int?=null,
+    val targetHrMinBpm:Int?=null,
+    val targetHrMaxBpm:Int?=null
+) {
+    init {
+        require(purpose in setOf("WARM_UP","WORK","RECOVERY","TRANSITION","COOL_DOWN","EASY") && meters>0 && meters<=120000)
+        require(targetPaceMinSecPerKm==null || targetPaceMinSecPerKm in 120..1200)
+        require(targetPaceMaxSecPerKm==null || targetPaceMaxSecPerKm in 120..1200)
+        require(targetPaceMinSecPerKm==null || targetPaceMaxSecPerKm==null || targetPaceMinSecPerKm<=targetPaceMaxSecPerKm)
+        require(targetHrMinBpm==null || targetHrMinBpm in 60..230)
+        require(targetHrMaxBpm==null || targetHrMaxBpm in 60..230)
+        require(targetHrMinBpm==null || targetHrMaxBpm==null || targetHrMinBpm<=targetHrMaxBpm)
+    }
+    fun encode()=JSONObject().put("purpose",purpose).put("meters",meters).put("effort",effort).apply {
+        stepIntent?.let { put("stepIntent",it.name) }
+        targetPaceMinSecPerKm?.let { put("targetPaceMinSecPerKm",it) }
+        targetPaceMaxSecPerKm?.let { put("targetPaceMaxSecPerKm",it) }
+        targetHrMinBpm?.let { put("targetHrMinBpm",it) }
+        targetHrMaxBpm?.let { put("targetHrMaxBpm",it) }
+    }
+    companion object {
+        fun decode(j:JSONObject)=RunningSegment(j.getString("purpose"),j.getInt("meters"),j.getString("effort"),
+            j.nullString("stepIntent")?.let(RunningStepIntent::valueOf),
+            j.nullInt("targetPaceMinSecPerKm"),j.nullInt("targetPaceMaxSecPerKm"),
+            j.nullInt("targetHrMinBpm"),j.nullInt("targetHrMaxBpm"))
+    }
+}
+/** Structured intent for a running workout step, persisted across JSON/SQLite and UI layers. */
+internal enum class RunningStepIntent {
+    WARMUP, COOLDOWN, AEROBIC_EASY, RECOVERY, STEADY, TEMPO, THRESHOLD, VO2_INTERVAL, HILL, STRIDE, RACE_PACE
+}
+
+/** Versioned planned step; any distance equivalent is explicitly user supplied. */
+internal data class RunningStepV2(
+    val purpose:String,
+    val effort:String,
+    val meters:Int?=null,
+    val seconds:Int?=null,
+    val distanceEquivalentMeters:Int?=null,
+    val stepIntent:RunningStepIntent?=null,
+    val targetPaceMinSecPerKm:Int?=null,
+    val targetPaceMaxSecPerKm:Int?=null,
+    val targetHrMinBpm:Int?=null,
+    val targetHrMaxBpm:Int?=null
+) {
+    init {
+        require(purpose in setOf("WARM_UP","WORK","RECOVERY","TRANSITION","COOL_DOWN","EASY"))
+        require((meters!=null) xor (seconds!=null))
+        require(meters==null || meters in 1..120000)
+        require(seconds==null || seconds in 1..14400)
+        require(distanceEquivalentMeters==null || seconds!=null && distanceEquivalentMeters in 1..120000)
+        require(targetPaceMinSecPerKm==null || targetPaceMinSecPerKm in 120..1200)
+        require(targetPaceMaxSecPerKm==null || targetPaceMaxSecPerKm in 120..1200)
+        require(targetPaceMinSecPerKm==null || targetPaceMaxSecPerKm==null || targetPaceMinSecPerKm<=targetPaceMaxSecPerKm)
+        require(targetHrMinBpm==null || targetHrMinBpm in 60..230)
+        require(targetHrMaxBpm==null || targetHrMaxBpm in 60..230)
+        require(targetHrMinBpm==null || targetHrMaxBpm==null || targetHrMinBpm<=targetHrMaxBpm)
+    }
+    fun encode():JSONObject {
+        val j=JSONObject().put("purpose",purpose).put("effort",effort)
+        if(meters!=null) j.put("meters",meters) else j.put("seconds",seconds)
+        distanceEquivalentMeters?.let { j.put("distanceEquivalentMeters",it) }
+        stepIntent?.let { j.put("stepIntent",it.name) }
+        targetPaceMinSecPerKm?.let { j.put("targetPaceMinSecPerKm",it) }
+        targetPaceMaxSecPerKm?.let { j.put("targetPaceMaxSecPerKm",it) }
+        targetHrMinBpm?.let { j.put("targetHrMinBpm",it) }
+        targetHrMaxBpm?.let { j.put("targetHrMaxBpm",it) }
+        return j
+    }
+    companion object {
+        fun decode(j:JSONObject):RunningStepV2 {
+            require(j.has("meters") xor j.has("seconds")) { "A step must have exactly one extent" }
+            return RunningStepV2(j.getString("purpose"),j.getString("effort"),
+                if(j.has("meters")) j.getInt("meters") else null,
+                if(j.has("seconds")) j.getInt("seconds") else null,j.nullInt("distanceEquivalentMeters"),
+                j.nullString("stepIntent")?.let(RunningStepIntent::valueOf),
+                j.nullInt("targetPaceMinSecPerKm"),j.nullInt("targetPaceMaxSecPerKm"),
+                j.nullInt("targetHrMinBpm"),j.nullInt("targetHrMaxBpm"))
+        }
+    }
+}
+internal data class RunningPrescription(
+    val role:String, val family:String?, val segments:List<RunningSegment>,
+    val mixedSegments:List<RunningStepV2>?=null,
+    /** Administrative planning-pace estimate only, never an exact distance target. */
+    val estimatedDistanceKm:Double?=null,
+    /** Exact extent supplied for every timed step; this is not pace-derived. */
+    val reconciledDistanceMeters:Int?=null,
+    /** Optional Step 02 archetype identifier (null for pre-Step-02 snapshots). */
+    val archetypeId:String?=null
+) {
+    init {
+        require(role in setOf("RECOVERY","EASY","ENDURANCE","LONG","QUALITY"))
+        val purposes=if(mixedSegments==null) segments.map { it.purpose } else mixedSegments.map { it.purpose }
+        require(purposes.isNotEmpty() && purposes.size<=50)
+        require(if(role=="QUALITY") family in setOf("Threshold","Tempo","Intervals","Hills","Fartlek","Progression","Strides") && "WORK" in purposes
+            else family==null && "WORK" !in purposes)
+        if(mixedSegments==null) {
+            require(segments.sumOf { it.meters }<=120000 && estimatedDistanceKm==null && reconciledDistanceMeters==null)
+        } else {
+            require(segments.isEmpty())
+            require(mixedSegments.sumOf { it.meters ?: 0 }<=120000)
+            require(mixedSegments.any { it.seconds!=null })
+            if(reconciledDistanceMeters!=null) {
+                require(estimatedDistanceKm==null && reconciledDistanceMeters in 1..120000)
+                require(mixedSegments.all { it.meters!=null || it.distanceEquivalentMeters!=null })
+                require(mixedSegments.sumOf { it.meters ?: it.distanceEquivalentMeters!! }==reconciledDistanceMeters)
+            } else {
+                require(mixedSegments.all { it.distanceEquivalentMeters==null })
+                val pureTimeOnlyNonQuality = role!="QUALITY" &&
+                    estimatedDistanceKm==null &&
+                    mixedSegments.all { it.meters==null && it.distanceEquivalentMeters==null }
+                if(!pureTimeOnlyNonQuality) {
+                    require(estimatedDistanceKm!=null && estimatedDistanceKm.isFinite() && estimatedDistanceKm>0.0 && estimatedDistanceKm<=120.0)
+                }
+            }
+        }
+    }
+    val meters get()=if(mixedSegments==null) segments.sumOf { it.meters } else reconciledDistanceMeters ?: mixedSegments.sumOf { it.meters ?: 0 }
+    val workMeters get()=if(mixedSegments==null) segments.filter { it.purpose=="WORK" }.sumOf { it.meters }
+        else mixedSegments.filter { it.purpose=="WORK" }.sumOf { it.meters ?: it.distanceEquivalentMeters ?: 0 }
+    fun matchesStructuralBaseline(expected:RunningPrescription):Boolean {
+        if(this==expected) return true
+        val curLegacySegs=segments.all {
+            it.stepIntent==null && it.targetPaceMinSecPerKm==null && it.targetPaceMaxSecPerKm==null &&
+                it.targetHrMinBpm==null && it.targetHrMaxBpm==null
+        }
+        val curLegacyMixed=mixedSegments==null || mixedSegments.all {
+            it.stepIntent==null && it.targetPaceMinSecPerKm==null && it.targetPaceMaxSecPerKm==null &&
+                it.targetHrMinBpm==null && it.targetHrMaxBpm==null
+        }
+        if(archetypeId!=null && !curLegacySegs && !curLegacyMixed) return false
+        val strippedExpected = expected.copy(

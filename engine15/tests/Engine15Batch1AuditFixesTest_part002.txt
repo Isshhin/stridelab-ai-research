@@ -1,0 +1,60 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15Batch1AuditFixesTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 388-442
+--------------------------------------------------
+        assertTrue(previewDecision is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("ATHLETE_BASELINE_TIME_ONLY", (previewDecision as Engine15IndependentPlanDecision.Deferred).reasonCode)
+
+        val plan = Engine15IndependentPlanGenerator.generateWithHistory(
+            req, owner, emptyList(), "batch1-zero-target-q", now
+        )
+        assertEquals("CONFIRMED_ZERO", plan.request.recentMileageBasis)
+        assertEquals(0.0, plan.request.weeklyKm, 1e-9)
+        assertTrue(plan.sessions.all { it.distanceKm == null && !it.quality })
+        Engine15IndependentPlanGenerator.validateSaved(plan)
+    }
+
+    @Test
+    fun peakWeekOnlyBasisIsNotPromotedToSelfReportedAverage() {
+        val contradictingPeak = runRequest(
+            weeklyKm = 60.0,
+            longestKm = 18.0,
+            recentMileageBasis = "PEAK_WEEK_ONLY"
+        )
+        val d1 = Engine15IndependentPlanGenerator.previewAutoReconciled(
+            contradictingPeak, owner, "batch1-peak-60", now
+        )
+        assertTrue("Expected Deferred for PEAK_WEEK_ONLY with 60km, got $d1", d1 is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("ATHLETE_BASELINE_NEEDS_REVIEW", (d1 as Engine15IndependentPlanDecision.Deferred).reasonCode)
+
+        val zeroWithPeak = runRequest(
+            weeklyKm = 0.0,
+            longestKm = 0.0,
+            recentMileageBasis = "PEAK_WEEK_ONLY",
+            reportedPeakWeeklyKm = 60.0
+        )
+        val d2 = Engine15IndependentPlanGenerator.previewAutoReconciled(
+            zeroWithPeak, owner, "batch1-peak-only", now
+        )
+        assertTrue("Expected Deferred for PEAK_WEEK_ONLY, got $d2", d2 is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("ATHLETE_BASELINE_NEEDS_BASELINE", (d2 as Engine15IndependentPlanDecision.Deferred).reasonCode)
+    }
+
+    @Test
+    fun unknownZeroBaselineDefersForConfirmationInsteadOfSynthesizing() {
+        val req = runRequest(
+            weeklyKm = 0.0,
+            longestKm = 0.0,
+            recentMileageBasis = "UNKNOWN"
+        )
+        val decision = Engine15IndependentPlanGenerator.previewAutoReconciled(
+            req, owner, "batch1-unknown-zero", now
+        )
+        assertTrue("Expected Deferred for UNKNOWN zero baseline, got $decision", decision is Engine15IndependentPlanDecision.Deferred)
+        assertEquals("ATHLETE_BASELINE_NEEDS_BASELINE", (decision as Engine15IndependentPlanDecision.Deferred).reasonCode)
+        assertThrows(PlanConstraint::class.java) {
+            Engine15IndependentPlanGenerator.generateWithHistory(req, owner, emptyList(), "batch1-unknown-zero", now)
+        }
+    }
+}

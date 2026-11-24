@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15MarathonTidEvaluator_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15MileageOptions_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15MileageTargetIntegrity_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PaceZoneEstimator_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PaceZoneEstimator_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PlanAdaptationEngine_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PlanAdaptationEngine_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PlanAdaptationEngine_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PlanAdaptationEngine_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15PlanAdaptationEngine_part005.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityFamilySelection_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityFamilySelection_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityProgressionPolicy_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityProgressionPolicy_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/Engine15QualityProgressionPolicy_part003.txt

@@ -1,0 +1,94 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ScheduleReview.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 287-375
+--------------------------------------------------
+internal fun Engine15RecommendationReview(plan: PlanSnapshot, actions: PlanActions, busy: Boolean, onlyTarget: String? = null, embedded: Boolean = false) {
+    var previews by remember(plan.owner, plan.id, onlyTarget) { mutableStateOf<List<Engine15Feedback.Proposal>?>(null) }
+    fun refresh() {
+        previews = actions.previewAdjustments(plan.id).filter { onlyTarget == null || it.targetSessionId == onlyTarget }
+    }
+    val pending = plan.sessions.filter {
+        (onlyTarget == null || onlyTarget == it.id) && it.suggestion?.let { s -> !s.accepted && s.reason.startsWith(Engine15Feedback.RULE_ID) } == true
+    }
+    val body: @Composable ColumnScope.() -> Unit = {
+        if (!embedded) Text("WORKOUT RECOMMENDATIONS",
+            color=TracksidePalette.text,fontSize=12.sp,fontWeight=FontWeight.Bold)
+        if (plan.status == "approved") OutlinedButton(onClick = { refresh() }, enabled = !busy) { Text("Preview recommendations") }
+        if (previews?.isEmpty() == true && pending.isEmpty()) Text("No recommendation from your current workout records.")
+        for (proposal in previews.orEmpty()) {
+            val target = plan.sessions.firstOrNull { it.id == proposal.targetSessionId } ?: continue
+            if (target.suggestion != null || plan.feedback.any { it.sessionId == target.id && it.text.startsWith("${Engine15Feedback.RULE_ID} dismissed:") }) continue
+            if (plan.revision != proposal.planRevision) {
+                Text("Plan changed since preview. Refresh before reviewing this recommendation.")
+                continue
+            }
+            val source = plan.sessions.first { it.id == proposal.sourceSessionId }
+            Text("Preview ┬╖ original workout active", style = MaterialTheme.typography.titleMedium)
+            Text("${source.title} ┬╖ ${source.log?.performedOn ?: source.date}")
+            Text(proposal.reason.substringAfter(": "))
+            Text(proposal.uncertainty)
+            Text("${target.title} ┬╖ ${target.date} ┬╖ ${target.minutes} ΓåÆ ${proposal.suggestedMinutes} min")
+            SignalButton("Review suggestion", { actions.stageAdjustment(proposal) }, !busy)
+            OutlinedButton(onClick = { actions.dismissPreview(proposal) }, enabled = !busy) { Text("Keep original") }
+        }
+        for (session in pending) {
+            val suggestion = requireNotNull(session.suggestion)
+            var reviewedRevision by remember(plan.owner, plan.id, session.id, suggestion) { mutableIntStateOf(plan.revision) }
+            val changed = reviewedRevision != plan.revision
+            val stale = if (changed) "The plan changed after this review opened." else actions.pendingError(plan.id, session.id)
+            Text(if (stale == null) "Awaiting your decision" else "Evidence changed", style = MaterialTheme.typography.titleMedium)
+            Text("${session.title} ┬╖ ${session.date} ┬╖ ${session.minutes} ΓåÆ ${suggestion.minutes} min")
+            val source = plan.sessions.find { suggestion.reason.endsWith("Evidence: session ${it.id}, log revision ${it.logRevision}.") }
+            source?.let { Text("${it.title} ┬╖ ${it.log?.performedOn ?: it.date}") }
+            Text(suggestion.reason.substringAfter(": ").substringBefore(" Evidence:"))
+            if (stale != null) Text(stale, color = MaterialTheme.colorScheme.error)
+            if (changed) OutlinedButton(onClick = { reviewedRevision = plan.revision }) { Text("Refresh decision") }
+            SignalButton(if (suggestion.minutes == 0) "Accept rest" else "Accept ${suggestion.minutes} min",
+                { actions.acceptSuggestion(plan.id, reviewedRevision, session.id) }, !busy && stale == null)
+            OutlinedButton(onClick = { actions.dismissPending(plan.id, reviewedRevision, session.id) }, enabled = !busy && !changed) { Text("Dismiss suggestion") }
+        }
+        val lastDismissal = plan.feedback.lastOrNull { (onlyTarget == null || it.sessionId == onlyTarget) && it.text.startsWith("${Engine15Feedback.RULE_ID} dismissed:") }
+        lastDismissal?.let { record ->
+            val session = plan.sessions.find { it.id == record.sessionId }
+            Text("Dismissed ┬╖ ${session?.title.orEmpty()} ┬╖ original target retained")
+        }
+        plan.sessions.filter { (onlyTarget == null || it.id == onlyTarget) && it.suggestion?.accepted == true &&
+            it.suggestion.reason.startsWith(Engine15Feedback.RULE_ID) }.forEach { session ->
+            val current = Engine15SessionPresentation.forSession(plan, session.id)
+            Text("${session.date} ┬╖ ${session.title}")
+            Text(current.disclosure.orEmpty())
+            Text("Original prescription ┬╖ ${current.originalMinutes} min" + (current.originalDistanceKm?.let { " ┬╖ $it km" } ?: ""))
+            if (current.state == Engine15SessionPresentation.State.ACCEPTED_TIME_ONLY) Text("Current target ┬╖ ${current.currentMinutes} min")
+            if (current.state == Engine15SessionPresentation.State.ACCEPTED_PROGRESSION) {
+                val distLabel = current.currentDistanceTargetKm?.let { " ┬╖ %.1f km".format(java.util.Locale.US, it) }.orEmpty()
+                Text("Progressed target ┬╖ ${current.currentMinutes} min$distLabel")
+            }
+        }
+    }
+    if(embedded) {
+        Column(Modifier.fillMaxWidth(),
+            verticalArrangement=Arrangement.spacedBy(8.dp)) { body() }
+    } else {
+        TracksideWorkoutNeutralCard { body() }
+    }
+}
+
+/** Display-only adapter for the original Trackside cards. Never pass this copy to a plan action. */
+internal fun PlanSnapshot.cardPresentation(session: PlannedSession): PlannedSession {
+    if (engineVersion != ENGINE15_VERSION || session.suggestion?.accepted != true ||
+        !session.suggestion.reason.startsWith(Engine15Feedback.RULE_ID)) return session
+    val target = Engine15SessionPresentation.forSession(this, session.id)
+    if (target.disclosure == null) return session
+    val title = when (target.state) {
+        Engine15SessionPresentation.State.ACCEPTED_TIME_ONLY -> "Time-only run"
+        Engine15SessionPresentation.State.ACCEPTED_REST -> "Reviewed rest"
+        Engine15SessionPresentation.State.ACCEPTED_PROGRESSION ->
+            return session.copy(minutes = target.currentMinutes, distanceKm = target.currentDistanceTargetKm,
+                suggestion = null, reason = target.disclosure)
+        else -> return session.copy(suggestion = null)
+    }
+    return session.copy(title = title, minutes = target.currentMinutes, distanceKm = target.currentDistanceTargetKm,
+        steps = target.currentSteps, kind = if (target.currentMinutes == 0) "rest" else "time only",
+        exercises = emptyList(), suggestion = null, runningPrescription = null, reason = target.disclosure)
+}

@@ -1,0 +1,247 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 3
+LINES: 588-829
+--------------------------------------------------
+                    (if (intro.recoveryMeters > 0) 0 else intro.recoverySeconds) * easySpeed
+                (780.0 * easySpeed + workM + recM) / 1000.0 * 1.03
+            }
+        } else null
+        val initialShaped = Engine15DailyLoadShaper.shape(
+            sessions = baseSessions,
+            volume = volume,
+            request = request,
+            qualitySessionIds = preQualityIds,
+            pinnedSessionIds = userDefinedQualityIds,
+            minQualitySlotKm = minQualitySlotKm
+        )
+        val sessions = if (request.qualityDistanceClaims.isNotEmpty() && preSelection != null) {
+            val claimsByKey = request.qualityDistanceClaims.groupBy { it.weekNumber to it.slotNumber }
+            val shapedById = initialShaped.associateBy { it.id }
+            val legacyClaimPins = preSelection.candidateSlots.mapNotNull { slot ->
+                val claim = claimsByKey[slot.weekNumber to slot.slotNumber]?.singleOrNull() ?: return@mapNotNull null
+                val claimKm = claim.assertedMetersByTimedSegment.sum() / 1000.0
+                val shapedKm = shapedById[slot.sessionId]?.distanceKm ?: return@mapNotNull null
+                val matchesUnshaped = kotlin.math.abs(claimKm - slot.originalEasyDistanceKm) <= 1e-6
+                val matchesShaped = kotlin.math.abs(claimKm - shapedKm) <= 1e-6
+                slot.sessionId.takeIf { matchesUnshaped && !matchesShaped }
+            }.toSet()
+            if (legacyClaimPins.isNotEmpty()) {
+                Engine15DailyLoadShaper.shape(
+                    sessions = baseSessions,
+                    volume = volume,
+                    request = request,
+                    qualitySessionIds = preQualityIds,
+                    pinnedSessionIds = userDefinedQualityIds + legacyClaimPins,
+                    minQualitySlotKm = minQualitySlotKm
+                )
+            } else initialShaped
+        } else initialShaped
+
+        var experimentalTempo = emptyList<PlannedSession>()
+        var experimentalQualityExposureSeconds: Int? = null
+        var qualityBuildAdvisory: String? = null
+        if (request.qualityCount > 0 && request.userDefinedQualityWorkouts.isEmpty()) {
+            val selection = Engine15QualityFamilySelection.select(
+                request = request,
+                ownerId = owner,
+                asOf = asOfDate,
+                evidence = qualityEvidence,
+                athlete = athlete,
+                scheduledSessions = sessions,
+                recoveryWeeks = recoveryWeekNumbers,
+                externalSessions = external.sessions,
+                adaptiveMode = adaptiveQualityMode,
+                taperWeeks = taperWeekNumbers
+            )
+            val qualityDryRun = Engine15QualityWorkoutDryRunBuilder.build(
+                request, selection, volume, sessions, assertedExposureSecondsOverride, allowExplicitUserFamily,
+                adaptiveQualityMode = adaptiveQualityMode
+            )
+            val familyName = when (selection.selectedFamily) {
+                IndependentQualityFamily.THRESHOLD -> "Threshold"
+                IndependentQualityFamily.INTERVALS -> "Intervals"
+                IndependentQualityFamily.HILLS -> "Hills"
+                IndependentQualityFamily.FARTLEK -> "Fartlek"
+                IndependentQualityFamily.PROGRESSION -> "Progression"
+                IndependentQualityFamily.TEMPO, null -> "Tempo"
+            }
+            val paceCheckZones = if (adaptiveQualityMode && request.benchmarkDistanceMeters != null) {
+                Engine15PaceZoneEstimator.estimate(request)
+            } else null
+            val paceWarnings = qualityDryRun?.alternatives.orEmpty().mapNotNull { alternative ->
+                alternative.distanceMatch?.qualityPaceWarning(paceCheckZones)?.let { "Week ${alternative.weekNumber}: $it" }
+            }
+            val usualKm = athlete.typicalWeeklyKm
+            if (qualityDryRun != null && usualKm != null && qualityDryRun.weeklyDistance.any { it.budgetKm > usualKm + 1e-6 }) {
+                qualityBuildAdvisory = "Mileage progresses alongside $familyName workouts; monitor fatigue and prioritize recovery weeks."
+            }
+            if (paceWarnings.isEmpty() &&
+                request.weeks in 1..16 && request.experience in 0..2 &&
+                qualityDryRun?.completePlanDistanceAccounting == true &&
+                (!request.timeBudgetEnabled || qualityDryRun.alternatives.all { alt ->
+                    request.minutes * 60L >= (alt.totalSeconds ?: qualityDryRun.totalSeconds)
+                })
+            ) {
+                val deterministicStepZones = Engine15PaceZoneEstimator.estimate(request)
+                experimentalTempo = qualityDryRun.alternatives.mapNotNull { alternative ->
+                    val match = requireNotNull(alternative.distanceMatch)
+                    val original = sessions.single { it.id == alternative.sessionId }
+                    if (match.segments.any { it.assertedMeters != it.assertedMeters.toInt().toDouble() })
+                        return@mapNotNull null
+                    val meters = match.segments.sumOf { it.assertedMeters.toInt() }
+                    if (kotlin.math.abs(meters / 1000.0 - alternative.originalEasyDistanceKm) > 1e-8)
+                        return@mapNotNull null
+                    val altFamily = alternative.prescription?.family ?: selection.selectedFamily
+                    val archetype = alternative.prescription?.step?.archetype
+                    val altFamilyName = when (altFamily) {
+                        IndependentQualityFamily.THRESHOLD -> "Threshold"
+                        IndependentQualityFamily.INTERVALS -> "Intervals"
+                        IndependentQualityFamily.HILLS -> "Hills"
+                        IndependentQualityFamily.FARTLEK -> "Fartlek"
+                        IndependentQualityFamily.PROGRESSION -> "Progression"
+                        IndependentQualityFamily.TEMPO, null -> "Tempo"
+                    }
+                    val steps = match.segments.map { segment ->
+                        val work = segment.purpose == WorkoutPurpose.WORK
+                        val intent = when (segment.purpose) {
+                            WorkoutPurpose.WARM_UP -> RunningStepIntent.WARMUP
+                            WorkoutPurpose.COOL_DOWN -> RunningStepIntent.COOLDOWN
+                            WorkoutPurpose.RECOVERY -> RunningStepIntent.RECOVERY
+                            WorkoutPurpose.WORK -> when {
+                                segment.target == WorkoutTarget.THRESHOLD -> RunningStepIntent.THRESHOLD
+                                segment.target == WorkoutTarget.INTERVALS -> RunningStepIntent.VO2_INTERVAL
+                                archetype == Engine15WorkoutArchetype.SHORT_HILL_SPRINTS ||
+                                    archetype == Engine15WorkoutArchetype.LONG_AEROBIC_HILLS -> RunningStepIntent.HILL
+                                archetype == Engine15WorkoutArchetype.AEROBIC_FARTLEK ||
+                                    archetype == Engine15WorkoutArchetype.CONTINUOUS_TEMPO ||
+                                    archetype == Engine15WorkoutArchetype.BROKEN_TEMPO -> RunningStepIntent.TEMPO
+                                else -> Engine15PaceZoneEstimator.stepIntentFor(segment.purpose, altFamily)
+                            }
+                        }
+                        val (paceMin, paceMax) = Engine15PaceZoneEstimator.paceBoundsForIntent(
+                            deterministicStepZones, intent, request.goal, archetype
+                        )
+                        val effortText = when {
+                            work -> when (archetype) {
+                                Engine15WorkoutArchetype.SHORT_HILL_SPRINTS ->
+                                    "Strong uphill drive (5ΓÇô8% grade) at ~5K effort (RPE 8/10) ΓÇö focus on tall posture and power, judge by effort rather than flat pace."
+                                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS ->
+                                    "Steady uphill climb (4ΓÇô6% grade) at Threshold/10K effort (RPE 7ΓÇô8/10) ΓÇö hold rhythm by effort on the incline."
+                                Engine15WorkoutArchetype.AEROBIC_FARTLEK ->
+                                    "Controlled surge at TempoΓÇô5K effort; settle smoothly into easy float recovery."
+                                Engine15WorkoutArchetype.CONTINUOUS_TEMPO ->
+                                    "Sustained Tempo effort; keep rhythm smooth and controlled."
+                                Engine15WorkoutArchetype.BROKEN_TEMPO ->
+                                    "Controlled Tempo / Half Marathon block; settle into easy float recovery between blocks."
+                                Engine15WorkoutArchetype.THRESHOLD_CRUISE_INTERVALS ->
+                                    "Comfortably hard Lactate Threshold effort; keep reps crisp with short jog recovery."
+                                Engine15WorkoutArchetype.SHORT_TRACK_REPEATS ->
+                                    "Fast 5K track effort; run tall and quick, take full easy recovery between reps."
+                                Engine15WorkoutArchetype.CLASSIC_VO2MAX_INTERVALS ->
+                                    "Hard VO2max effort; keep every repetition smooth and repeatable."
+                                Engine15WorkoutArchetype.SPEED_ENDURANCE_PYRAMID ->
+                                    if (intent == RunningStepIntent.THRESHOLD) {
+                                        "Threshold ladder segment; stay controlled and even before opening up."
+                                    } else {
+                                        "Fast VO2max ladder segment; maintain sharp form with controlled recovery."
+                                    }
+                                else -> when (altFamilyName) {
+                                    "Threshold" -> "Controlled, comfortably hard effort. Keep repetitions even and ease off if effort rises."
+                                    "Intervals" -> "Hard, repeatable effort. Keep each repetition controlled and use the full easy recovery between efforts."
+                                    "Hills" -> "Strong uphill drive (5ΓÇô8% grade) with tall posture; judge by effort and jog/walk down."
+                                    "Fartlek" -> "Playful, controlled surge effort; settle smoothly back into easy running between surges."
+                                    "Progression" -> "Start steady and gradually build effort across the finish block without straining."
+                                    else -> "Steady, controlled effort. Ease off if you cannot speak a short phrase."
+                                }
+                            }
+                            segment.purpose == WorkoutPurpose.RECOVERY -> when (archetype) {
+                                Engine15WorkoutArchetype.SHORT_HILL_SPRINTS,
+                                Engine15WorkoutArchetype.LONG_AEROBIC_HILLS ->
+                                    "Easy walk or slow jog back down the hill for full recovery."
+                                Engine15WorkoutArchetype.BROKEN_TEMPO,
+                                Engine15WorkoutArchetype.AEROBIC_FARTLEK ->
+                                    "Easy aerobic float recovery between efforts."
+                                else -> "Easy conversational walk/jog recovery."
+                            }
+                            else -> "Easy conversational effort"
+                        }
+                        if (segment.meters != null) {
+                            RunningStepV2(
+                                segment.purpose.name,
+                                effortText,
+                                meters = segment.meters,
+                                seconds = null,
+                                distanceEquivalentMeters = null,
+                                stepIntent = intent,
+                                targetPaceMinSecPerKm = paceMin,
+                                targetPaceMaxSecPerKm = paceMax,
+                                targetHrMinBpm = null,
+                                targetHrMaxBpm = null
+                            )
+                        } else {
+                            RunningStepV2(
+                                segment.purpose.name,
+                                effortText,
+                                seconds = kotlin.math.round(segment.seconds).toInt().coerceAtLeast(1),
+                                distanceEquivalentMeters = kotlin.math.round(segment.assertedMeters).toInt().coerceAtLeast(1),
+                                stepIntent = intent,
+                                targetPaceMinSecPerKm = paceMin,
+                                targetPaceMaxSecPerKm = paceMax,
+                                targetHrMinBpm = null,
+                                targetHrMaxBpm = null
+                            )
+                        }
+                    }
+                    fun formatStepLine(st: RunningStepV2): String {
+                        val extent = if (st.meters != null) {
+                            "${st.meters} m (${formatMetersAsKm(st.meters)})"
+                        } else {
+                            val sec = requireNotNull(st.seconds)
+                            val durText = when {
+                                sec % 60 == 0 -> "${sec / 60} min"
+                                sec > 60 -> "${sec / 60}m ${sec % 60}s"
+                                else -> "${sec}s"
+                            }
+                            "$durText ┬╖ ${formatMetersAsKm(st.distanceEquivalentMeters)}"
+                        }
+                        return "$extent ${st.purpose.lowercase().replace('_', ' ')} ┬╖ ${st.effort}"
+                    }
+                    val totalMin = (kotlin.math.round(match.segments.sumOf { it.seconds } / 60.0).toInt())
+                        .coerceAtLeast(10)
+                        .let { if (request.timeBudgetEnabled) minOf(it, request.minutes) else it }
+                    original.copy(kind = "quality", quality = true,
+                        title = archetype?.displayTitle ?: "$altFamilyName Workout",
+                        minutes = totalMin,
+                        runningPrescription = RunningPrescription("QUALITY", altFamilyName, emptyList(),
+                            mixedSegments = steps, reconciledDistanceMeters = meters, archetypeId = archetype?.id),
+                        steps = steps.map(::formatStepLine),
+                        reason = if (alternative.progressionBasis != null &&
+                            alternative.progressionBasis != Engine15QualityProgressionBasis.HOLD_NO_REPEATED_EXPOSURE) {
+                            "${alternative.prescription!!.rationale} Effort cues guide intensity alongside estimated pace zones."
+                        } else when (altFamilyName) {
+                            "Threshold" -> "Structured Threshold intervals (3 ├ù 4 min comfortably hard with 2 min easy recovery)."
+                            "Intervals" -> "Structured VOΓéémax Intervals (4 ├ù 2 min repeatable hard effort with 2 min easy recovery)."
+                            "Hills" -> "Structured Hill Repeats (5 ├ù 1 min strong uphill drive with 2 min easy jog-down recovery)."
+                            "Fartlek" -> "Structured Fartlek surges (5 ├ù 2 min controlled surges with 2 min easy float)."
+                            "Progression" -> "Continuous Progression finish (12 min building gradually toward steady tempo effort)."
+                            else -> "Structured Tempo run (10ΓÇô12 min steady controlled effort with easy warm-up and cooldown)."
+                        })
+                }
+                if (experimentalTempo.size != qualityDryRun.alternatives.size ||
+                    experimentalTempo.any { quality ->
+                        sessions.any { it.id != quality.id && conflict(quality, it) } ||
+                            experimentalTempo.any { it.id != quality.id && conflict(quality, it) }
+                    }) experimentalTempo = emptyList()
+                if (experimentalTempo.isNotEmpty()) {
+                    experimentalQualityExposureSeconds = assertedExposureSecondsOverride
+                        ?: selection.assertedRepeatedWorkSeconds.takeIf {
+                            selection.exposureConfidence == IndependentQualityExposureConfidence.REPEATED_DEVICE_RECORDS_ASSERTED
+                        }
+                }
+            }
+            if (experimentalTempo.isEmpty()) {
+            val dryRunNote = when {
+                selection.decision != Engine15QualitySelectionDecision.FAMILY_CANDIDATE ->
+                    "No family dry-run was constructed because selection deferred or is unsupported."
+                selection.selectionBasis != Engine15QualitySelectionBasis.GOAL_EXPERIENCE_MATRIX && !allowExplicitUserFamily ->

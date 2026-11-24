@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15Batch1AuditFixesTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15Batch2AuditFixesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15Batch3AuditFixesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15CoachingAcceptanceTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15CoachingAcceptanceTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15CoachingAcceptanceTest_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15CoachingAcceptanceTest_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15CompletePlanRobustnessMatrixTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15DailyLoadShaperTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15DisciplineProgressionTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15DistanceRoundingTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15ExecutionAnalyzerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15ExecutionAnalyzerTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15FeedbackTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15HistoryInformedPlanningTest_part001.txt

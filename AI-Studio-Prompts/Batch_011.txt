@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part005.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part006.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part007.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/source/TrainingRepository_part008.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AcceptanceEvidenceTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15ActivityAutoMatcherTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AdaptiveHistoryAndUiContractTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15ArchitectureTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AthleteDiagnosticsEngineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AthleteDiagnosticsEngineTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AthleteEffortBaselineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15AvailabilityReconciliationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15Batch1AuditFixesTest_part001.txt

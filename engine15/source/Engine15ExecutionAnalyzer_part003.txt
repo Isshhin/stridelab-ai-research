@@ -1,0 +1,395 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 3
+LINES: 793-1182
+--------------------------------------------------
+        if (evidenceTier == ExecutionEvidenceTier.LAP_AND_RECORD) {
+            val stepLapsMap = mapLapsToSteps(steps, laps, workoutSteps)
+            if (stepLapsMap != null) {
+                return steps.indices.map { idx ->
+                    sliceFromLaps(stepLapsMap[idx].orEmpty(), timeline)
+                }
+            }
+            // Auto-laps (e.g., every 1 km) don't always align 1:1 with multi-step intervals;
+            // fall through to window extraction across laps/records while keeping LAP_AND_RECORD tier.
+            return measureStepsFromWindows(
+                steps = steps,
+                laps = laps,
+                timeline = timeline,
+                activity = activity,
+                isLongFastFinish = isLongFastFinish,
+                sourceTag = "LAP_AND_RECORD"
+            )
+        }
+        if (evidenceTier == ExecutionEvidenceTier.RECORD_WINDOW) {
+            return measureStepsFromWindows(
+                steps = steps,
+                laps = emptyList(),
+                timeline = timeline,
+                activity = activity,
+                isLongFastFinish = isLongFastFinish,
+                sourceTag = "RECORD_WINDOW"
+            )
+        }
+        // SUMMARY_ONLY fallback
+        val totalKm = activity.distanceM?.div(1000.0) ?: 0.0
+        val totalSec = (activity.movingTimeS ?: activity.durationS) ?: 0.0
+        val summaryPace = overallPace(activity, timeline, totalKm.takeIf { it > 0.0 }, totalSec.takeIf { it > 0.0 })
+        val totalPlannedWeight = steps.sumOf { max(1.0, it.nominalSeconds) }.coerceAtLeast(1.0)
+        return steps.map { step ->
+            val share = max(1.0, step.nominalSeconds) / totalPlannedWeight
+            MeasuredSlice(
+                distanceKm = totalKm * share,
+                durationSec = totalSec * share,
+                avgPaceSecPerKm = summaryPace,
+                avgHrBpm = activity.averageHr,
+                elevationGainM = activity.elevationM?.times(share),
+                samplePaces = emptyList(),
+                source = "SUMMARY"
+            )
+        }
+    }
+
+    private fun mapLapsToSteps(
+        steps: List<PlannedStepTarget>,
+        laps: List<ActivityLap>,
+        workoutSteps: List<ActivityWorkoutStep>
+    ): Map<Int, List<ActivityLap>>? {
+        if (laps.size == steps.size) {
+            return steps.indices.associateWith { listOf(laps[it]) }
+        }
+        if (laps.any { it.workoutStepIndex != null } && workoutSteps.isNotEmpty()) {
+            val stepMetaByIndex = workoutSteps.associateBy { it.index }
+            val result = steps.indices.associateWith { mutableListOf<ActivityLap>() }.toMutableMap()
+            val workTargetIndices = steps.filter { it.isTargetedWork }.map { it.stepIndex }
+            var workCursor = 0
+            for (lap in laps) {
+                val role = lap.workoutStepIndex?.let { stepMetaByIndex[it]?.role }
+                val mappedIdx = when (role) {
+                    "WARM_UP" -> steps.firstOrNull { it.purpose == "WARM_UP" }?.stepIndex
+                    "COOL_DOWN" -> steps.lastOrNull { it.purpose == "COOL_DOWN" }?.stepIndex
+                    "RECOVERY" -> steps.firstOrNull { it.purpose == "RECOVERY" }?.stepIndex
+                    "WORK" -> {
+                        val target = workTargetIndices.getOrNull(workCursor)
+                            ?: workTargetIndices.lastOrNull()
+                        if (workTargetIndices.isNotEmpty()) {
+                            workCursor = min(workCursor + 1, workTargetIndices.lastIndex)
+                        }
+                        target
+                    }
+                    else -> null
+                }
+                if (mappedIdx != null) result[mappedIdx]?.add(lap)
+            }
+            if (result.values.any { it.isNotEmpty() }) return result
+        }
+        return null
+    }
+
+    private fun measureStepsFromWindows(
+        steps: List<PlannedStepTarget>,
+        laps: List<ActivityLap>,
+        timeline: List<IndexedSample>,
+        activity: ActivityRecord,
+        isLongFastFinish: Boolean,
+        sourceTag: String
+    ): List<MeasuredSlice> {
+        if (steps.size == 1) {
+            val single = if (laps.isNotEmpty()) sliceFromLaps(laps, timeline)
+            else sliceFromSampleRange(timeline, 0, timeline.lastIndex, sourceTag)
+            return listOf(single)
+        }
+
+        val usedRanges = ArrayList<IntRange>()
+        val slices = arrayOfNulls<MeasuredSlice>(steps.size)
+
+        if (isLongFastFinish) {
+            val finishIndices = steps.indices.filter { steps[it].isTargetedWork }
+            val totalFinishMeters = finishIndices.sumOf { steps[it].plannedMeters ?: 0 }.toDouble()
+            val totalFinishSec = finishIndices.sumOf { steps[it].nominalSeconds }
+            val range = findTailWindow(timeline, totalFinishMeters, totalFinishSec)
+            usedRanges += range
+            val finishSlice = sliceFromSampleRange(timeline, range.first, range.last, sourceTag)
+            finishIndices.forEach { slices[it] = finishSlice }
+        } else {
+            val targetedIndices = steps.indices.filter { steps[it].isTargetedWork }
+            for (idx in targetedIndices) {
+                val target = steps[idx]
+                val bestRange = findBestWorkWindow(
+                    timeline = timeline,
+                    targetMeters = target.plannedMeters?.toDouble(),
+                    targetSeconds = target.nominalSeconds,
+                    excluded = usedRanges
+                )
+                if (bestRange != null) {
+                    usedRanges += bestRange
+                    slices[idx] = sliceFromSampleRange(timeline, bestRange.first, bestRange.last, sourceTag)
+                }
+            }
+        }
+
+        val remainingSamples = timeline.indices.filter { i -> usedRanges.none { i in it } }
+        val nonWorkSlice = if (remainingSamples.isNotEmpty()) {
+            sliceFromIndexSubset(timeline, remainingSamples, sourceTag)
+        } else {
+            sliceFromSampleRange(timeline, 0, timeline.lastIndex, sourceTag)
+        }
+        val nonWorkSteps = steps.count { !it.isTargetedWork }.coerceAtLeast(1)
+        for (i in steps.indices) {
+            if (slices[i] == null) {
+                slices[i] = if (!steps[i].isTargetedWork) {
+                    nonWorkSlice.copy(
+                        distanceKm = nonWorkSlice.distanceKm / nonWorkSteps,
+                        durationSec = nonWorkSlice.durationSec / nonWorkSteps
+                    )
+                } else {
+                    sliceFromSampleRange(timeline, 0, timeline.lastIndex, sourceTag)
+                }
+            }
+        }
+        return slices.map { it!! }
+    }
+
+    private fun findTailWindow(
+        timeline: List<IndexedSample>,
+        targetMeters: Double,
+        targetSeconds: Double
+    ): IntRange {
+        if (timeline.size < 4) return timeline.indices
+        val totalMeters = timeline.last().cumulativeMeters
+        val endIdx = timeline.lastIndex
+        var startIdx = 0
+        if (targetMeters > 0.0 && totalMeters > 0.0) {
+            val startDist = (totalMeters - targetMeters).coerceAtLeast(0.0)
+            startIdx = timeline.indexOfFirst { it.cumulativeMeters >= startDist }
+                .takeIf { it >= 0 } ?: 0
+        } else if (targetSeconds > 0.0) {
+            val endSec = timeline.last().sample.seconds
+            val startSec = (endSec - targetSeconds).coerceAtLeast(0.0)
+            startIdx = timeline.indexOfFirst { it.sample.seconds >= startSec }
+                .takeIf { it >= 0 } ?: 0
+        }
+        return startIdx.coerceAtMost(endIdx - 1)..endIdx
+    }
+
+    private fun findBestWorkWindow(
+        timeline: List<IndexedSample>,
+        targetMeters: Double?,
+        targetSeconds: Double,
+        excluded: List<IntRange>
+    ): IntRange? {
+        if (timeline.size < 4) return null
+        val useMeters = targetMeters != null && targetMeters > 0.0 && timeline.last().cumulativeMeters > 0.0
+        val minExtent = if (useMeters) targetMeters!! * 0.85 else targetSeconds * 0.85
+        var bestRange: IntRange? = null
+        var bestPace = Double.POSITIVE_INFINITY
+
+        var right = 0
+        for (left in timeline.indices) {
+            if (excluded.any { left in it }) continue
+            if (right < left) right = left
+            while (right < timeline.lastIndex) {
+                val next = right + 1
+                if (excluded.any { next in it }) break
+                val extent = if (useMeters) {
+                    timeline[right].cumulativeMeters - timeline[left].cumulativeMeters
+                } else {
+                    timeline[right].sample.seconds - timeline[left].sample.seconds
+                }
+                if (extent >= minExtent) break
+                right = next
+            }
+            if (excluded.any { idx -> (left..right).any { it in idx } }) continue
+            val extent = if (useMeters) {
+                timeline[right].cumulativeMeters - timeline[left].cumulativeMeters
+            } else {
+                timeline[right].sample.seconds - timeline[left].sample.seconds
+            }
+            if (extent < minExtent * 0.75) continue
+            val pace = weightedPace(timeline, left..right) ?: continue
+            if (pace < bestPace) {
+                bestPace = pace
+                bestRange = left..right
+            }
+        }
+        return bestRange
+    }
+
+    private fun weightedPace(timeline: List<IndexedSample>, indices: Iterable<Int>): Double? {
+        var weightedSum = 0.0
+        var totalWeight = 0.0
+        for (i in indices) {
+            val item = timeline[i]
+            val p = item.sample.pace?.takeIf { it.isFinite() && it in 120.0..1200.0 } ?: continue
+            val w = item.dtSec.coerceAtLeast(1.0)
+            weightedSum += p * w
+            totalWeight += w
+        }
+        return if (totalWeight > 0.0) weightedSum / totalWeight else null
+    }
+
+    private fun sliceFromLaps(laps: List<ActivityLap>, timeline: List<IndexedSample>): MeasuredSlice {
+        val distM = laps.sumOf { it.distance ?: 0.0 }
+        val durS = laps.sumOf { it.seconds ?: 0.0 }
+        val lapAvgPace = if (distM > 0.0 && durS > 0.0) {
+            1000.0 * durS / distM
+        } else {
+            val paces = laps.mapNotNull { lap ->
+                val p = lap.pace?.takeIf { it.isFinite() && it in 120.0..1200.0 } ?: return@mapNotNull null
+                val w = (lap.seconds ?: 1.0).coerceAtLeast(1.0)
+                p to w
+            }
+            if (paces.isNotEmpty()) {
+                paces.sumOf { it.first * it.second } / paces.sumOf { it.second }
+            } else null
+        }
+
+        val matchingSamples = if (timeline.isNotEmpty() && laps.any { it.startSeconds != null && it.seconds != null }) {
+            val intervals = laps.mapNotNull { lap ->
+                val s = lap.startSeconds ?: return@mapNotNull null
+                val d = lap.seconds ?: return@mapNotNull null
+                s..(s + d)
+            }
+            timeline.filter { item -> intervals.any { item.sample.seconds in it } }
+        } else emptyList()
+
+        val hrs = laps.mapNotNull { lap ->
+            val hr = lap.hr?.takeIf { it.isFinite() && it > 0.0 } ?: return@mapNotNull null
+            val w = (lap.seconds ?: 1.0).coerceAtLeast(1.0)
+            hr to w
+        }
+        val avgHr = if (hrs.isNotEmpty()) {
+            hrs.sumOf { it.first * it.second } / hrs.sumOf { it.second }
+        } else null
+        val elevGain = computeAltitudeGain(matchingSamples)
+        val samplePaces = matchingSamples.mapNotNull { item ->
+            item.sample.pace?.takeIf { it in 120.0..1200.0 }?.let { it to item.dtSec }
+        }
+        return MeasuredSlice(
+            distanceKm = distM / 1000.0,
+            durationSec = durS,
+            avgPaceSecPerKm = lapAvgPace,
+            avgHrBpm = avgHr,
+            elevationGainM = elevGain,
+            samplePaces = samplePaces,
+            source = "LAP_AND_RECORD"
+        )
+    }
+
+    private fun sliceFromSampleRange(
+        timeline: List<IndexedSample>,
+        startIdx: Int,
+        endIdx: Int,
+        sourceTag: String
+    ): MeasuredSlice = sliceFromIndexSubset(timeline, (startIdx..endIdx).toList(), sourceTag)
+
+    private fun sliceFromIndexSubset(
+        timeline: List<IndexedSample>,
+        indices: List<Int>,
+        sourceTag: String
+    ): MeasuredSlice {
+        if (indices.isEmpty()) {
+            return MeasuredSlice(0.0, 0.0, null, null, null, emptyList(), sourceTag)
+        }
+        val distM = max(0.0, timeline[indices.last()].cumulativeMeters - timeline[indices.first()].cumulativeMeters)
+        val durSec = indices.sumOf { timeline[it].dtSec }
+        val pacePairs = indices.mapNotNull { idx ->
+            val item = timeline[idx]
+            item.sample.pace?.takeIf { it.isFinite() && it in 120.0..1200.0 }?.let { it to item.dtSec }
+        }
+        val avgPace = if (pacePairs.isNotEmpty()) {
+            val wSum = pacePairs.sumOf { it.second }.coerceAtLeast(1.0)
+            pacePairs.sumOf { it.first * it.second } / wSum
+        } else if (distM > 0.0 && durSec > 0.0) {
+            1000.0 * durSec / distM
+        } else null
+
+        val hrPairs = indices.mapNotNull { idx ->
+            val item = timeline[idx]
+            item.sample.hr?.takeIf { it.isFinite() && it > 0.0 }?.let { it to item.dtSec }
+        }
+        val avgHr = if (hrPairs.isNotEmpty()) {
+            hrPairs.sumOf { it.first * it.second } / hrPairs.sumOf { it.second }.coerceAtLeast(1.0)
+        } else null
+        val elevGain = computeAltitudeGain(indices.map { timeline[it] })
+        return MeasuredSlice(
+            distanceKm = distM / 1000.0,
+            durationSec = durSec,
+            avgPaceSecPerKm = avgPace,
+            avgHrBpm = avgHr,
+            elevationGainM = elevGain,
+            samplePaces = pacePairs,
+            source = sourceTag
+        )
+    }
+
+    private fun buildStepBreakdown(
+        step: PlannedStepTarget,
+        slice: MeasuredSlice
+    ): ExecutionStepBreakdown {
+        val pace = slice.avgPaceSecPerKm
+        val adherence = if (step.targetPaceMinSecPerKm != null || step.targetPaceMaxSecPerKm != null) {
+            paceAdherence(pace, slice.samplePaces, step.targetPaceMinSecPerKm, step.targetPaceMaxSecPerKm)
+        } else null
+        return ExecutionStepBreakdown(
+            stepIndex = step.stepIndex,
+            purpose = step.purpose,
+            stepIntent = step.stepIntent,
+            plannedDistanceKm = step.plannedMeters?.div(1000.0)?.let(::round2),
+            actualDistanceKm = round2(slice.distanceKm),
+            plannedSeconds = step.plannedSeconds,
+            actualSeconds = slice.durationSec.roundToInt(),
+            targetPaceMinSecPerKm = step.targetPaceMinSecPerKm,
+            targetPaceMaxSecPerKm = step.targetPaceMaxSecPerKm,
+            actualPaceSecPerKm = pace?.let(::round1),
+            paceAdherencePct = adherence?.let(::round1),
+            paceBias = classifyPaceBias(pace, step.targetPaceMinSecPerKm, step.targetPaceMaxSecPerKm, 6.0, 8.0),
+            averageHrBpm = slice.avgHrBpm?.let(::round1),
+            elevationGainM = slice.elevationGainM?.let(::round1),
+            source = slice.source
+        )
+    }
+
+    private fun paceAdherence(
+        avgPace: Double?,
+        samplePaces: List<Pair<Double, Double>>,
+        minPace: Int?,
+        maxPace: Int?
+    ): Double? {
+        if (minPace == null && maxPace == null) return null
+        val low = (minPace?.toDouble() ?: 120.0) - 8.0
+        val high = (maxPace?.toDouble() ?: 1200.0) + 10.0
+
+        if (samplePaces.isNotEmpty()) {
+            val totalWeight = samplePaces.sumOf { it.second }.coerceAtLeast(1.0)
+            val inBandWeight = samplePaces.filter { (p, _) -> p in low..high }.sumOf { it.second }
+            val samplePct = (inBandWeight / totalWeight) * 100.0
+            if (avgPace != null && avgPace in low..high) {
+                return max(samplePct, 85.0).coerceIn(0.0, 100.0)
+            }
+            return samplePct.coerceIn(0.0, 100.0)
+        }
+
+        val pace = avgPace ?: return null
+        val delta = when {
+            pace < low -> low - pace
+            pace > high -> pace - high
+            else -> 0.0
+        }
+        return (100.0 - delta * 3.0).coerceIn(0.0, 100.0)
+    }
+
+    private fun classifyPaceBias(
+        pace: Double?,
+        minPace: Int?,
+        maxPace: Int?,
+        fastTolSec: Double,
+        slowTolSec: Double
+    ): ExecutionPaceBias {
+        if (pace == null || (minPace == null && maxPace == null)) return ExecutionPaceBias.UNKNOWN
+        if (minPace != null && pace < minPace - fastTolSec) return ExecutionPaceBias.TOO_FAST
+        if (maxPace != null && pace > maxPace + slowTolSec) return ExecutionPaceBias.TOO_SLOW
+        return ExecutionPaceBias.ON_TARGET
+    }
+
+    private fun weightedBreakdownPace(breakdowns: List<ExecutionStepBreakdown>): Double? {

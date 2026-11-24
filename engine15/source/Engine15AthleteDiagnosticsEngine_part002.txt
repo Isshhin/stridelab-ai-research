@@ -1,0 +1,371 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15AthleteDiagnosticsEngine.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 385-750
+--------------------------------------------------
+            avgDelta in -3.0..6.0 && (verifiedHitRatePct ?: 0.0) >= 65.0 -> {
+                reasons += "QUALITY_EXECUTION_ON_TARGET"
+                LongitudinalPaceTrend.ON_TARGET
+            }
+            else -> {
+                reasons += "QUALITY_PACE_MIXED"
+                LongitudinalPaceTrend.MIXED
+            }
+        }
+        if (subCount > 0) reasons += "VOLUME_ONLY_QUALITY_SUBSTITUTIONS_PRESENT"
+
+        return QualityExecutionDiagnostic(
+            evaluatedQualityCount = evaluatedCount,
+            verifiedHitCount = verifiedHitCount,
+            verifiedHitRatePct = verifiedHitRatePct?.let(::round1),
+            volumeOnlySubstitutionCount = subCount,
+            tooSlowCount = tooSlowCount,
+            tooFastCount = tooFastCount,
+            partialCount = partialCount,
+            paceTrend = paceTrend,
+            avgWorkPaceDeltaSecPerKm = avgDelta?.let(::round1),
+            confidence = confidence,
+            reasonCodes = reasons.toList()
+        )
+    }
+
+    private fun evaluateEasyDiscipline(
+        linkedPairs: List<LinkedExecutionPair>
+    ): EasyDisciplineDiagnostic {
+        val reasons = LinkedHashSet<String>()
+        val linkedEasy = linkedPairs.filter {
+            !it.session.quality && it.analysis.qualityStimulusVerified == null
+        }
+        val count = linkedEasy.size
+        val tooFastRuns = linkedEasy.filter {
+            it.analysis.verdict == ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST
+        }
+        val tooFastCount = tooFastRuns.size
+        val creepRate = if (count > 0) tooFastCount * 100.0 / count else null
+
+        val overshoots = tooFastRuns.mapNotNull { pair ->
+            val easyStep = pair.analysis.stepBreakdowns.firstOrNull {
+                it.targetPaceMinSecPerKm != null && it.actualPaceSecPerKm != null
+            } ?: return@mapNotNull null
+            val minPace = easyStep.targetPaceMinSecPerKm!!.toDouble()
+            val actualPace = easyStep.actualPaceSecPerKm!!
+            (minPace - actualPace).coerceAtLeast(0.0)
+        }
+        val avgOvershoot = if (overshoots.isNotEmpty()) overshoots.average() else null
+
+        val hiddenFatigueRisk = (count >= 3 && (creepRate ?: 0.0) >= 50.0) ||
+            (count >= 2 && tooFastCount == count && (avgOvershoot ?: 0.0) >= 15.0)
+        if (hiddenFatigueRisk) {
+            reasons += "EASY_DAY_GRAY_ZONE_CREEP"
+            reasons += "HIDDEN_FATIGUE_RISK"
+        } else if (count >= 2) {
+            reasons += "EASY_PACE_DISCIPLINE_GOOD"
+        }
+
+        val nonSummaryCount = linkedEasy.count {
+            it.analysis.evidenceTier != ExecutionEvidenceTier.SUMMARY_ONLY
+        }
+        val confidence = when {
+            count == 0 -> DiagnosticConfidence.INSUFFICIENT
+            nonSummaryCount == 0 -> DiagnosticConfidence.LOW
+            count <= 2 -> DiagnosticConfidence.LOW
+            count <= 5 -> DiagnosticConfidence.MODERATE
+            else -> DiagnosticConfidence.HIGH
+        }
+
+        return EasyDisciplineDiagnostic(
+            evaluatedEasyCount = count,
+            tooFastCount = tooFastCount,
+            grayZoneCreepRatePct = creepRate?.let(::round1),
+            avgOvershootSecPerKm = avgOvershoot?.let(::round1),
+            hiddenFatigueRisk = hiddenFatigueRisk,
+            confidence = confidence,
+            reasonCodes = reasons.toList()
+        )
+    }
+
+    private fun evaluateAerobicEfficiency(
+        athleteHrZones: ExecutionHrZoneProfile?,
+        efficiencyStart: LocalDate,
+        asOfDate: LocalDate,
+        runActivities: List<Pair<ActivityRecord, LocalDate>>,
+        allRunSessions: List<PlannedSession>,
+        matchesByActivityId: Map<String, ActivityMatchRecord>,
+        analysesBySessionId: Map<String, WorkoutExecutionAnalysis>,
+        pendingCount: Int
+    ): AerobicEfficiencyDiagnostic {
+        if (athleteHrZones == null) {
+            return AerobicEfficiencyDiagnostic(
+                hrDataAvailable = false,
+                eligibleRunCount = 0,
+                earlyWindowEf = null,
+                recentWindowEf = null,
+                efChangePct = null,
+                medianDecouplingPct = null,
+                trend = AerobicEfficiencyTrend.UNAVAILABLE,
+                confidence = DiagnosticConfidence.INSUFFICIENT,
+                reasonCodes = listOf("NO_VERIFIED_HR_ZONE_PROFILE")
+            )
+        }
+
+        val sessionById = allRunSessions.associateBy { it.id }
+        val eligible = runActivities.mapNotNull { (activity, date) ->
+            if (date !in efficiencyStart..asOfDate) return@mapNotNull null
+            val durS = (activity.movingTimeS ?: activity.durationS)?.takeIf { it >= 1800.0 } ?: return@mapNotNull null
+            val distM = activity.distanceM?.takeIf { it >= 3000.0 } ?: return@mapNotNull null
+            val avgHr = activity.averageHr?.takeIf { it.isFinite() && it in 70.0..220.0 } ?: return@mapNotNull null
+            val linkedSessionId = matchesByActivityId[activity.id]
+                ?.takeIf {
+                    it.matchStatus == ActivityMatchStatus.AUTO_LINKED ||
+                        it.matchStatus == ActivityMatchStatus.MANUALLY_LINKED
+                }
+                ?.plannedSessionId
+            if (linkedSessionId != null && sessionById[linkedSessionId]?.quality == true) {
+                return@mapNotNull null
+            }
+            val ef = (distM / durS) / avgHr
+            if (!ef.isFinite() || ef <= 0.0) return@mapNotNull null
+            EfObservation(date, ef)
+        }.sortedBy { it.date }
+
+        val spanDays = if (eligible.size >= 2) {
+            ChronoUnit.DAYS.between(eligible.first().date, eligible.last().date)
+        } else 0L
+
+        if (eligible.size < 4 || spanDays < 14L) {
+            return AerobicEfficiencyDiagnostic(
+                hrDataAvailable = false,
+                eligibleRunCount = eligible.size,
+                earlyWindowEf = null,
+                recentWindowEf = null,
+                efChangePct = null,
+                medianDecouplingPct = null,
+                trend = AerobicEfficiencyTrend.UNAVAILABLE,
+                confidence = DiagnosticConfidence.INSUFFICIENT,
+                reasonCodes = listOf("INSUFFICIENT_ELIGIBLE_HR_RUNS")
+            )
+        }
+
+        val half = eligible.size / 2
+        val early = eligible.take(half)
+        val recent = eligible.drop(half)
+        val earlyEf = early.map { it.ef }.average()
+        val recentEf = recent.map { it.ef }.average()
+        val efChangePct = ((recentEf - earlyEf) / earlyEf) * 100.0
+
+        val decouplingValues = analysesBySessionId.values
+            .filter {
+                val sessionDate = sessionById[it.plannedSessionId]?.date
+                sessionDate != null && sessionDate in efficiencyStart..asOfDate && it.aerobicDecouplingPct != null
+            }
+            .mapNotNull { it.aerobicDecouplingPct }
+            .sorted()
+        val medianDecoupling = if (decouplingValues.isNotEmpty()) {
+            val mid = decouplingValues.size / 2
+            if (decouplingValues.size % 2 == 1) decouplingValues[mid]
+            else (decouplingValues[mid - 1] + decouplingValues[mid]) / 2.0
+        } else null
+
+        val reasons = LinkedHashSet<String>()
+        val trend = when {
+            efChangePct <= -3.0 || ((medianDecoupling ?: 0.0) >= 8.0 && efChangePct < 0.0) -> {
+                reasons += "AEROBIC_EFFICIENCY_DECLINING"
+                AerobicEfficiencyTrend.FATIGUING
+            }
+            efChangePct >= 2.5 && (medianDecoupling == null || medianDecoupling < 6.5) -> {
+                reasons += "AEROBIC_EFFICIENCY_IMPROVING"
+                AerobicEfficiencyTrend.IMPROVING
+            }
+            else -> {
+                reasons += "AEROBIC_EFFICIENCY_STABLE"
+                AerobicEfficiencyTrend.STABLE
+            }
+        }
+
+        var confidence = if (eligible.size >= 6) DiagnosticConfidence.HIGH else DiagnosticConfidence.MODERATE
+        if (pendingCount >= 1 && confidence == DiagnosticConfidence.HIGH) {
+            confidence = DiagnosticConfidence.MODERATE
+        }
+
+        return AerobicEfficiencyDiagnostic(
+            hrDataAvailable = true,
+            eligibleRunCount = eligible.size,
+            earlyWindowEf = round4(earlyEf),
+            recentWindowEf = round4(recentEf),
+            efChangePct = round1(efChangePct),
+            medianDecouplingPct = medianDecoupling?.let(::round1),
+            trend = trend,
+            confidence = confidence,
+            reasonCodes = reasons.toList()
+        )
+    }
+
+    private fun determineAdvisory(
+        volume: VolumeToleranceDiagnostic,
+        quality: QualityExecutionDiagnostic,
+        easy: EasyDisciplineDiagnostic,
+        aerobic: AerobicEfficiencyDiagnostic
+    ): RecalibrationAdvisory {
+        if (volume.consecutiveMissedSessions >= 3 ||
+            (volume.plannedSessions >= 4 && volume.completedSessions > 0 && volume.volumeCompletionRatio < 0.65) ||
+            volume.exposureStatus == ExposureStatus.OVERREACH_RISK
+        ) {
+            return RecalibrationAdvisory.VOLUME_RECOVERY_NEEDED
+        }
+        if (volume.confidence == DiagnosticConfidence.INSUFFICIENT &&
+            quality.confidence == DiagnosticConfidence.INSUFFICIENT
+        ) {
+            return RecalibrationAdvisory.INSUFFICIENT_DATA
+        }
+        if (easy.hiddenFatigueRisk) {
+            return RecalibrationAdvisory.ADDRESS_EASY_PACING_FIRST
+        }
+        if (quality.confidence in setOf(DiagnosticConfidence.MODERATE, DiagnosticConfidence.HIGH)) {
+            if (quality.paceTrend == LongitudinalPaceTrend.FASTER_THAN_TARGET &&
+                (quality.verifiedHitRatePct ?: 0.0) >= 75.0 &&
+                quality.tooSlowCount == 0 &&
+                quality.volumeOnlySubstitutionCount == 0 &&
+                aerobic.trend != AerobicEfficiencyTrend.FATIGUING
+            ) {
+                return RecalibrationAdvisory.SUGGEST_FASTER_CHECK
+            }
+            if (quality.paceTrend == LongitudinalPaceTrend.SLOWER_THAN_TARGET &&
+                quality.tooSlowCount >= 2
+            ) {
+                return RecalibrationAdvisory.SUGGEST_SLOWER_CHECK
+            }
+            return RecalibrationAdvisory.HOLD
+        }
+        return if (volume.confidence in setOf(DiagnosticConfidence.INSUFFICIENT, DiagnosticConfidence.LOW) &&
+            quality.confidence in setOf(DiagnosticConfidence.INSUFFICIENT, DiagnosticConfidence.LOW)
+        ) {
+            RecalibrationAdvisory.INSUFFICIENT_DATA
+        } else {
+            RecalibrationAdvisory.HOLD
+        }
+    }
+
+    private fun determineOverallConfidence(
+        volume: VolumeToleranceDiagnostic,
+        quality: QualityExecutionDiagnostic,
+        easy: EasyDisciplineDiagnostic,
+        pendingCount: Int
+    ): DiagnosticConfidence {
+        if (volume.confidence == DiagnosticConfidence.INSUFFICIENT) {
+            return DiagnosticConfidence.INSUFFICIENT
+        }
+        val executionMax = maxConfidence(quality.confidence, easy.confidence)
+        val combinedOrdinal = (volume.confidence.ordinal + executionMax.ordinal) / 2
+        var overall = DiagnosticConfidence.entries[combinedOrdinal.coerceIn(0, DiagnosticConfidence.HIGH.ordinal)]
+        if (pendingCount >= 1 && overall == DiagnosticConfidence.HIGH) {
+            overall = DiagnosticConfidence.MODERATE
+        }
+        if ("SUMMARY_ONLY_EVIDENCE_CAPS_CONFIDENCE" in quality.reasonCodes &&
+            overall > DiagnosticConfidence.LOW
+        ) {
+            overall = DiagnosticConfidence.LOW
+        }
+        return overall
+    }
+
+    private fun buildRankedInsights(
+        overallConfidence: DiagnosticConfidence,
+        volume: VolumeToleranceDiagnostic,
+        quality: QualityExecutionDiagnostic,
+        easy: EasyDisciplineDiagnostic,
+        aerobic: AerobicEfficiencyDiagnostic,
+        advisory: RecalibrationAdvisory,
+        pendingCount: Int
+    ): List<DiagnosticInsight> {
+        val list = ArrayList<DiagnosticInsight>(4)
+
+        // 1. Safety / Volume Recovery / Exposure
+        if (advisory == RecalibrationAdvisory.VOLUME_RECOVERY_NEEDED) {
+            val detail = when {
+                volume.consecutiveMissedSessions >= 3 ->
+                    "${volume.consecutiveMissedSessions} consecutive planned runs were missed"
+                volume.exposureStatus == ExposureStatus.OVERREACH_RISK ->
+                    "acute 7-day load (${formatKm(volume.last7dKm)}) or longest run (${formatKm(volume.longest30dKm)}) exceeds safe baseline"
+                else ->
+                    "28-day volume is ${formatKm(volume.completedKm)} of ${formatKm(volume.plannedKm)} planned (${(volume.volumeCompletionRatio * 100).toInt()}%)"
+            }
+            list += DiagnosticInsight(
+                code = "VOLUME_RECOVERY_NEEDED",
+                severity = DiagnosticInsightSeverity.ACTIONABLE,
+                confidence = volume.confidence,
+                message = "Prioritize volume consistency over pace changes because $detail."
+            )
+        } else if (volume.confidence == DiagnosticConfidence.INSUFFICIENT) {
+            list += DiagnosticInsight(
+                code = "INSUFFICIENT_BASELINE_SAMPLES",
+                severity = DiagnosticInsightSeverity.INFO,
+                confidence = DiagnosticConfidence.INSUFFICIENT,
+                message = "Only ${volume.completedSessions} runs recorded in 28 days (need at least 3 runs and 3 non-summary quality sessions before trend recalibration)."
+            )
+        }
+
+        // 2. Easy-day gray-zone creep
+        if (easy.hiddenFatigueRisk) {
+            val rate = (easy.grayZoneCreepRatePct ?: 0.0).toInt()
+            val overshoot = easy.avgOvershootSecPerKm?.let { " by ~${it.toInt()} s/km" }.orEmpty()
+            list += DiagnosticInsight(
+                code = "EASY_GRAY_ZONE_CREEP",
+                severity = DiagnosticInsightSeverity.CAUTION,
+                confidence = easy.confidence,
+                message = "$rate% of linked easy days (${easy.tooFastCount}/${easy.evaluatedEasyCount}) drifted too fast$overshoot, creating hidden fatigue risk."
+            )
+        }
+
+        // 3. Quality execution / substitutions / recalibration
+        if (quality.volumeOnlySubstitutionCount > 0 && list.size < 4) {
+            list += DiagnosticInsight(
+                code = "VOLUME_ONLY_SUBSTITUTIONS",
+                severity = DiagnosticInsightSeverity.CAUTION,
+                confidence = quality.confidence,
+                message = "${quality.volumeOnlySubstitutionCount} of ${quality.evaluatedQualityCount} quality workouts matched total distance only without hitting work-step pace."
+            )
+        }
+        if (advisory == RecalibrationAdvisory.SUGGEST_FASTER_CHECK && list.size < 4) {
+            val delta = kotlin.math.abs(quality.avgWorkPaceDeltaSecPerKm ?: 0.0)
+            list += DiagnosticInsight(
+                code = "SUGGEST_FASTER_PACE_CHECK",
+                severity = DiagnosticInsightSeverity.ACTIONABLE,
+                confidence = quality.confidence,
+                message = String.format(
+                    Locale.US,
+                    "All %d verified quality sessions averaged %.0f s/km faster than target with controlled easy pacing; pace zones may be ready for a faster check.",
+                    quality.verifiedHitCount,
+                    delta
+                )
+            )
+        } else if (advisory == RecalibrationAdvisory.SUGGEST_SLOWER_CHECK && list.size < 4) {
+            val delta = quality.avgWorkPaceDeltaSecPerKm ?: 0.0
+            list += DiagnosticInsight(
+                code = "SUGGEST_SLOWER_PACE_CHECK",
+                severity = DiagnosticInsightSeverity.ACTIONABLE,
+                confidence = quality.confidence,
+                message = String.format(
+                    Locale.US,
+                    "%d of %d quality sessions finished slower than target (avg +%.0f s/km), signaling a potential pace-zone ease check.",
+                    quality.tooSlowCount,
+                    quality.evaluatedQualityCount,
+                    delta
+                )
+            )
+        }
+
+        // 4. Aerobic efficiency & pending confirmations
+        if (aerobic.hrDataAvailable && aerobic.efChangePct != null && list.size < 4) {
+            val decouplingText = aerobic.medianDecouplingPct?.let {
+                String.format(Locale.US, " (median Pa:Hr decoupling %.1f%%)", it)
+            }.orEmpty()
+            list += DiagnosticInsight(
+                code = "AEROBIC_EFFICIENCY_${aerobic.trend.name}",
+                severity = if (aerobic.trend == AerobicEfficiencyTrend.FATIGUING)
+                    DiagnosticInsightSeverity.CAUTION else DiagnosticInsightSeverity.INFO,
+                confidence = aerobic.confidence,
+                message = String.format(
+                    Locale.US,
+                    "Aerobic efficiency shifted %+.1f%% across %d steady HR runs%s.",
+                    aerobic.efChangePct,
+                    aerobic.eligibleRunCount,

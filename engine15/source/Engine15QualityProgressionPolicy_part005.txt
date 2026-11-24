@@ -1,0 +1,125 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15QualityProgressionPolicy.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 5
+LINES: 1181-1300
+--------------------------------------------------
+                    doseStep = distanceFitted,
+                    workTarget = workTarget,
+                    slotDistanceKm = slot.originalEasyDistanceKm,
+                    zones = deterministicZones,
+                    timeBudgetSeconds = timeBudgetSeconds
+                )
+                val timeCapped = timeBounded.last().stepIndex < candidatesInWindow.last().stepIndex
+                val basis = when {
+                    isRaceTaperWeek -> Engine15QualityProgressionBasis.RACE_TAPER_REDUCTION
+                    timeCapped -> Engine15QualityProgressionBasis.TIME_BUDGET_CAPPED
+                    else -> Engine15QualityProgressionBasis.EVIDENCE_BOUNDED_PROGRESSION
+                }
+                val rules = buildList {
+                    add("REPEATED_SAME_FAMILY_EXPOSURE_ASSERTED")
+                    add("BOUNDED_INCREMENT_CEILING_APPLIED")
+                    add("ENERGY_SYSTEM_RECOVERY_RATIOS_APPLIED")
+                    add("MACRO_PHASE_${weekPhase.name}")
+                    if (isRaceTaperWeek) add("RACE_TAPER_QUALITY_HOLD")
+                    if (timeCapped) add("SESSION_TIME_BUDGET_CAP_APPLIED")
+                    if (isConservativeAthlete) add("CONSERVATIVE_ENTRY_HOLD_APPLIED")
+                }
+                val workLabel = if (finalStep.workMeters > 0) {
+                    "${finalStep.workMeters} m work"
+                } else {
+                    "${(finalStep.workSeconds / 60.0).let { if (it % 1.0 == 0.0) it.toInt().toString() else "%.1f".format(java.util.Locale.US, it) }} min work"
+                }
+                val rationale = when (basis) {
+                    Engine15QualityProgressionBasis.RACE_TAPER_REDUCTION ->
+                        "[${weekPhase.name}] Taper hold at ${chosenArch.displayTitle} (${finalStep.stageLabel}, $workLabel) before '${request.goal}'."
+                    Engine15QualityProgressionBasis.TIME_BUDGET_CAPPED ->
+                        "[${weekPhase.name}] ${chosenArch.displayTitle} (${finalStep.stageLabel}, $workLabel) capped to fit the ${request.minutes}-minute session budget."
+                    else ->
+                        "[${weekPhase.name}] ${chosenArch.displayTitle} (${finalStep.stageLabel}, $workLabel) dosed within weekly energy-system ceilings."
+                }
+                Engine15QualityWeekPrescription(
+                    policyId = POLICY_ID,
+                    weekNumber = slot.weekNumber,
+                    family = weekFamily,
+                    step = finalStep,
+                    basis = basis,
+                    ruleIds = rules,
+                    rationale = rationale,
+                    slotNumber = slot.slotNumber
+                )
+            }
+        }
+
+        val rotateFamilies = false
+        val rotation = listOf(family)
+
+        return slots.mapIndexed { slotIndex, slot ->
+            val weekFamily = rotation[slotIndex % rotation.size]
+            val weekSteps = if (weekFamily == family) steps else ladder(weekFamily, request.experience)
+            val weekIntro = weekSteps.first()
+            val weekAnchorIndex = if (weekFamily == family) anchorIndex else {
+                (anchorRatio * weekSteps.lastIndex).roundToInt().coerceIn(0, weekSteps.lastIndex)
+            }
+            val blockIndex = (slot.weekNumber - 1) / 4
+            val weekInBlock = (slot.weekNumber - 1) % 4
+            val isRaceTaperWeek = (slot.weekNumber in taperWeeks) ||
+                (isRaceGoal && request.weeks >= 8 && slot.weekNumber == lastLoadingWeek)
+            val desiredIndex = if (isRaceTaperWeek) {
+                (weekAnchorIndex - 1).coerceAtLeast(0)
+            } else {
+                (weekAnchorIndex + blockIndex + (weekInBlock / 2)).coerceAtMost(weekSteps.lastIndex)
+            }
+            val rotatedCap = if (weekFamily == family) {
+                maxPermittedWork
+            } else {
+                (maxPermittedWork * (familyWorkWeight(weekFamily) / familyWorkWeight(family)).coerceAtMost(1.0)).roundToInt()
+            }
+            val boundedCap = if (weekFamily != family) {
+                minOf(rotatedCap, familyMaxWorkSeconds(weekFamily, request.experience, request.qualityCount))
+            } else {
+                maxPermittedWork
+            }
+            val weekMaxWork = maxOf(weekIntro.workSeconds, boundedCap)
+            val exposureBounded = weekSteps.take(desiredIndex + 1)
+                .lastOrNull { it.workSeconds <= weekMaxWork } ?: weekIntro
+            val budgetBounded = if (timeBudgetSeconds != null) {
+                weekSteps.take(exposureBounded.stepIndex + 1)
+                    .lastOrNull { it.totalSeconds <= timeBudgetSeconds } ?: weekIntro
+            } else {
+                exposureBounded
+            }
+            val finalStep = budgetBounded
+            val timeCapped = budgetBounded.stepIndex < exposureBounded.stepIndex
+            val basis = when {
+                isRaceTaperWeek -> Engine15QualityProgressionBasis.RACE_TAPER_REDUCTION
+                timeCapped -> Engine15QualityProgressionBasis.TIME_BUDGET_CAPPED
+                else -> Engine15QualityProgressionBasis.EVIDENCE_BOUNDED_PROGRESSION
+            }
+            val rules = buildList {
+                add("REPEATED_SAME_FAMILY_EXPOSURE_ASSERTED")
+                add("BOUNDED_INCREMENT_CEILING_APPLIED")
+                if (isRaceTaperWeek) add("RACE_TAPER_QUALITY_HOLD")
+                if (timeCapped) add("SESSION_TIME_BUDGET_CAP_APPLIED")
+                add("NO_PACE_OR_HR_TARGET_INFERRED")
+            }
+            val rationale = when (basis) {
+                Engine15QualityProgressionBasis.RACE_TAPER_REDUCTION ->
+                    "Taper hold at ${finalStep.stageLabel} (${finalStep.workSeconds / 60} min work) for the final loading week before '${request.goal}'."
+                Engine15QualityProgressionBasis.TIME_BUDGET_CAPPED ->
+                    "Capped at ${finalStep.stageLabel} (${finalStep.workSeconds / 60} min work) to fit the ${request.minutes}-minute session budget."
+                else ->
+                    "Adaptive 50/50 history & fitness ${finalStep.stageLabel} (${finalStep.workSeconds / 60} min work) anchored to ${repeatedBaseline / 60} min baseline."
+            }
+            Engine15QualityWeekPrescription(
+                policyId = POLICY_ID,
+                weekNumber = slot.weekNumber,
+                family = weekFamily,
+                step = finalStep,
+                basis = basis,
+                ruleIds = rules,
+                rationale = rationale,
+                slotNumber = slot.slotNumber
+            )
+        }
+    }
+}

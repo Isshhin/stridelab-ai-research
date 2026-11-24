@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15IndependentPlanGeneratorTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15IndependentPlanGeneratorTest_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15IndependentPlanGeneratorTest_part004.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M28CoachingAuditTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M28CoachingAuditTest_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M3AthleteBaselineTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M4BIndependentVolumePlannerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M4WeeklyVolumeSkeletonTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M5QualityPreviewComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M5TimedDistanceReconcilerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M5WorkoutComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M6IndependentCalendarTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M6IndependentInterferenceReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M6IndependentPeriodizationReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15M6IndependentQualitySpacingTest_part001.txt

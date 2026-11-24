@@ -1,0 +1,147 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PaceZoneEstimator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 351-492
+--------------------------------------------------
+            RunningStepIntent.WARMUP,
+            RunningStepIntent.COOLDOWN,
+            RunningStepIntent.RECOVERY -> z1Low to z2High
+            RunningStepIntent.AEROBIC_EASY -> (z1High + 1) to z2High
+            RunningStepIntent.STEADY,
+            RunningStepIntent.TEMPO -> (z2High + 1) to z3High
+            RunningStepIntent.THRESHOLD,
+            RunningStepIntent.RACE_PACE -> (z3High + 1) to z4High
+            RunningStepIntent.VO2_INTERVAL,
+            RunningStepIntent.HILL,
+            RunningStepIntent.STRIDE -> (z3High + 1) to z5High
+        }
+        val minBpm = rawMin.coerceIn(60, 230)
+        val maxBpm = rawMax.coerceIn(minBpm, 230)
+        return minBpm to maxBpm
+    }
+
+    /**
+     * Automatically computes reconciled whole-meter per-segment equivalents for
+     * every loading-week alternative in a quality dry-run so they sum to each
+     * slot's exact easy-run kilometer budget without warping WORK-segment pace
+     * whenever warm-up/cool-down headroom can absorb the distance delta.
+     */
+    fun estimateSegmentClaims(
+        dryRun: Engine15QualityWorkoutDryRun,
+        zones: Engine15ProvisionalPaceZones
+    ): List<Engine15M5SegmentDistanceClaim> = dryRun.alternatives.map { alt ->
+        val archetype = alt.prescription?.step?.archetype
+        val workout = alt.prescription?.step?.workout ?: dryRun.workout
+        val phases = mutableListOf<WorkoutStep>()
+        for (element in workout.elements) when (element) {
+            is IndependentWorkoutElement.Step -> repeat(element.value.repetitions) { phases += element.value }
+            is IndependentWorkoutElement.Intervals -> repeat(element.value.repetitions) { i ->
+                phases += element.value.work
+                if (i < element.value.repetitions - 1) phases += element.value.recovery
+            }
+        }
+        val pinned = BooleanArray(phases.size) { phases[it].unit == WorkoutUnit.METERS }
+        val pinnedSumMeters = phases.indices.sumOf { if (pinned[it]) kotlin.math.round(phases[it].amount).toInt() else 0 }
+        val totalMeters = kotlin.math.round(alt.originalEasyDistanceKm * 1000.0).toInt()
+            .coerceAtLeast(pinnedSumMeters + phases.indices.count { !pinned[it] })
+        val naturalMeters = DoubleArray(phases.size)
+        val minMeters = DoubleArray(phases.size)
+        val maxMeters = DoubleArray(phases.size)
+        phases.forEachIndexed { idx, step ->
+            if (pinned[idx]) {
+                val exactM = kotlin.math.round(step.amount)
+                naturalMeters[idx] = exactM
+                minMeters[idx] = exactM
+                maxMeters[idx] = exactM
+            } else {
+                val range = zones.forTarget(step.target, archetype)
+                naturalMeters[idx] = step.amount * (1000.0 / range.midpointSecondsPerKm)
+                minMeters[idx] = step.amount * (1000.0 / (range.slowSecondsPerKm * 1.12))
+                maxMeters[idx] = step.amount * (1000.0 / (range.fastSecondsPerKm * 0.90))
+            }
+        }
+
+        val allocated = naturalMeters.copyOf()
+        var residual = totalMeters.toDouble() - allocated.sum()
+
+        fun absorbInto(indices: List<Int>) {
+            if (indices.isEmpty() || kotlin.math.abs(residual) <= 1e-6) return
+            if (residual > 0.0) {
+                val headroom = indices.associateWith { i -> (maxMeters[i] - allocated[i]).coerceAtLeast(0.0) }
+                val totalHeadroom = headroom.values.sum()
+                if (totalHeadroom > 1e-6) {
+                    val share = minOf(1.0, residual / totalHeadroom)
+                    for ((i, room) in headroom) {
+                        val add = room * share
+                        allocated[i] += add
+                        residual -= add
+                    }
+                }
+            } else {
+                val slack = indices.associateWith { i -> (allocated[i] - minMeters[i]).coerceAtLeast(0.0) }
+                val totalSlack = slack.values.sum()
+                if (totalSlack > 1e-6) {
+                    val share = minOf(1.0, -residual / totalSlack)
+                    for ((i, room) in slack) {
+                        val sub = room * share
+                        allocated[i] -= sub
+                        residual += sub
+                    }
+                }
+            }
+        }
+
+        val easyBookendIndices = phases.indices.filter {
+            !pinned[it] && (phases[it].purpose == WorkoutPurpose.WARM_UP || phases[it].purpose == WorkoutPurpose.COOL_DOWN)
+        }
+        val timedCoreIndices = phases.indices.filter { !pinned[it] && it !in easyBookendIndices }
+
+        absorbInto(easyBookendIndices)
+        absorbInto(timedCoreIndices)
+
+        if (kotlin.math.abs(residual) > 1e-6) {
+            val unpinnedIndices = phases.indices.filter { !pinned[it] }
+            val targetUnpinned = (totalMeters - pinnedSumMeters).coerceAtLeast(unpinnedIndices.size).toDouble()
+            val sumUnpinned = unpinnedIndices.sumOf { allocated[it] }.coerceAtLeast(1e-6)
+            for (i in unpinnedIndices) {
+                allocated[i] = (allocated[i] / sumUnpinned) * targetUnpinned
+            }
+        }
+
+        val rounded = phases.indices.map { i ->
+            if (pinned[i]) kotlin.math.round(allocated[i]).toInt().coerceAtLeast(1)
+            else allocated[i].roundToInt().coerceAtLeast(1)
+        }.toMutableList()
+        val adjustableIndices = phases.indices.filter { !pinned[it] }
+        if (adjustableIndices.isNotEmpty()) {
+            val delta = totalMeters - rounded.sum()
+            val anchorIdx = easyBookendIndices.maxByOrNull { rounded[it] }
+                ?: adjustableIndices.maxByOrNull { rounded[it] }
+                ?: adjustableIndices.last()
+            rounded[anchorIdx] = (rounded[anchorIdx] + delta).coerceAtLeast(1)
+            var fix = totalMeters - rounded.sum()
+            while (fix != 0) {
+                val idx = if (fix > 0) {
+                    adjustableIndices.maxByOrNull { rounded[it] } ?: adjustableIndices.first()
+                } else {
+                    adjustableIndices.filter { rounded[it] > 1 }.maxByOrNull { rounded[it] } ?: break
+                }
+                if (fix > 0) {
+                    rounded[idx]++
+                    fix--
+                } else {
+                    rounded[idx]--
+                    fix++
+                }
+            }
+        }
+
+        Engine15M5SegmentDistanceClaim(
+            weekNumber = alt.weekNumber,
+            slotNumber = alt.slotNumber,
+            assertedMetersByTimedSegment = rounded.map { it.toDouble() },
+            externalReviewReference = null,
+            provenance = Engine15M5DistanceClaimProvenance.USER_ASSERTED_EQUIVALENT
+        )
+    }
+}

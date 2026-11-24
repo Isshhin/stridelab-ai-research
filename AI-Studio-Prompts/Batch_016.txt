@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15WeeklyReviewTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15WorkoutDetectionTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/tests/Engine15WorkoutDifficultyAdjusterTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-q1-quality-baseline-20261116_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-q1-quality-executed-findings-20261116_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-q2-mixed-unit-cooldown-20261116_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/engine15-q3-verified-quality-20261116_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/DECISION_LOG_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/GATE_B_EXECUTED_READOUT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/GATE_B_PREFLIGHT_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I1_INTEGRATED_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I1_INTEGRATED_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I2_ADVERSARIAL_SHADOW_MATRIX_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_IMPLEMENTATION_20261117_part001.txt

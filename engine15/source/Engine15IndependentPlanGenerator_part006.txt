@@ -1,0 +1,194 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 6
+LINES: 1320-1508
+--------------------------------------------------
+            val days = (0..6).map { request.start.plusDays(it.toLong()).dayOfWeek.value }.filter { it in request.days }
+            for (mask in 1 until (1 shl days.size)) {
+                if (Integer.bitCount(mask) != request.disciplineSessionCount(discipline)) continue
+                val pattern = days.filterIndexed { index, _ -> mask and (1 shl index) != 0 }
+                val scheduled = request.copy(weeklySlots = mapOf(discipline to pattern))
+                val rows = try { compose(scheduled) } catch (_: PlanConstraint) { continue }
+                if (fits(rows, strict = true)) return scheduled to rows
+                if (fallback == null && fits(rows, strict = false)) fallback = scheduled to rows
+            }
+        }
+        fallback?.let { return it }
+        throw PlanConstraint("The selected workouts cannot fit around active plans. Choose more available days or revise the fixed days.")
+    }
+
+    fun conflict(a: PlannedSession, b: PlannedSession): Boolean =
+        a.date == b.date || hardSpacingConflict(a, b)
+
+    fun hardSpacingConflict(a: PlannedSession, b: PlannedSession): Boolean {
+        val gap = kotlin.math.abs(ChronoUnit.DAYS.between(a.date, b.date))
+        fun hard(session: PlannedSession) = session.quality ||
+            if (Engine15DisciplineProgression.isStructured(session)) session.lower
+            else session.discipline == "cal" || session.discipline in setOf("str", "cond") && session.lower
+        fun longRun(session: PlannedSession) = session.discipline == "run" && session.kind == "long"
+        return hard(a) && hard(b) && gap < 2 ||
+            longRun(a) && hard(b) && gap < 2 || longRun(b) && hard(a) && gap < 2
+    }
+
+    fun validateSaved(
+        plan: PlanSnapshot,
+        qualityEvidence: List<IndependentQualitySegmentEvidence> = emptyList(),
+        combinedRunDatesById: Map<String, LocalDate>? = null,
+        combinedExternalHardDates: Set<LocalDate> = emptySet(),
+        combinedMaxMinutesById: Map<String, Int> = emptyMap()
+    ) {
+        if (plan.policyId == ENGINE15_INDEPENDENT_COMBINED_POLICY) {
+            Engine15StaticMultiDisciplinePlanner.validateSaved(plan)
+            return
+        }
+        if (plan.policyId == ENGINE15_INDEPENDENT_CONDITIONING_POLICY) {
+            if (plan.engineVersion != version)
+                throw PlanConstraint("The independent conditioning plan has an unsupported engine identity.")
+            Engine15ConditioningWorkoutComposer.validateSaved(plan)
+            return
+        }
+        if (plan.policyId == ENGINE15_INDEPENDENT_CALISTHENICS_POLICY) {
+            if (plan.engineVersion != version)
+                throw PlanConstraint("The independent calisthenics plan has an unsupported engine identity.")
+            Engine15CalisthenicsWorkoutComposer.validateSaved(plan)
+            return
+        }
+        if (plan.policyId == ENGINE15_INDEPENDENT_STRENGTH_POLICY) {
+            if (plan.engineVersion != version)
+                throw PlanConstraint("The independent strength plan has an unsupported engine identity.")
+            Engine15StrengthWorkoutComposer.validateSaved(plan)
+            return
+        }
+        if (plan.engineVersion != version || plan.policyId != policyId)
+            throw PlanConstraint("The independent running plan has an unsupported engine identity.")
+        if (plan.experimentalQualityPolicy != null && plan.experimentalQualityPolicy != QUALITY_POLICY)
+            throw PlanConstraint("This plan uses an unsupported experimental quality policy.")
+        if (plan.experimentalQualityExposureSeconds != null && plan.experimentalQualityExposureSeconds !in 1..14400)
+            throw PlanConstraint("This plan uses an invalid experimental quality exposure anchor.")
+        val baselines = plan.sessions.map { it.baselineSession() }
+        var expectedVolume: Engine15IndependentVolumePlanner.Result? = null
+        val rawExpected = if (Engine15TimeOnlyRunWalkBuilder.isEligible(plan.request)) {
+            Engine15TimeOnlyRunWalkBuilder.compose(plan.request, plan.owner, plan.id, plan.createdAt)
+        } else {
+            // Historical pilots retain their original eligibility semantics during structural validation.
+            val savedUsesAdaptiveRotation = baselines.filter { it.quality }
+                .mapNotNull { it.runningPrescription?.family }
+                .distinct().size > 1
+            val savedUsesArchetypeEnrichment = baselines.any { it.runningPrescription?.archetypeId != null }
+            fun runPreview(adaptive: Boolean, enrich: Boolean = savedUsesArchetypeEnrichment) = preview(
+                plan.request, plan.owner, plan.id, plan.createdAt,
+                qualityEvidence = qualityEvidence,
+                applyTempoExposureGate = plan.experimentalQualityPolicy == QUALITY_POLICY,
+                assertedExposureSecondsOverride = plan.experimentalQualityExposureSeconds,
+                allowExplicitUserFamily = true,
+                adaptiveQualityMode = adaptive,
+                enrichArchetypes = enrich
+            )
+            if (plan.request.qualityDistanceClaims.isEmpty() && (baselines.any { it.quality } || savedUsesArchetypeEnrichment)) {
+                when (val decision = previewAutoReconciled(
+                    plan.request, plan.owner, plan.id, plan.createdAt,
+                    qualityEvidence = qualityEvidence,
+                    assertedExposureSecondsOverride = plan.experimentalQualityExposureSeconds
+                )) {
+                    is Engine15IndependentPlanDecision.Deferred ->
+                        throw PlanConstraint("${decision.reasonCode}: ${decision.explanation}")
+                    is Engine15IndependentPlanDecision.Candidate -> {
+                        expectedVolume = decision.volume
+                        decision.plan
+                    }
+                }
+            } else {
+                val initialDecision = runPreview(savedUsesAdaptiveRotation || savedUsesArchetypeEnrichment)
+                val needsAdaptiveRetry = plan.experimentalQualityExposureSeconds != null &&
+                    !savedUsesAdaptiveRotation &&
+                    plan.request.qualityDistanceClaims.isNotEmpty() &&
+                    baselines.any { it.quality } &&
+                    (initialDecision is Engine15IndependentPlanDecision.Deferred || (
+                        initialDecision is Engine15IndependentPlanDecision.Candidate &&
+                            initialDecision.plan.sessions.associateBy { it.id }.let { expectedById ->
+                                baselines.any { session ->
+                                    expectedById[session.id]?.runningPrescription != session.runningPrescription ||
+                                        expectedById[session.id]?.distanceKm != session.distanceKm
+                                }
+                            }
+                    ))
+                val resolvedDecision = if (needsAdaptiveRetry) runPreview(true) else initialDecision
+                when (resolvedDecision) {
+                    is Engine15IndependentPlanDecision.Deferred ->
+                        throw PlanConstraint("${resolvedDecision.reasonCode}: ${resolvedDecision.explanation}")
+                    is Engine15IndependentPlanDecision.Candidate -> {
+                        expectedVolume = resolvedDecision.volume
+                        resolvedDecision.plan
+                    }
+                }
+            }
+        }
+        val expected = if (combinedRunDatesById != null && expectedVolume != null) {
+            val relocated = rawExpected.sessions.map { s ->
+                val targetDate = combinedRunDatesById[s.id] ?: s.date
+                if (targetDate == s.date) s else s.copy(date = targetDate)
+            }
+            val qualityIds = relocated.filter { it.quality }.map { it.id }.toSet()
+            val reshaped = Engine15DailyLoadShaper.shape(
+                sessions = relocated,
+                volume = expectedVolume!!,
+                request = plan.request,
+                qualitySessionIds = qualityIds,
+                pinnedSessionIds = qualityIds,
+                externalHardDates = combinedExternalHardDates,
+                maxMinutesBySessionId = combinedMaxMinutesById
+            )
+            val reEnriched = if (baselines.any { it.runningPrescription?.archetypeId != null }) {
+                enrichNonQualitySessions(reshaped, plan.request, expectedVolume!!)
+            } else {
+                reshaped
+            }
+            rawExpected.copy(sessions = reEnriched)
+        } else {
+            rawExpected
+        }
+        if (plan.sessions.size != expected.sessions.size ||
+            plan.sessions.map { it.id }.toSet() != expected.sessions.map { it.id }.toSet())
+            throw PlanConstraint("The independent running plan is missing or duplicating generated sessions.")
+        val expectedById = expected.sessions.associateBy { it.id }
+        if (plan.sessions.any { session ->
+                val source = expectedById[session.id] ?: return@any true
+                val base = session.baselineSession()
+                val rxMatches = if (base.runningPrescription == null || source.runningPrescription == null) {
+                    base.runningPrescription == source.runningPrescription
+                } else {
+                    base.runningPrescription.matchesStructuralBaseline(source.runningPrescription)
+                }
+                base.discipline != "run" || base.quality != source.quality || base.kind != source.kind ||
+                    base.distanceKm != source.distanceKm || !rxMatches ||
+                    !Engine15WorkoutDifficultyAdjuster.matchesAdjusted(session, plan.request) ||
+                    session.date.isBefore(plan.request.start) || !session.date.isBefore(plan.request.start.plusWeeks(plan.request.weeks.toLong())) ||
+                    session.date.dayOfWeek.value !in plan.request.days
+            })
+            throw PlanConstraint("A saved independent running session no longer matches its reviewed workload or available calendar.")
+        Engine15SessionLocks.validateOutput(plan.request, plan.sessions)
+        if (plan.sessions.groupBy { it.date }.values.any { it.size > 1 })
+            throw PlanConstraint("The independent running plan schedules more than one run on a date.")
+        if (plan.experimentalQualityPolicy == QUALITY_POLICY) {
+            for (quality in plan.sessions.filter { it.quality }) {
+                val original = expectedById.getValue(quality.id)
+                val originalWeek = ChronoUnit.DAYS.between(plan.request.start, original.date) / 7L
+                val actualWeek = ChronoUnit.DAYS.between(plan.request.start, quality.date) / 7L
+                if (actualWeek != originalWeek)
+                    throw PlanConstraint("Experimental quality must stay in its reviewed loading week.")
+                if (plan.sessions.any { it.id != quality.id && conflict(quality, it) })
+                    throw PlanConstraint("Experimental quality must remain spaced from other quality and long runs.")
+                if (plan.request.qualityDays.isNotEmpty() && quality.date.dayOfWeek.value !in plan.request.qualityDays)
+                    throw PlanConstraint("Experimental quality must stay on a selected quality weekday.")
+            }
+        }
+        val expectedTotals = expected.sessions.groupBy { ChronoUnit.DAYS.between(plan.request.start, it.date) / 7L }
+            .mapValues { (_, rows) -> rows.sumOf { it.distanceKm ?: 0.0 } }
+        val actualTotals = baselines.groupBy { ChronoUnit.DAYS.between(plan.request.start, it.date) / 7L }
+            .mapValues { (_, rows) -> rows.sumOf { it.distanceKm ?: 0.0 } }
+        if (actualTotals.keys != expectedTotals.keys || expectedTotals.any { (week, km) ->
+                kotlin.math.abs((actualTotals[week] ?: Double.NaN) - km) > 1e-6
+            })
+            throw PlanConstraint("The saved independent running plan's weekly distance no longer reconciles.")
+    }
+}

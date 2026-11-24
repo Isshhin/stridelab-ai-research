@@ -1,0 +1,267 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 4
+LINES: 932-1193
+--------------------------------------------------
+        staleDrafts.values.forEach { draft -> store.deleteRecord(activeOwner,"workout",draft.recordId) }
+        mutable.value=mutable.value.copy(
+            plans=mutable.value.plans.filterNot { it.id==plan.id },
+            workoutDrafts=mutable.value.workoutDrafts-staleDrafts.keys,
+            workoutExecutionOutcomes=mutable.value.workoutExecutionOutcomes.filterKeys { it.first != id }
+        )
+    }
+    suspend fun moveSession(id:String,revision:Int,sessionId:String,date:java.time.LocalDate)=changePlan(id,revision) { plan->PlanOperations.move(plan,sessionId,date,mutable.value.plans) }
+    suspend fun adjustWorkoutDifficulty(id:String,revision:Int,sessionId:String,delta:Int)=changePlan(id,revision) { plan->PlanOperations.adjustDifficulty(plan,sessionId,delta) }
+    suspend fun setSessionLock(id:String,revision:Int,sessionId:String,locked:Boolean)=changePlan(id,revision) { plan->PlanOperations.setSessionLock(plan,sessionId,locked) }
+    fun previewAvailabilityChange(id:String,newDays:Set<Int>):Engine15Availability.Impact? {
+        val plan=mutable.value.plans.find {
+            it.id==id && LocalPlanOwnership.isVisibleOwner(it.owner,mutable.value.account,localPlanOwner)
+        } ?: return null
+        return Engine15Availability.preview(plan,newDays,mutable.value.plans)
+    }
+    suspend fun updateAvailability(id:String,revision:Int,days:Set<Int>,expectedImpact:Engine15Availability.Impact?=null)=changePlan(id,revision) { plan->
+        val plans=mutable.value.plans
+        val today=java.time.LocalDate.now()
+        if(expectedImpact!=null && Engine15Availability.preview(plan,days,plans,today)!=expectedImpact)
+            throw PlanConstraint("The schedule changed. Preview availability again before applying.")
+        PlanOperations.updateAvailability(plan,days,plans,today)
+    }
+    suspend fun setLongRunDay(id:String,revision:Int,day:Int)=changePlan(id,revision) { plan->PlanOperations.setLongRunDay(plan,day) }
+    suspend fun setQualityDays(id:String,revision:Int,days:Set<Int>)=changePlan(id,revision) { plan->PlanOperations.setQualityDays(plan,days) }
+    suspend fun executeWorkout(planId: String, sessionId: String, expectedRevision: Long?, event: PlayerEvent?): WorkoutExecution? =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val owner = LocalPlanOwnership.activeOwner(mutable.value.account, localPlanOwner)
+                val plan = mutable.value.plans.singleOrNull { it.id == planId && it.owner == owner }
+                    ?: throw PlanConstraint("This workout is unavailable for the current profile.")
+                val session = plan.sessions.singleOrNull { it.id == sessionId }
+                    ?: throw PlanConstraint("This workout is no longer on the plan.")
+                val key = WorkoutExecutionCheckpoint.key(planId, sessionId)
+                val now = android.os.SystemClock.elapsedRealtime()
+                val bootCount = runCatching {
+                    android.provider.Settings.Global.getInt(appContext.contentResolver, android.provider.Settings.Global.BOOT_COUNT)
+                }.getOrNull()
+                val stored = store.get(owner, "workout", key)?.let {
+                    WorkoutExecutionCheckpoint.decode(it.payload, owner, planId, sessionId, now, System.currentTimeMillis(), bootCount)
+                }
+                val restart = event == PlayerEvent.StartSession && stored?.finalLog == null &&
+                    stored?.phase == PlayerPhase.Completed && session.status in setOf("planned", "in_progress")
+                val saved = stored.takeUnless { restart }
+                if (saved?.receipt == true) return@withLock saved
+                if (saved?.finalLog == null && (!Engine1Engines.canManage(plan) ||
+                        plan.status !in setOf("approved", "paused") || session.status !in setOf("planned", "in_progress"))) {
+                    return@withLock null
+                }
+                fun persist(state: WorkoutExecution) {
+                    val wall = System.currentTimeMillis()
+                    val payload = WorkoutExecutionCheckpoint.encode(owner, state, android.os.SystemClock.elapsedRealtime(), wall, bootCount)
+                    store.applyRemotePage(owner, "workout", listOf(TrainingStore.RemoteRecord(key, payload, null)), null, wall)
+                }
+                val baseline = saved ?: WorkoutExecution.create(java.util.UUID.randomUUID().toString(), planId, session,
+                    java.util.UUID.randomUUID().toString()).copy(openedAtMs = System.currentTimeMillis())
+                val before = if (saved != null && baseline.finalLog == null && baseline.phase != PlayerPhase.Completed) {
+                    val currentTargets = WorkoutExecution.create(baseline.executionId, planId, session, baseline.finalizationId)
+                    if (baseline.sets.map { it.target to it.number } == currentTargets.sets.map { it.target to it.number }) baseline
+                    else {
+                        if (!baseline.canChangePrescription)
+                            throw PlanConstraint("The workout prescription changed after you started. Your original execution was retained.")
+                        currentTargets.copy(revision = baseline.revision + 1, openedAtMs = baseline.openedAtMs)
+                    }
+                } else baseline
+                val engine = WorkoutPlayerEngine(android.os.SystemClock::elapsedRealtime)
+                val input = if (saved == null && event == null) PlayerEvent.StartSession else event
+                val next = if (input != null && (restart || expectedRevision == null || expectedRevision == before.revision))
+                    engine.reduce(before, input) else before
+                val finalLog = next.finalLog
+                if (finalLog == null) {
+                    if (saved == null || next.revision != saved.revision) persist(next)
+                    if (restart) mutable.value = mutable.value.copy(
+                        workoutExecutionOutcomes = mutable.value.workoutExecutionOutcomes - (planId to sessionId)
+                    )
+                    if (next.receipt) publishWorkoutOutcome(next)
+                    return@withLock next
+                }
+
+                // Persist the frozen log and operation identity before touching the plan. A retry
+                // compares that exact log against the current session before attempting another write.
+                val completed = reconcileWorkoutFinalization(plan, sessionId, finalLog)
+                if (next != before) persist(next)
+                if (completed != plan) savePlan(completed.copy(revision = plan.revision + 1))
+                val receipt = next.copy(phase = PlayerPhase.Completed, receipt = true)
+                persist(receipt)
+                publishWorkoutOutcome(receipt)
+                if (completed != plan) reconcileActivityMatchesAndAnalysis()
+                receipt
+            }
+        }
+
+    private fun publishWorkoutOutcome(execution: WorkoutExecution) {
+        val key = execution.planId to execution.sessionId
+        val current = mutable.value
+        mutable.value = current.copy(workoutExecutionOutcomes = current.workoutExecutionOutcomes + (key to execution.outcome))
+    }
+
+    suspend fun recordWorkout(id:String,revision:Int,sessionId:String,log:WorkoutLog,complete:Boolean)=changePlan(id,revision) { PlanOperations.record(it,sessionId,log,complete) }
+    suspend fun saveRunResponse(id:String,revision:Int,sessionId:String,effort:Int?,difficulty:String?,discomfort:String?)=changePlan(id,revision) { plan ->
+        val session=plan.sessions.singleOrNull { it.id==sessionId } ?: throw PlanConstraint("This workout is unavailable.")
+        val performed=session.log?.performedOn ?: mutable.value.activities.singleOrNull { it.id==session.linkedActivityId }?.startedAt?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate()
+        PlanOperations.runResponse(plan,sessionId,effort,difficulty,discomfort,performed)
+    }
+    suspend fun markMissed(id:String,revision:Int,sessionId:String,reason:String,skipped:Boolean)=changePlan(id,revision) { PlanOperations.missed(it,sessionId,reason,skipped) }
+    suspend fun acceptSuggestion(id:String,revision:Int,sessionId:String)=changePlan(id,revision) { plan ->
+        Engine15Feedback.requireCurrentPendingAcceptance(
+            plan,sessionId,java.time.LocalDate.now(),mutable.value.plans
+        )
+        PlanOperations.acceptSuggestion(plan,sessionId)
+    }
+
+    /**
+     * Pure Engine 1.5 preview: no persistence, plan mutation or network access.
+     * Consumers must pass the same plan revision to stage/dismiss.
+     */
+    fun previewEngine15Adjustments(
+        id:String, asOf:java.time.LocalDate=java.time.LocalDate.now()
+    ):List<Engine15Feedback.Proposal> {
+        val p=mutable.value.plans.find {
+            it.id==id && LocalPlanOwnership.isVisibleOwner(it.owner,mutable.value.account,localPlanOwner)
+        } ?: return emptyList()
+        return Engine15Feedback.preview(p,asOf,mutable.value.plans)
+    }
+    fun previewEngine15Week(id:String,asOf:java.time.LocalDate=java.time.LocalDate.now(),input:Engine15WeeklyReview.Input=Engine15WeeklyReview.Input()):Engine15WeeklyReview.Review {
+        val p=mutable.value.plans.find { it.id==id && LocalPlanOwnership.isVisibleOwner(it.owner,mutable.value.account,localPlanOwner) }
+            ?: throw PlanConstraint("This plan is unavailable.")
+        return Engine15WeeklyReview.preview(p,asOf,input,mutable.value.plans,activities=mutable.value.activities)
+    }
+    suspend fun acceptEngine15Week(id:String,revision:Int,review:Engine15WeeklyReview.Review)=changePlan(id,revision) { p ->
+        Engine15WeeklyReview.accept(p,review,java.time.LocalDate.now(),java.time.Instant.now(),mutable.value.plans,activities=mutable.value.activities)
+    }
+
+    suspend fun stageEngine15Adjustment(
+        id:String,revision:Int,proposal:Engine15Feedback.Proposal,
+        asOf:java.time.LocalDate=java.time.LocalDate.now()
+    )=changePlan(id,revision) { p ->
+        Engine15Feedback.stage(p,proposal,asOf,mutable.value.plans)
+    }
+    suspend fun dismissEngine15Adjustment(
+        id:String,revision:Int,proposal:Engine15Feedback.Proposal,
+        asOf:java.time.LocalDate=java.time.LocalDate.now(),
+        now:java.time.Instant=java.time.Instant.now()
+    )=changePlan(id,revision) { p ->
+        Engine15Feedback.dismiss(p,proposal,asOf,now,mutable.value.plans)
+    }
+    suspend fun dismissStagedEngine15Adjustment(
+        id:String,revision:Int,sessionId:String,
+        now:java.time.Instant=java.time.Instant.now()
+    )=changePlan(id,revision) { p ->
+        Engine15Feedback.dismissStaged(p,sessionId,now)
+    }
+
+    suspend fun saveFeedback(id:String,revision:Int,category:String,text:String,sessionId:String?=null)=changePlan(id,revision) { PlanOperations.feedback(it,category,text,sessionId) }
+    suspend fun refreshWellness() = operation("Refreshing wellness recordsΓÇª") {
+        val account=mutable.value.account ?: throw IllegalStateException("Sign in first")
+        val raw=authenticated { gateway.wellness(it) }
+        val seen=HashSet<String>(); val rows=ArrayList<TrainingStore.RemoteRecord>()
+        for(i in 0 until raw.length()) {
+            val row=raw.getJSONObject(i)
+            val record=WellnessRecord.parse(row,account) ?: continue
+            if(!ActiveActivitySources.accepts(record.source))continue
+            require(seen.add(record.id))
+            rows+=TrainingStore.RemoteRecord(record.id,row.toString(),null)
+        }
+        store.applyRemotePage(account,"wellness",rows,null,System.currentTimeMillis())
+        loadCache(account)
+    }
+    /**
+     * Persist a local display-name override without modifying the original
+     * provider activity, FIT measurements, or cloud backup payload.
+     * This record is account-scoped, and Garmin sync cannot overwrite it.
+     */
+    internal suspend fun renameActivity(id:String, requestedTitle:String):Boolean =
+        operation("Saving activity titleΓÇª") {
+            val account = if(id in mutable.value.localGarminIds) localGarminOwner else mutable.value.account
+                ?: throw PlanConstraint("This activity is not in the current local or cloud history.")
+            if(mutable.value.activities.none { it.id==id })
+                throw PlanConstraint("This activity is not in the current account's saved history.")
+            val title = validatedActivityTitle(requestedTitle)
+            val payload = JSONObject()
+                .put("kind", "local_activity_title")
+                .put("user_id", account)
+                .put("activity_id", id)
+                .put("title", title)
+            store.applyRemotePage(
+                account, "exercise",
+                listOf(TrainingStore.RemoteRecord(
+                    localActivityTitleKey(id), payload.toString(), null
+                )),
+                null, System.currentTimeMillis()
+            )
+            mutable.value = mutable.value.copy(
+                groupedActivitySummaries = null,
+                activities = mutable.value.activities.map { activity ->
+                    if(activity.id==id) activity.copy(title=title) else activity
+                }
+            )
+        }
+
+    /** Load an existing, account-owned FIT recording without any network call. */
+    internal suspend fun loadCachedDetail(id:String):Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val account=if(id in mutable.value.localGarminIds) localGarminOwner
+                else mutable.value.account ?: return@withLock false
+            val activity = mutable.value.activities.firstOrNull { it.id == id } ?: return@withLock false
+            if(id in mutable.value.details)return@withLock true
+            val cached = try {
+                val payload = store.getActivityDetailPayloadChunked(account,id)
+                if (activity.source == "garmin") GarminGpsDetail.cachedRecording(payload, account, id)
+                else payload?.let { ActivityDetail.parse(JSONObject(it),account,id) }
+            } catch (_: Exception) {
+                if (activity.source == "garmin") mutable.value = mutable.value.copy(
+                    garminRecordingLoad = GarminRecordingLoad(id, garminCacheReadError))
+                null
+            } ?: return@withLock false
+            val recent=LinkedHashMap(mutable.value.details)
+            recent.remove(id)
+            recent[id]=cached
+            while(recent.size>12)recent.remove(recent.keys.first())
+            publishCachedDetail(id, recent)
+            if (activity.source == "garmin") reconcileActivityMatchesAndAnalysis()
+            true
+        }
+    }
+
+    private val thumbnailIO = Dispatchers.IO.limitedParallelism(2)
+
+    /** Read one route for presentation without populating the detail cache or running the engine. */
+    internal suspend fun loadActivityThumbnail(id: String): RecordedGpsRoute? = withContext(thumbnailIO) {
+        val snapshot = state.value
+        val owner = if (id in snapshot.localGarminIds) snapshot.localGarminOwner else snapshot.account
+        owner ?: return@withContext null
+        val activity = snapshot.activities.firstOrNull { it.id == id } ?: return@withContext null
+        val route = traceStartup("Activity thumbnail") {
+            runCatching {
+                val detail = snapshot.details[id] ?: store.getActivityDetailPayloadChunked(owner, id)?.let {
+                    if (activity.source == "garmin") GarminGpsDetail.cachedRecording(it, owner, id)
+                    else ActivityDetail.parse(JSONObject(it), owner, id)
+                }
+                detail?.thumbnailRoute()
+            }.getOrNull()
+        }
+        val current = state.value
+        val currentOwner = if (id in current.localGarminIds) current.localGarminOwner else current.account
+        route.takeIf { currentOwner == owner && current.activities.any { activity -> activity.id == id } }
+    }
+
+    suspend fun loadDetail(id: String) = operation("Loading recorded streamsΓÇª") {
+        val account = mutable.value.account ?: throw IllegalStateException("Sign in first")
+        require(mutable.value.activities.any { it.id == id })
+        val raw = authenticated { gateway.detail(it,id) }
+        val parsed = ActivityDetail.parse(raw,account,id)
+        store.applyRemotePage(account,"activity_detail",listOf(TrainingStore.RemoteRecord(id,raw.toString(),null)),null,System.currentTimeMillis())
+        mutable.value = mutable.value.copy(details = mutable.value.details + (id to parsed))
+        reconcileActivityMatchesAndAnalysis()
+    }
+    private suspend fun operation(label: String, action: () -> Unit): Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            mutable.value = mutable.value.copy(busy = true, message = null, task = label)
+            try { action(); true }
+            catch (e: CancellationException) { throw e }

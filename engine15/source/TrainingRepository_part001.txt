@@ -1,0 +1,349 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/TrainingRepository.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-344
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.security.MessageDigest
+
+internal data class GarminRecordingLoad(val activityId: String, val error: String? = null)
+
+internal data class TrainingState(
+    val initializing: Boolean = true,
+    val account: String? = null,
+    /** Persistent on-device Garmin namespace, independent of cloud sign-in. */
+    val localGarminOwner: String? = null,
+    /** Stable on-device plan namespace, distinct from cloud and local Garmin. */
+    val localPlanOwner: String? = null,
+    val localGarminIds: Set<String> = emptySet(),
+    val activities: List<ActivityRecord> = emptyList(),
+    val busy: Boolean = false,
+    val message: String? = null,
+    val lastSync: Long? = null,
+    val needsSignIn: Boolean = false,
+    val loginGeneration: Long = 0,
+    val plans: List<PlanSnapshot> = emptyList(),
+    /** Owner-scoped research reviews, explicitly never executable plans. */
+    val researchDrafts: List<IndependentResearchDraft> = emptyList(),
+    val shelf:LibraryShelf = LibraryShelf(),
+    val templates:List<SessionTemplate> = emptyList(),
+    val workoutDrafts:Map<Pair<String,String>,WorkoutEntryDraft> = emptyMap(),
+    val wellness: List<WellnessRecord> = emptyList(),
+    val details: Map<String,ActivityDetail> = emptyMap(),
+    val activityMatches: Map<String, ActivityMatchRecord> = emptyMap(),
+    val executionAnalyses: Map<String, WorkoutExecutionAnalysis> = emptyMap(),
+    val athleteDiagnostics: Map<String, AthleteDiagnosticSnapshot> = emptyMap(),
+    val pendingAdaptationProposals: Map<String, PlanAdaptationProposal> = emptyMap(),
+    val adaptationRevisions: Map<String, List<PlanAdaptationRevision>> = emptyMap(),
+    val adaptationCooldowns: List<AdaptationCooldownRecord> = emptyList(),
+    val task: String? = null,
+    val garminRecordingLoad: GarminRecordingLoad? = null,
+    val planPreview: PlanSnapshot? = null,
+    val todayPlanReady: Boolean = !initializing,
+    val activitySummariesReady: Boolean = !initializing,
+    val groupedActivitySummaries: List<DisplayActivity>? = null,
+    val workoutExecutionOutcomes: Map<Pair<String, String>, WorkoutExecutionOutcome> = emptyMap(),
+    val planPreviewSupportReview: RunnerSupportSchedule.Review? = null,
+    val savedEquipment: Map<String, Int>? = null,
+    val hybridPlanPreview: HybridPlanPreview? = null
+) {
+    val displayedPlanPreview get() = planPreviewSupportReview?.candidate?.takeIf { it.id == planPreview?.id } ?: planPreview
+    fun blueprintDraft(id: String): PlanSnapshot? =
+        displayedPlanPreview?.takeIf { it.id == id }
+            ?: hybridPlanPreview?.drafts?.singleOrNull { it.second.id == id }?.second
+    fun prescriptionOutcome(planId: String, sessionId: String): PrescriptionOutcome =
+        workoutExecutionOutcomes[planId to sessionId]?.prescription ?: PrescriptionOutcome.UNKNOWN
+
+    val activeAthleteDiagnostic: AthleteDiagnosticSnapshot?
+        get() {
+            val activePlan = plans.firstOrNull { it.status == "approved" }
+                ?: plans.firstOrNull { it.status != "archived" }
+                ?: return null
+            return athleteDiagnostics[activePlan.id]
+        }
+
+    val activeAdaptationProposal: PlanAdaptationProposal?
+        get() {
+            val activePlan = plans.firstOrNull { it.status == "approved" }
+                ?: plans.firstOrNull { it.status != "archived" }
+                ?: return null
+            return pendingAdaptationProposals[activePlan.id]
+        }
+}
+
+/** All network/database/encryption work is serialized off the main thread, including workers. */
+internal class TrainingRepository(context: Context, private val gateway: TrainingGateway = SupabaseGateway(),
+    databaseName: String = TrainingStore.DATABASE, preferencesName: String = "native-account-v1") {
+    private val store = TrainingStore(context, databaseName)
+    private val appContext = context.applicationContext
+    private val engine15ExerciseLibrary by lazy {
+        try { ExerciseLibraryV2.load { path -> appContext.assets.open(path) } }
+        catch (_: Exception) { throw PlanConstraint("STRENGTH_CATALOG_UNAVAILABLE: The shared offline exercise catalog could not be read; no substitute was generated.") }
+    }
+    private val vault = SessionVault(context)
+    internal val garminSyncPreferences = GarminSyncPreferences(context)
+    private val garminCloud = GarminCloudBackupGateway()
+    private val preferences by lazy { appContext.getSharedPreferences(preferencesName, Context.MODE_PRIVATE) }
+    private val localGarminOwner: String by lazy {
+        preferences.getString("local-garmin-owner-v1", null)
+            ?.takeIf { runCatching { RecordPolicy.identifier(it); it.startsWith("local-garmin-") }.getOrDefault(false) }
+            ?: ("local-garmin-" + java.util.UUID.randomUUID().toString()).also {
+                check(preferences.edit().putString("local-garmin-owner-v1", it).commit())
+            }
+    }
+    private val localPlanOwner: String by lazy {
+        preferences.getString(LocalPlanOwnership.PREF_KEY, null)
+            ?.takeIf(LocalPlanOwnership::isLocalPlanOwner)
+            ?: LocalPlanOwnership.create().also {
+                // A replacement identity is isolated; no owner migration is attempted.
+                check(preferences.edit().putString(LocalPlanOwnership.PREF_KEY, it).commit())
+            }
+    }
+    // Reserve the mutation lock before callers can enqueue work.
+    private val mutex = Mutex(locked = true)
+    private val mutable = MutableStateFlow(TrainingState())
+    val state = mutable.asStateFlow()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    init {
+        scope.launch {
+            try {
+                hydrateStartup()
+            } finally {
+                mutex.unlock()
+            }
+        }
+    }
+
+    private suspend fun hydrateStartup() = supervisorScope {
+        try {
+            val account = preferences.getString("active", null)
+            val owner = account ?: localPlanOwner
+            mutable.value = TrainingState(account = account,
+                localGarminOwner = localGarminOwner, localPlanOwner = localPlanOwner)
+            val summaries = async { traceStartup("Today activity summaries") { readSummaries(account) } }
+            val session = account?.let { async {
+                runCatching { vault.read(it) }.getOrNull()?.also { _ -> copyLegacyGarminConnection(it) }
+            } }
+            val plans = traceStartup("Today plan cache") { readPlans(owner) }
+            publishPlans(owner, plans)
+            val secondary = async {
+                traceStartup("Training secondary caches") { readSecondary(owner, account, plans.plans) }
+            }
+            publishSummaries(summaries.await())
+            publishSecondary(secondary.await())
+            if (session != null && session.await() == null) {
+                mutable.value = mutable.value.copy(needsSignIn = true)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            mutable.value = mutable.value.copy(
+                needsSignIn = mutable.value.account != null,
+                message = "Some saved data could not be loaded. Existing files were retained.")
+            if (!mutable.value.activitySummariesReady) {
+                runCatching { publishSummaries(readSummaries(null)) }
+            }
+        } finally {
+            mutable.value = mutable.value.copy(initializing = false,
+                todayPlanReady = true, activitySummariesReady = true)
+        }
+    }
+
+    /** One-way encrypted on-device migration, never removes the legacy vault. */
+    private fun copyLegacyGarminConnection(cloudAccount:String) {
+        runCatching {
+            val credentials=GarminCredentialVault(appContext)
+            if(credentials.read(localGarminOwner)==null) {
+                credentials.read(cloudAccount)?.let {
+                    credentials.save(it.copy(accountId=localGarminOwner))
+                }
+            }
+        }
+        // Keystore failure must never block offline history or cloud sign-out.
+    }
+
+    private data class CachedPlans(val plans: List<PlanSnapshot>, val unsupported: Int)
+
+    private fun readPlans(owner: String): CachedPlans {
+        val plans = mutableListOf<PlanSnapshot>()
+        var unsupported = 0
+        store.readableDatabase.query(
+            "records", arrayOf("payload"), "account=? AND kind=?",
+            arrayOf(owner, "plan"), null, null, null
+        ).use { c ->
+            while (c.moveToNext()) {
+                runCatching { PlanSnapshot.decode(JSONObject(c.getString(0)), owner) }
+                    .onSuccess { if (it.status != "draft") plans.add(it) }.onFailure { unsupported++ }
+            }
+        }
+        return CachedPlans(plans.sortedByDescending { it.createdAt }, unsupported)
+    }
+
+    private fun publishPlans(owner: String, cache: CachedPlans) {
+        mutable.value = mutable.value.copy(plans = cache.plans, todayPlanReady = true,
+            savedEquipment = readEquipment(owner),
+            message = if (cache.unsupported > 0)
+                "${cache.unsupported} saved plans require a supported contract and were retained for review."
+            else mutable.value.message)
+    }
+
+    private data class CachedSummaries(
+        val activities: List<ActivityRecord>,
+        val groups: List<DisplayActivity>,
+        val localIds: Set<String>,
+        val rejected: Int
+    )
+
+    private fun readCloudSummaries(account: String): Pair<List<ActivityRecord>, Int> {
+        val records = mutableListOf<ActivityRecord>()
+        var rejected = 0
+        // No fixed history cap. Stream cursor rows without materializing raw JSON twice.
+        store.readableDatabase.query("records", arrayOf("payload"), "account=? AND kind=?", arrayOf(account, "activity"), null, null, null).use { c ->
+            while(c.moveToNext()) {
+                try {
+                    val record=ActivityRecord.parse(c.getString(0),account)
+                    if(ActiveActivitySources.accepts(record.source))records+=record
+                    // Preserve retired source rows in the original SQLite cache.
+                } catch (_: Exception) { rejected++ } // Retain invalid raw records; never invent replacement metrics.
+            }
+        }
+        // Local title edits are stored separately from provider-owned measurements.
+        // Failure to read this small optional index must never hide Garmin history.
+        val localTitles = HashMap<String, String>()
+        runCatching {
+            store.readableDatabase.query(
+                "records", arrayOf("record_id", "payload"),
+                "account=? AND kind=? AND record_id LIKE ?",
+                arrayOf(account, "exercise", "local-activity-title-%"),
+                null, null, null
+            ).use { cursor ->
+                while(cursor.moveToNext()) {
+                    runCatching {
+                        val metadata = JSONObject(cursor.getString(1))
+                        val id = metadata.getString("activity_id")
+                        val title = validatedActivityTitle(metadata.getString("title"))
+                        if(metadata.optString("user_id")==account &&
+                            metadata.optString("kind")=="local_activity_title" &&
+                            cursor.getString(0)==localActivityTitleKey(id)) {
+                            localTitles[id]=title
+                        }
+                    }
+                }
+            }
+        }
+        val titledRecords = records.map { record ->
+            localTitles[record.id]?.let { record.copy(title=it) } ?: record
+        }
+        return titledRecords to rejected
+    }
+
+    private fun readSummaries(account: String?): CachedSummaries {
+        val (cloud, rejected) = account?.let(::readCloudSummaries) ?: (emptyList<ActivityRecord>() to 0)
+        val local = mutableListOf<ActivityRecord>()
+        store.readableDatabase.query("records", arrayOf("payload"),
+            "account=? AND kind=?", arrayOf(localGarminOwner, "activity"),
+            null, null, null).use { cursor ->
+            while(cursor.moveToNext()) runCatching {
+                ActivityRecord.parse(cursor.getString(0), localGarminOwner)
+                    .takeIf { it.source == "garmin" }?.let(local::add)
+            }
+        }
+        val titles = HashMap<String,String>()
+        store.readableDatabase.query("records", arrayOf("record_id","payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(localGarminOwner,"exercise","local-activity-title-%"),
+            null,null,null).use { cursor ->
+            while(cursor.moveToNext()) runCatching {
+                val j=JSONObject(cursor.getString(1))
+                val id=j.getString("activity_id")
+                if(j.optString("user_id")==localGarminOwner &&
+                    j.optString("kind")=="local_activity_title" &&
+                    cursor.getString(0)==localActivityTitleKey(id)) {
+                    titles[id]=validatedActivityTitle(j.getString("title"))
+                }
+            }
+        }
+        val titled = local.map { record ->
+            titles[record.id]?.let { record.copy(title=it) } ?: record
+        }
+        val ids = titled.mapTo(HashSet<String>()) { it.id }
+        val activities = mergeActivitySummaries(cloud, titled)
+        return CachedSummaries(activities, ActivityDisplayConsolidation.groups(activities), ids, rejected)
+    }
+
+    private fun publishSummaries(cache: CachedSummaries) {
+        val prior = mutable.value
+        val ids = cache.activities.mapTo(HashSet()) { it.id }
+        mutable.value = prior.copy(activities = cache.activities, activitySummariesReady = true,
+            groupedActivitySummaries = cache.groups,
+            localGarminIds = cache.localIds,
+            details = prior.details.filterKeys { it in ids && (it in prior.localGarminIds) == (it in cache.localIds) },
+            message = if (cache.rejected > 0 && prior.message == null)
+                "${cache.rejected} saved activities contain unsupported data and were retained for review."
+            else prior.message)
+    }
+
+    private fun loadCache(account: String) {
+        val plans = readPlans(account)
+        publishSummaries(readSummaries(account))
+        publishPlans(account, plans)
+        publishSecondary(readSecondary(account, account, plans.plans))
+    }
+
+    /** Read only exact-current-owner non-executable research records. */
+    private fun loadResearchDrafts(owner: String): List<IndependentResearchDraft> {
+        val drafts = mutableListOf<IndependentResearchDraft>()
+        store.readableDatabase.query(
+            "records", arrayOf("record_id","payload"),
+            "account=? AND kind=? AND record_id LIKE ?",
+            arrayOf(owner,"exercise","engine15-research-%"),
+            null,null,null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                runCatching {
+                    IndependentResearchDraft.decode(
+                        JSONObject(cursor.getString(1)), owner
+                    ).also { require(it.recordId == cursor.getString(0)) }
+                }.onSuccess { drafts.add(it) }
+                // Unsupported or corrupt records remain on disk; do not
+                // fabricate a substitute or migrate owners automatically.
+            }
+        }
+        return drafts.sortedByDescending { it.createdAt }
+    }
+
+    private fun loadLocalPlanCache() {
+        val plans = readPlans(localPlanOwner)
+        publishPlans(localPlanOwner, plans)
+        publishSecondary(readSecondary(localPlanOwner, null, plans.plans))
+    }
+
+    private fun readEquipment(owner: String): Map<String, Int>? =
+        preferences.getString(hashedLocalKey("builder-gear-v1-", owner), null)?.let { raw ->
+            runCatching {
+                val json = JSONObject(raw)
+                builderEquipmentIds.filter { json.optInt(it) == 1 }.associateWith { 1 }
+            }.getOrNull()
+        }
+
+    suspend fun saveBuilderEquipment(owner: String, equipment: Map<String, Int>) =
+        operation("Saving your gearΓÇª") {
+            if (owner != LocalPlanOwnership.activeOwner(mutable.value.account, localPlanOwner))
+                throw PlanConstraint("The profile changed. Reopen equipment to save your gear.")

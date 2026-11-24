@@ -1,0 +1,412 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15ExecutionAnalyzer.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-407
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+/**
+ * Pure deterministic post-run execution analyzer comparing scheduled Engine 1.5
+ * workout steps/intents against FIT lap/record telemetry and optional verified HR zones.
+ */
+internal object Engine15ExecutionAnalyzer {
+    private val TARGETED_WORK_INTENTS = setOf(
+        RunningStepIntent.TEMPO,
+        RunningStepIntent.THRESHOLD,
+        RunningStepIntent.VO2_INTERVAL,
+        RunningStepIntent.HILL,
+        RunningStepIntent.STRIDE,
+        RunningStepIntent.RACE_PACE
+    )
+    private val QUALITY_PACE_INTENTS = setOf(
+        RunningStepIntent.TEMPO,
+        RunningStepIntent.THRESHOLD,
+        RunningStepIntent.VO2_INTERVAL,
+        RunningStepIntent.RACE_PACE
+    )
+
+    private data class PlannedStepTarget(
+        val stepIndex: Int,
+        val purpose: String,
+        val stepIntent: RunningStepIntent?,
+        val plannedMeters: Int?,
+        val plannedSeconds: Int?,
+        val targetPaceMinSecPerKm: Int?,
+        val targetPaceMaxSecPerKm: Int?,
+        val targetHrMinBpm: Int?,
+        val targetHrMaxBpm: Int?
+    ) {
+        val isTargetedWork: Boolean
+            get() = purpose == "WORK" || stepIntent in TARGETED_WORK_INTENTS
+
+        val nominalSeconds: Double
+            get() = plannedSeconds?.toDouble()
+                ?: ((plannedMeters ?: 0) / 1000.0) * (midTargetPaceSecPerKm ?: 330.0)
+
+        val midTargetPaceSecPerKm: Double?
+            get() = when {
+                targetPaceMinSecPerKm != null && targetPaceMaxSecPerKm != null ->
+                    (targetPaceMinSecPerKm + targetPaceMaxSecPerKm) / 2.0
+                targetPaceMaxSecPerKm != null -> targetPaceMaxSecPerKm.toDouble()
+                targetPaceMinSecPerKm != null -> targetPaceMinSecPerKm.toDouble()
+                else -> null
+            }
+    }
+
+    private data class IndexedSample(
+        val sample: ActivitySample,
+        val dtSec: Double,
+        val cumulativeMeters: Double
+    )
+
+    private data class MeasuredSlice(
+        val distanceKm: Double,
+        val durationSec: Double,
+        val avgPaceSecPerKm: Double?,
+        val avgHrBpm: Double?,
+        val elevationGainM: Double?,
+        val samplePaces: List<Pair<Double, Double>>, // (paceSecPerKm, dtSec)
+        val source: String
+    )
+
+    fun analyze(
+        session: PlannedSession,
+        activity: ActivityRecord,
+        detail: ActivityDetail? = null,
+        athleteHrZones: ExecutionHrZoneProfile? = null,
+        analyzedAtEpochMs: Long = 0L
+    ): WorkoutExecutionAnalysis {
+        val plannedKm = session.distanceKm?.takeIf { it.isFinite() && it > 0.0 }
+        val plannedMinutes = session.minutes.takeIf { it > 0 }
+        val actualKm = activity.distanceM?.takeIf { it.isFinite() && it > 0.0 }?.div(1000.0)
+        val actualDurationSec = (activity.movingTimeS ?: activity.durationS)
+            ?.takeIf { it.isFinite() && it > 0.0 }
+        val actualMinutes = actualDurationSec?.div(60.0)
+
+        val validSamples = detail?.samples
+            ?.filter { it.seconds.isFinite() && it.seconds >= 0.0 }
+            .orEmpty()
+        val validLaps = detail?.laps
+            ?.filter { (it.distance ?: 0.0) > 0.0 || (it.seconds ?: 0.0) > 0.0 }
+            .orEmpty()
+
+        val evidenceTier = when {
+            detail != null && validLaps.size >= 2 && validSamples.size >= 10 ->
+                ExecutionEvidenceTier.LAP_AND_RECORD
+            detail != null && validSamples.size >= 10 ->
+                ExecutionEvidenceTier.RECORD_WINDOW
+            else -> ExecutionEvidenceTier.SUMMARY_ONLY
+        }
+
+        val steps = extractPlannedSteps(session)
+        val volumeRatio = computeVolumeRatio(plannedKm, actualKm, plannedMinutes, actualMinutes)
+
+        if ((actualKm == null || actualKm <= 0.0) && (actualMinutes == null || actualMinutes <= 0.0)) {
+            return WorkoutExecutionAnalysis(
+                plannedSessionId = session.id,
+                activityId = activity.id,
+                evidenceTier = ExecutionEvidenceTier.SUMMARY_ONLY,
+                verdict = ExecutionVerdict.INSUFFICIENT_TELEMETRY,
+                volumeRatio = 0.0,
+                plannedKm = plannedKm,
+                actualKm = actualKm,
+                plannedMinutes = plannedMinutes,
+                actualMinutes = actualMinutes,
+                workStepPaceAdherencePct = null,
+                qualityStimulusVerified = if (session.quality) false else null,
+                paceBias = ExecutionPaceBias.UNKNOWN,
+                hrZoneCompliancePct = null,
+                aerobicDecouplingPct = null,
+                stepBreakdowns = emptyList(),
+                reasonCodes = listOf("MISSING_DISTANCE_AND_DURATION"),
+                coachingSummary = buildInsufficientSummary(session),
+                analyzedAtEpochMs = analyzedAtEpochMs
+            )
+        }
+
+        val timeline = buildTimeline(validSamples, activity.distanceM)
+        val targetedSteps = steps.filter { it.isTargetedWork }
+        val isLongFastFinish = !session.quality &&
+            session.runningPrescription?.role in setOf("LONG", "ENDURANCE") &&
+            targetedSteps.isNotEmpty()
+        val hasHillWork = targetedSteps.any { it.stepIntent == RunningStepIntent.HILL }
+        val hasStrideWork = targetedSteps.any { it.stepIntent == RunningStepIntent.STRIDE }
+        val hasQualityPaceWork = targetedSteps.any {
+            it.stepIntent in QUALITY_PACE_INTENTS || (it.purpose == "WORK" && !hasHillWork && !hasStrideWork)
+        }
+
+        val stepMeasurements = measurePlannedSteps(
+            steps = steps,
+            evidenceTier = evidenceTier,
+            laps = validLaps,
+            workoutSteps = detail?.workoutSteps.orEmpty(),
+            timeline = timeline,
+            activity = activity,
+            isLongFastFinish = isLongFastFinish
+        )
+
+        val stepBreakdowns = steps.mapIndexed { idx, step ->
+            val slice = stepMeasurements[idx]
+            buildStepBreakdown(step, slice)
+        }
+
+        val reasons = LinkedHashSet<String>()
+        reasons += "EVIDENCE_${evidenceTier.name}"
+
+        val effectiveAvgPace = overallPace(activity, timeline, actualKm, actualDurationSec)
+        val hrCompliance = computeHrCompliancePct(steps, timeline, athleteHrZones)
+        val decouplingPct = computeAerobicDecouplingPct(
+            session = session,
+            timeline = timeline,
+            profile = athleteHrZones,
+            actualDurationSec = actualDurationSec
+        )
+
+        // Grade execution strictly according to coaching intent.
+        val grading = when {
+            isLongFastFinish -> gradeLongFastFinish(
+                session = session,
+                steps = steps,
+                targetedSteps = targetedSteps,
+                breakdowns = stepBreakdowns,
+                volumeRatio = volumeRatio,
+                reasons = reasons
+            )
+            hasHillWork -> gradeHillSession(
+                targetedSteps = targetedSteps,
+                breakdowns = stepBreakdowns,
+                timeline = timeline,
+                activity = activity,
+                volumeRatio = volumeRatio,
+                reasons = reasons
+            )
+            hasStrideWork -> gradeStrideSession(
+                steps = steps,
+                targetedSteps = targetedSteps,
+                breakdowns = stepBreakdowns,
+                laps = validLaps,
+                timeline = timeline,
+                volumeRatio = volumeRatio,
+                reasons = reasons
+            )
+            session.quality || hasQualityPaceWork -> gradeQualityPaceSession(
+                targetedSteps = targetedSteps,
+                breakdowns = stepBreakdowns,
+                volumeRatio = volumeRatio,
+                evidenceTier = evidenceTier,
+                effectiveAvgPace = effectiveAvgPace,
+                reasons = reasons
+            )
+            else -> gradeEasyOrSteadySession(
+                steps = steps,
+                breakdowns = stepBreakdowns,
+                volumeRatio = volumeRatio,
+                effectiveAvgPace = effectiveAvgPace,
+                reasons = reasons
+            )
+        }
+
+        val summary = buildCoachingSummary(
+            session = session,
+            verdict = grading.verdict,
+            plannedKm = plannedKm,
+            actualKm = actualKm,
+            plannedMinutes = plannedMinutes,
+            actualMinutes = actualMinutes,
+            targetPaceMin = grading.referenceTargetMinPace,
+            targetPaceMax = grading.referenceTargetMaxPace,
+            actualWorkPace = grading.observedPaceSecPerKm ?: effectiveAvgPace,
+            elevationGainM = grading.elevationGainM,
+            decouplingPct = decouplingPct
+        )
+
+        return WorkoutExecutionAnalysis(
+            plannedSessionId = session.id,
+            activityId = activity.id,
+            evidenceTier = evidenceTier,
+            verdict = grading.verdict,
+            volumeRatio = round2(volumeRatio),
+            plannedKm = plannedKm?.let(::round2),
+            actualKm = actualKm?.let(::round2),
+            plannedMinutes = plannedMinutes,
+            actualMinutes = actualMinutes?.let(::round1),
+            workStepPaceAdherencePct = grading.workAdherencePct?.let(::round1),
+            qualityStimulusVerified = grading.qualityStimulusVerified,
+            paceBias = grading.paceBias,
+            hrZoneCompliancePct = hrCompliance?.let(::round1),
+            aerobicDecouplingPct = decouplingPct?.let(::round1),
+            stepBreakdowns = stepBreakdowns,
+            reasonCodes = reasons.toList(),
+            coachingSummary = summary,
+            analyzedAtEpochMs = analyzedAtEpochMs
+        )
+    }
+
+    private data class GradingOutcome(
+        val verdict: ExecutionVerdict,
+        val paceBias: ExecutionPaceBias,
+        val workAdherencePct: Double?,
+        val qualityStimulusVerified: Boolean?,
+        val referenceTargetMinPace: Int?,
+        val referenceTargetMaxPace: Int?,
+        val observedPaceSecPerKm: Double?,
+        val elevationGainM: Double? = null
+    )
+
+    private fun gradeEasyOrSteadySession(
+        steps: List<PlannedStepTarget>,
+        breakdowns: List<ExecutionStepBreakdown>,
+        volumeRatio: Double,
+        effectiveAvgPace: Double?,
+        reasons: MutableSet<String>
+    ): GradingOutcome {
+        val primaryStep = steps.firstOrNull {
+            it.stepIntent in setOf(
+                RunningStepIntent.AEROBIC_EASY,
+                RunningStepIntent.RECOVERY,
+                RunningStepIntent.STEADY
+            )
+        } ?: steps.firstOrNull()
+        val minPace = primaryStep?.targetPaceMinSecPerKm
+        val maxPace = primaryStep?.targetPaceMaxSecPerKm
+        val observedPace = breakdowns.firstOrNull()?.actualPaceSecPerKm ?: effectiveAvgPace
+        val adherence = if (minPace != null || maxPace != null) {
+            paceAdherence(observedPace, emptyList(), minPace, maxPace)
+        } else null
+
+        if (volumeRatio < 0.75) {
+            reasons += "EASY_VOLUME_CUT_SHORT"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.PARTIALLY_EXECUTED,
+                paceBias = classifyPaceBias(observedPace, minPace, maxPace, 5.0, 12.0),
+                workAdherencePct = adherence,
+                qualityStimulusVerified = null,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedPace
+            )
+        }
+
+        if (observedPace == null) {
+            reasons += "MISSING_PACE_TELEMETRY"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.INSUFFICIENT_TELEMETRY,
+                paceBias = ExecutionPaceBias.UNKNOWN,
+                workAdherencePct = null,
+                qualityStimulusVerified = null,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = null
+            )
+        }
+
+        if (minPace != null && observedPace < minPace - 5.0) {
+            // Never praise running too fast on easy/recovery days ("gray-zone creep").
+            reasons += "EASY_DAY_TOO_FAST"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.INTENSITY_MISMATCH_TOO_FAST,
+                paceBias = ExecutionPaceBias.TOO_FAST,
+                workAdherencePct = adherence,
+                qualityStimulusVerified = null,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedPace
+            )
+        }
+
+        if (maxPace != null && observedPace > maxPace + 25.0) {
+            reasons += "EASY_PACE_MISMATCH_TOO_SLOW"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.INTENSITY_MISMATCH_TOO_SLOW,
+                paceBias = ExecutionPaceBias.TOO_SLOW,
+                workAdherencePct = adherence,
+                qualityStimulusVerified = null,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedPace
+            )
+        }
+
+        reasons += "EASY_INTENSITY_AND_VOLUME_ON_TARGET"
+        return GradingOutcome(
+            verdict = ExecutionVerdict.ON_TARGET,
+            paceBias = ExecutionPaceBias.ON_TARGET,
+            workAdherencePct = adherence,
+            qualityStimulusVerified = null,
+            referenceTargetMinPace = minPace,
+            referenceTargetMaxPace = maxPace,
+            observedPaceSecPerKm = observedPace
+        )
+    }
+
+    private fun gradeQualityPaceSession(
+        targetedSteps: List<PlannedStepTarget>,
+        breakdowns: List<ExecutionStepBreakdown>,
+        volumeRatio: Double,
+        evidenceTier: ExecutionEvidenceTier,
+        effectiveAvgPace: Double?,
+        reasons: MutableSet<String>
+    ): GradingOutcome {
+        val workBreakdowns = targetedSteps.mapNotNull { target ->
+            breakdowns.find { it.stepIndex == target.stepIndex }
+        }
+        val minPace = targetedSteps.mapNotNull { it.targetPaceMinSecPerKm }.minOrNull()
+        val maxPace = targetedSteps.mapNotNull { it.targetPaceMaxSecPerKm }.maxOrNull()
+
+        val plannedWorkMeters = targetedSteps.sumOf { it.plannedMeters ?: 0 }
+        val actualWorkMeters = workBreakdowns.sumOf { ((it.actualDistanceKm ?: 0.0) * 1000.0).roundToInt() }
+        val plannedWorkSeconds = targetedSteps.sumOf { it.nominalSeconds }
+        val actualWorkSeconds = workBreakdowns.sumOf { (it.actualSeconds ?: 0).toDouble() }
+        val workVolumeRatio = when {
+            plannedWorkMeters > 0 && actualWorkMeters > 0 ->
+                actualWorkMeters.toDouble() / plannedWorkMeters
+            plannedWorkSeconds > 0.0 && actualWorkSeconds > 0.0 ->
+                actualWorkSeconds / plannedWorkSeconds
+            else -> volumeRatio
+        }
+
+        val observedWorkPace = weightedBreakdownPace(workBreakdowns) ?: effectiveAvgPace
+        val workAdherence = weightedBreakdownAdherence(workBreakdowns)
+            ?: paceAdherence(observedWorkPace, emptyList(), minPace, maxPace)
+
+        if (volumeRatio < 0.70 || (evidenceTier != ExecutionEvidenceTier.SUMMARY_ONLY && workVolumeRatio < 0.65)) {
+            reasons += if (volumeRatio < 0.70) "TOTAL_VOLUME_CUT_SHORT" else "WORK_VOLUME_CUT_SHORT"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.PARTIALLY_EXECUTED,
+                paceBias = classifyPaceBias(observedWorkPace, minPace, maxPace, 6.0, 8.0),
+                workAdherencePct = workAdherence,
+                qualityStimulusVerified = false,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = observedWorkPace
+            )
+        }
+
+        if (observedWorkPace == null) {
+            reasons += "MISSING_WORK_PACE_TELEMETRY"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.INSUFFICIENT_TELEMETRY,
+                paceBias = ExecutionPaceBias.UNKNOWN,
+                workAdherencePct = null,
+                qualityStimulusVerified = false,
+                referenceTargetMinPace = minPace,
+                referenceTargetMaxPace = maxPace,
+                observedPaceSecPerKm = null
+            )
+        }
+
+        if (volumeRatio >= 0.80 && maxPace != null && observedWorkPace > maxPace + 15.0) {
+            // Total distance was completed, but work segments stayed in easy/aerobic pace.
+            reasons += "WORK_STAYED_IN_EASY_ZONE"
+            return GradingOutcome(
+                verdict = ExecutionVerdict.VOLUME_ONLY_MATCH,
+                paceBias = ExecutionPaceBias.TOO_SLOW,
+                workAdherencePct = workAdherence,
+                qualityStimulusVerified = false,
+                referenceTargetMinPace = minPace,

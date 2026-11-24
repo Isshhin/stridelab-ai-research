@@ -1,0 +1,20 @@
+﻿Retrieve these StrideLab Engine 1.5 source chunks.
+Verify completeness, source paths and line ranges.
+Reassemble files in their original order.
+Do not infer missing content or propose changes yet.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I3_SOURCE_LINKED_QUALITY_DURATION_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I4_WORK_LAP_HR_SIGNAL_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I4_WORK_LAP_HR_SIGNAL_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/M3_CAPACITY_CONTRACT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/main/engine15/research/M4_GATE_B_PREFLIGHT_20261117_part001.txt

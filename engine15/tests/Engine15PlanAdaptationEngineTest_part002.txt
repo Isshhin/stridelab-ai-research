@@ -1,0 +1,82 @@
+SOURCE: native-android/app/src/test/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngineTest.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 2
+LINES: 319-395
+--------------------------------------------------
+        assertEquals(0, wkDiff.qualityCountAfter)
+    }
+
+    @Test
+    fun preSurfaceInvariantGateRejectsTamperedCandidateAndContractsRoundTrip() {
+        val asOf = startMonday.plusDays(27)
+        val (plan, _, matches) = markFirstWeeksCompletedAndBuildActivities(generateApprovedPlan(), asOf)
+        val linkedIds = matches.values.mapNotNull { it.plannedSessionId }.toSet()
+
+        // Mutate a past completed session illegally -> gate MUST reject!
+        val illegalPastEdit = plan.copy(
+            sessions = plan.sessions.mapIndexed { idx, s ->
+                if (idx == 0) s.copy(minutes = s.minutes + 20) else s
+            }
+        )
+        val outcome = Engine15PlanAdaptationEngine.validateCandidatePlan(
+            originalPlan = plan,
+            candidatePlan = illegalPastEdit,
+            effectiveFromDate = asOf.plusDays(1),
+            trailing30dLongestKm = 14.0,
+            linkedSessionIds = linkedIds
+        )
+        assertFalse(outcome.passed)
+        assertTrue(outcome.warnings.any { it.startsWith("IMMUTABLE_PAST_OR_LINKED_MUTATED") })
+
+        // Serialization round-trip for Proposal, Revision, Cooldown
+        val diag = diagnosticFor(plan, asOf, RecalibrationAdvisory.SUGGEST_FASTER_CHECK, avgWorkDeltaSec = -7.0, efTrend = AerobicEfficiencyTrend.IMPROVING)
+        val prop = Engine15PlanAdaptationEngine.evaluateProposal(plan, diag, emptyList(), matches, asOfDate = asOf, zoneId = zone)!!
+        val res = Engine15PlanAdaptationEngine.applyProposal(plan, prop, asOf)
+        assertEquals(prop, PlanAdaptationProposal.decode(prop.encode(owner), owner))
+        assertEquals(res.revision, PlanAdaptationRevision.decode(res.revision.encode(owner), owner))
+        assertEquals(res.cooldown, AdaptationCooldownRecord.decode(res.cooldown.encode(owner), owner))
+    }
+
+    @Test
+    fun printSampleAdaptationOutputsForFourScenarios() {
+        val asOf = startMonday.plusDays(27)
+        val (plan10k, acts10k, matches10k) = markFirstWeeksCompletedAndBuildActivities(generateApprovedPlan(), asOf)
+
+        val pUp = Engine15PlanAdaptationEngine.evaluateProposal(
+            plan10k,
+            diagnosticFor(plan10k, asOf, RecalibrationAdvisory.SUGGEST_FASTER_CHECK, avgWorkDeltaSec = -7.5, efTrend = AerobicEfficiencyTrend.IMPROVING),
+            acts10k, matches10k, asOfDate = asOf, zoneId = zone
+        )!!
+        val revUp = Engine15PlanAdaptationEngine.applyProposal(plan10k, pUp, asOf)
+        val reverted = Engine15PlanAdaptationEngine.revertRevision(revUp.appliedPlan, revUp.revision, asOf.plusDays(1))
+
+        val (planHm, actsHm, matchesHm) = markFirstWeeksCompletedAndBuildActivities(
+            generateApprovedPlan(goal = "Half marathon", weeks = 12, preferredQuality = "Threshold"), asOf
+        )
+        val pDown = Engine15PlanAdaptationEngine.evaluateProposal(
+            planHm,
+            diagnosticFor(planHm, asOf, RecalibrationAdvisory.SUGGEST_SLOWER_CHECK, avgWorkDeltaSec = 11.0, tooSlowCount = 3),
+            actsHm, matchesHm, asOfDate = asOf, zoneId = zone
+        )!!
+
+        val pLock = Engine15PlanAdaptationEngine.evaluateProposal(
+            plan10k,
+            diagnosticFor(plan10k, asOf, RecalibrationAdvisory.ADDRESS_EASY_PACING_FIRST, avgWorkDeltaSec = -8.0, hiddenFatigue = true),
+            acts10k, matches10k, asOfDate = asOf, zoneId = zone
+        )!!
+
+        val asOfGap = startMonday.plusDays(21)
+        val (planGap, actsGap, matchesGap) = markFirstWeeksCompletedAndBuildActivities(generateApprovedPlan(), asOfGap, skipFromDate = startMonday.plusDays(14))
+        val pMissed = Engine15PlanAdaptationEngine.evaluateProposal(
+            planGap,
+            diagnosticFor(planGap, asOfGap, RecalibrationAdvisory.VOLUME_RECOVERY_NEEDED, consecutiveMissed = 4, completionRatio = 0.55),
+            actsGap, matchesGap, asOfDate = asOfGap, zoneId = zone
+        )!!
+
+        println("=== STEP 06 CONTROLLED ADAPTATION SCENARIOS ===")
+        println("1_PACE_UP_AND_REVERT | type=${pUp.type} | affected=${pUp.diff.affectedSessionCount} | paceDiffs=${pUp.diff.paceDiffs.size} | appliedRev=${revUp.appliedPlan.revision} -> revertedEqualsOriginal=${reverted.restoredPlan.sessions == plan10k.sessions} | rationale=${pUp.coachingRationale}")
+        println("2_PACE_DOWN | type=${pDown.type} | affected=${pDown.diff.affectedSessionCount} | paceDiffs=${pDown.diff.paceDiffs.size} | safetyPassed=${pDown.diff.safetyChecksPassed} | rationale=${pDown.coachingRationale}")
+        println("3_GRAY_ZONE_EASY_LOCK | type=${pLock.type} | candidateNull=${pLock.candidatePlanJson == null} | rationale=${pLock.coachingRationale}")
+        println("4_FULL_MISSED_WEEK_BRIDGE | type=${pMissed.type} | tier=${pMissed.disruptionTier} | weekDiff=${pMissed.diff.weekDiffs.firstOrNull()?.summaryNote} | safetyPassed=${pMissed.diff.safetyChecksPassed}")
+    }
+}

@@ -1,0 +1,320 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15IndependentPlanGenerator.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 1
+LINES: 1-315
+--------------------------------------------------
+package io.stridelab.privatealpha
+
+import java.time.Instant
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import kotlin.math.ceil
+import kotlin.math.roundToInt
+
+internal const val ENGINE15_INDEPENDENT_CANDIDATE_POLICY =
+    "stridelab.engine15.independent-running-candidate-20261117.1"
+internal const val ENGINE15_INDEPENDENT_RUNNING_POLICY =
+    "stridelab.engine15.independent-running-20261117.1"
+private const val QUALITY_POLICY = "stridelab.engine15.experimental-quality-v1"
+private const val TEMPO_EXPOSURE_NOTE =
+    "Tempo exposure policy v1: loading mileage stays within the usual baseline and each Tempo slot fits the reported longest completed run."
+internal const val ENGINE15_INDEPENDENT_STRENGTH_POLICY =
+    "stridelab.engine15.independent-strength-20261117.1"
+internal const val ENGINE15_INDEPENDENT_CALISTHENICS_POLICY =
+    "stridelab.engine15.independent-calisthenics-20261117.1"
+internal const val ENGINE15_INDEPENDENT_CONDITIONING_POLICY =
+    "stridelab.engine15.independent-conditioning-20261117.1"
+internal const val ENGINE15_INDEPENDENT_COMBINED_POLICY =
+    "stridelab.engine15.independent-combined-20261117.1"
+
+internal sealed interface Engine15IndependentPlanDecision {
+    data class Deferred(
+        val reasonCode: String,
+        val explanation: String,
+        val qualitySelection: Engine15QualityFamilySelectionResult? = null,
+        val qualityDryRun: Engine15QualityWorkoutDryRun? = null
+    ) : Engine15IndependentPlanDecision
+
+    data class Candidate(
+        val plan: PlanSnapshot,
+        val volume: Engine15IndependentVolumePlanner.Result,
+        val periodization: Engine15M6DReviewDecision.Candidate,
+        val executable: Boolean = false,
+        val productionReady: Boolean = false,
+        val authorizedForProduction: Boolean = false
+    ) : Engine15IndependentPlanDecision {
+        init {
+            require(plan.engineVersion == ENGINE15_VERSION &&
+                plan.policyId == ENGINE15_INDEPENDENT_CANDIDATE_POLICY)
+            require(plan.sessions.isNotEmpty() && plan.sessions.all {
+                it.discipline == "run" && (!it.quality ||
+                    it.runningPrescription?.let { prescription -> prescription.role=="QUALITY" && prescription.family!=null } == true)
+            })
+            require(!executable && !productionReady && !authorizedForProduction)
+        }
+    }
+}
+
+/**
+ * Assembles the reviewed independent M3ΓÇôM6 running path into app workout
+ * contracts. Coach-generated quality and unresolved inputs defer.
+ */
+internal object Engine15IndependentPlanGenerator : PlanGenerationEngine {
+    override val version = ENGINE15_VERSION
+    override val policyId = ENGINE15_INDEPENDENT_RUNNING_POLICY
+
+    override fun generate(
+        request: PlanRequest,
+        owner: String,
+        id: String,
+        now: Instant
+    ): PlanSnapshot = throw PlanConstraint(
+        "EXTERNAL_PLAN_CONTEXT_REQUIRED: Generate Engine 1.5 running drafts through TrainingRepository so saved workouts are included in interference checks."
+    )
+
+    fun validateRequest(request: PlanRequest) {
+        if (listOf("run", "str", "cal", "cond").count { request.disciplineSessionCount(it) > 0 } > 1) {
+            Engine15StaticMultiDisciplinePlanner.validateRequest(request)
+            return
+        }
+        if (request.runDays == 0 && request.strengthDays == 0 && request.calDays == 0 && request.conditioningDays > 0) {
+            Engine15ConditioningWorkoutComposer.validateRequest(request)
+            return
+        }
+        if (request.runDays == 0 && request.strengthDays == 0 && request.calDays > 0) {
+            Engine15CalisthenicsWorkoutComposer.validateRequest(request)
+            return
+        }
+        if (request.runDays == 0 && request.strengthDays > 0) {
+            Engine15StrengthWorkoutComposer.validateRequest(request)
+            return
+        }
+        if (Engine15TimeOnlyRunWalkBuilder.isEligible(request)) {
+            Engine15TimeOnlyRunWalkBuilder.compose(request, "engine15-validation", "validation", Instant.EPOCH)
+            return
+        }
+        appDraft(previewAutoReconciled(request, "engine15-validation", "validation", Instant.EPOCH))
+    }
+
+    private fun formatMetersAsKm(meters: Int?): String {
+        if (meters == null || meters <= 0) return "0.0 km"
+        val km = meters / 1000.0
+        return if (km < 1.0 && meters % 100 != 0) {
+            String.format(java.util.Locale.US, "%.2f km", km)
+        } else {
+            String.format(java.util.Locale.US, "%.1f km", km)
+        }
+    }
+
+    internal fun previewAutoReconciled(
+        request: PlanRequest,
+        owner: String,
+        id: String,
+        now: Instant,
+        existingPlans: List<PlanSnapshot>? = null,
+        activityEvidence: ActivityAthleteEvidenceProfile? = null,
+        qualityEvidence: List<IndependentQualitySegmentEvidence> = emptyList(),
+        activities: List<ActivityRecord> = emptyList(),
+        detections: List<Engine15DetectedWorkout> = emptyList(),
+        assertedExposureSecondsOverride: Int? = null
+    ): Engine15IndependentPlanDecision {
+        val isLegacyPositive = request.weeklyKm > 0.0 && request.recentMileageBasis == "LEGACY_UNSPECIFIED"
+        val cleanedPeak = if (request.recentMileageBasis == "SELF_REPORTED_AVERAGE" || isLegacyPositive) {
+            request.reportedPeakWeeklyKm?.takeIf {
+                it.isFinite() && it >= request.weeklyKm && it <= 120.0
+            }
+        } else {
+            request.reportedPeakWeeklyKm
+        }
+        val effectiveRequest = when {
+            isLegacyPositive -> request.copy(
+                recentMileageBasis = "SELF_REPORTED_AVERAGE",
+                reportedPeakWeeklyKm = cleanedPeak
+            )
+            cleanedPeak != request.reportedPeakWeeklyKm -> request.copy(reportedPeakWeeklyKm = cleanedPeak)
+            else -> request
+        }
+        val autoAdaptiveQuality = effectiveRequest.qualityCount > 0 &&
+            effectiveRequest.userDefinedQualityWorkouts.isEmpty() &&
+            effectiveRequest.qualityDistanceClaims.isEmpty()
+        val enrichArchetypes = autoAdaptiveQuality
+        var resolvedRequest = effectiveRequest
+        var initialDecision = preview(
+            resolvedRequest, owner, id, now, existingPlans, activityEvidence, qualityEvidence,
+            assertedExposureSecondsOverride = assertedExposureSecondsOverride,
+            allowExplicitUserFamily = true,
+            adaptiveQualityMode = autoAdaptiveQuality,
+            enrichArchetypes = enrichArchetypes
+        )
+        val qualityDeferralReason = initialDecision is Engine15IndependentPlanDecision.Deferred && (
+            initialDecision.qualitySelection != null ||
+                initialDecision.qualityDryRun != null ||
+                initialDecision.reasonCode == "QUALITY_GENERATION_NOT_QUALIFIED"
+            )
+        if (qualityDeferralReason && autoAdaptiveQuality) {
+            val startingDeferred = initialDecision as Engine15IndependentPlanDecision.Deferred
+            if (startingDeferred.qualitySelection?.reasonCode == "QUALITY_SLOT_UNAVAILABLE" &&
+                resolvedRequest.qualityDays.isNotEmpty()
+            ) {
+                resolvedRequest = resolvedRequest.copy(qualityDays = emptySet())
+                initialDecision = preview(
+                    resolvedRequest, owner, id, now, existingPlans, activityEvidence, qualityEvidence,
+                    assertedExposureSecondsOverride = assertedExposureSecondsOverride,
+                    allowExplicitUserFamily = true,
+                    adaptiveQualityMode = true,
+                    enrichArchetypes = enrichArchetypes
+                )
+            }
+            if (initialDecision is Engine15IndependentPlanDecision.Deferred) {
+                val activeDeferred = initialDecision
+                val selectedFamily = activeDeferred.qualitySelection?.selectedFamily
+                    ?: return activeDeferred
+                val adaptiveExposure = assertedExposureSecondsOverride
+                    ?: Engine15QualityProgressionPolicy.computeAdaptiveExposureAnchorSeconds(
+                        request = resolvedRequest,
+                        family = selectedFamily,
+                        activities = activities,
+                        plans = existingPlans.orEmpty(),
+                        detections = detections,
+                        now = now
+                    )
+                val zones = Engine15PaceZoneEstimator.estimate(resolvedRequest, activities = activities)
+
+                fun tryReconcileWithExposure(
+                    exposureOverride: Int?,
+                    fallbackDeferred: Engine15IndependentPlanDecision.Deferred
+                ): Engine15IndependentPlanDecision.Candidate? {
+                    val deferredAttempt = if (exposureOverride != assertedExposureSecondsOverride) {
+                        val next = preview(
+                            resolvedRequest, owner, id, now, existingPlans, activityEvidence, qualityEvidence,
+                            assertedExposureSecondsOverride = exposureOverride,
+                            allowExplicitUserFamily = true,
+                            adaptiveQualityMode = true,
+                            enrichArchetypes = enrichArchetypes
+                        )
+                        if (next is Engine15IndependentPlanDecision.Candidate) return next
+                        next as? Engine15IndependentPlanDecision.Deferred ?: fallbackDeferred
+                    } else fallbackDeferred
+
+                    val dryRun = deferredAttempt.qualityDryRun ?: return null
+                    val autoClaims = Engine15PaceZoneEstimator.estimateSegmentClaims(dryRun, zones)
+                    val resolvedQualityDays = dryRun.alternatives.map { it.slot.date.dayOfWeek.value }.toSet()
+                    val enrichedRequest = resolvedRequest.copy(
+                        qualityDays = resolvedQualityDays,
+                        qualityDistanceClaims = autoClaims
+                    )
+                    val retry = preview(
+                        enrichedRequest, owner, id, now, existingPlans, activityEvidence, qualityEvidence,
+                        assertedExposureSecondsOverride = exposureOverride,
+                        allowExplicitUserFamily = true,
+                        adaptiveQualityMode = true,
+                        enrichArchetypes = enrichArchetypes
+                    ) as? Engine15IndependentPlanDecision.Candidate ?: return null
+
+                    val retryPaceValid = dryRun.alternatives.zip(autoClaims).all { (alt, claim) ->
+                        val rx = alt.prescription ?: return@all false
+                        val rec = Engine15M5TimedDistanceReconciler.reconcileSegmentClaim(
+                            alt.weekNumber, alt.slotNumber, rx.family,
+                            alt.originalEasyDistanceKm, rx.step.workout,
+                            rx.step.totalSeconds, rx.step.workSeconds, claim,
+                            allowMixedUnits = true,
+                            zones = zones
+                        )
+                        rec is Engine15M5SegmentDistanceDecision.ArithmeticOnly &&
+                            rec.match.qualityPaceWarning(zones) == null &&
+                            rec.match.bookendSafetyWarning() == null
+                    }
+                    return retry.takeIf { retryPaceValid }
+                }
+
+                // Steps 1 & 2: Reconcile claims with safe >= 8 min WU / >= 5 min CD bookends.
+                tryReconcileWithExposure(adaptiveExposure, activeDeferred)?.let { return it }
+
+                // Step 3: Step down within the same quality family ladder before ever failing.
+                val ceilingSec = adaptiveExposure
+                val lowerRungs = Engine15QualityProgressionPolicy.ladder(selectedFamily, resolvedRequest.experience)
+                    .map { it.workSeconds }
+                    .distinct()
+                    .filter { it < ceilingSec }
+                    .sortedDescending()
+                val familyLabel = selectedFamily.name.lowercase().replaceFirstChar(Char::uppercase)
+                for (rungWorkSec in lowerRungs) {
+                    val steppedCandidate = tryReconcileWithExposure(rungWorkSec, activeDeferred)
+                    if (steppedCandidate != null) {
+                        return steppedCandidate.copy(
+                            plan = steppedCandidate.plan.copy(
+                                explanations = steppedCandidate.plan.explanations +
+                                    "Quality workout dose was stepped down within the $familyLabel ladder to safely fit your session distance, warm-up/cool-down floors, and time budget."
+                            )
+                        )
+                    }
+                }
+
+                // Step 4: Explicit reviewable deferral instead of silent qualityCount = 0 erasure.
+                return Engine15IndependentPlanDecision.Deferred(
+                    reasonCode = "QUALITY_RECONCILIATION_UNSAFE_OR_INFEASIBLE",
+                    explanation = "Requested quality workouts could not safely fit within your current weekly mileage, session duration budget, and minimum warm-up/cool-down guardrails (8 min warm-up / 5 min cool-down). Adjust session duration, weekly mileage, or reduce quality frequency.",
+                    qualitySelection = activeDeferred.qualitySelection,
+                    qualityDryRun = activeDeferred.qualityDryRun
+                )
+            }
+        }
+        return initialDecision
+    }
+
+    fun generateWithHistory(
+        request: PlanRequest,
+        owner: String,
+        plans: List<PlanSnapshot>,
+        id: String = java.util.UUID.randomUUID().toString(),
+        now: Instant = Instant.now(),
+        exerciseLibrary: ExerciseLibraryV2? = null,
+        activityEvidence: ActivityAthleteEvidenceProfile? = null,
+        qualityEvidence: List<IndependentQualitySegmentEvidence> = emptyList(),
+        activities: List<ActivityRecord> = emptyList(),
+        detections: List<Engine15DetectedWorkout> = emptyList()
+    ): PlanSnapshot {
+        if (listOf("run", "str", "cal", "cond").count { request.disciplineSessionCount(it) > 0 } > 1) {
+            val library = exerciseLibrary ?: throw PlanConstraint(
+                "ENGINE15_COMBINED_CATALOG_REQUIRED: The shared offline exercise catalog is unavailable; no substitute was generated."
+            )
+            return Engine15StaticMultiDisciplinePlanner.compose(
+                request, owner, id, now, plans, library, activities = activities, detections = detections
+            )
+        }
+        if (request.runDays == 0 && request.strengthDays == 0 && request.calDays == 0 && request.conditioningDays > 0) {
+            Engine15ConditioningWorkoutComposer.validateRequest(request)
+            val library = exerciseLibrary ?: throw PlanConstraint(
+                "CONDITIONING_CATALOG_REQUIRED: The shared offline exercise catalog is unavailable; no substitute was generated."
+            )
+            RecordPolicy.identifier(owner)
+            RecordPolicy.identifier(id)
+            val (scheduledRequest, sessions) = soloExternalCalendar(request, owner, plans, "cond") {
+                Engine15ConditioningWorkoutComposer.compose(it, id, library)
+            }
+            return PlanSnapshot(
+                id = id, owner = owner, engineVersion = version,
+                policyId = ENGINE15_INDEPENDENT_CONDITIONING_POLICY, createdAt = now,
+                request = scheduledRequest, sessions = sessions,
+                explanations = listOf(
+                    "Independent Engine 1.5 conditioning plan; no legacy generator or coaching validator was used.",
+                    "Work and recovery targets are set by the selected conditioning goal and reduced in recovery weeks.",
+                    "This is a draft. Review the movement, schedule and comfortable talk-test limit before explicit approval."
+                ),
+                name = "Engine 1.5 independent conditioning plan"
+            )
+        }
+        if (request.runDays == 0 && request.strengthDays == 0 && request.calDays > 0) {
+            Engine15CalisthenicsWorkoutComposer.validateRequest(request)
+            val library = exerciseLibrary ?: throw PlanConstraint(
+                "CALISTHENICS_CATALOG_REQUIRED: The shared offline exercise catalog is unavailable; no substitute was generated."
+            )
+            RecordPolicy.identifier(owner)
+            RecordPolicy.identifier(id)
+            val (scheduledRequest, sessions) = soloExternalCalendar(request, owner, plans, "cal") {
+                Engine15CalisthenicsWorkoutComposer.compose(it, id, library)
+            }
+            return PlanSnapshot(
+                id = id, owner = owner, engineVersion = version,
+                policyId = ENGINE15_INDEPENDENT_CALISTHENICS_POLICY, createdAt = now,
+                request = scheduledRequest, sessions = sessions,

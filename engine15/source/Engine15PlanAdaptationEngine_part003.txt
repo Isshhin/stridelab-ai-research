@@ -1,0 +1,326 @@
+SOURCE: native-android/app/src/main/java/io/stridelab/privatealpha/Engine15PlanAdaptationEngine.kt
+COMMIT: b79f3f9a835141c6f773810bf9739ae3d0593fe2
+PART: 3
+LINES: 622-942
+--------------------------------------------------
+            val origWkKm = origWkSessions.sumOf { it.distanceKm ?: 0.0 }
+            val candWkKm = candWkSessions.sumOf { it.distanceKm ?: 0.0 }
+            val origTaperQuality = candWkSessions.count { it.quality }
+            if (candWkKm > origWkKm + 0.1 || origTaperQuality > 1) {
+                warnings += "TAPER_WEEK_INFLATED:wk$wkIdx"
+            }
+        }
+
+        // 8. Zero make-up cramming on current partial week
+        if (allowZeroMakeUpCheck) {
+            val curWk = weekIndexOf(originalPlan.request.start, effectiveFromDate.minusDays(1))
+            if (curWk >= 0) {
+                for (cand in byWeek[curWk].orEmpty()) {
+                    if (!cand.date.isBefore(effectiveFromDate)) {
+                        val orig = origById[cand.id]
+                        if (orig == null || (cand.distanceKm ?: 0.0) > (orig.distanceKm ?: 0.0) + 1e-6) {
+                            warnings += "CURRENT_WEEK_MAKEUP_CRAMMING:${cand.id}"
+                        }
+                    }
+                }
+            }
+        }
+
+        // 9. Lossless JSON round-trip check
+        runCatching {
+            val decoded = PlanSnapshot.decode(candidatePlan.encode(), candidatePlan.owner)
+            require(decoded.sessions.size == candidatePlan.sessions.size)
+        }.onFailure {
+            warnings += "SNAPSHOT_JSON_ROUNDTRIP_FAILED"
+        }
+
+        return ValidationOutcome(passed = warnings.isEmpty(), warnings = warnings)
+    }
+
+    private fun buildPaceRecalibrationProposal(
+        plan: PlanSnapshot,
+        diagnostic: AthleteDiagnosticSnapshot,
+        type: AdaptationType,
+        linkedSessionIds: Set<String>,
+        trailing30dLongestKm: Double,
+        effectiveFromDate: LocalDate,
+        asOfDate: LocalDate
+    ): PlanAdaptationProposal? {
+        val rawDelta = diagnostic.qualityExecution.avgWorkPaceDeltaSecPerKm ?: return null
+        val isUp = type == AdaptationType.PACE_RECALIBRATION_UP
+        val boundedPct = if (isUp) {
+            // 2.0% to 3.0% faster (negative delta -> factor 0.97..0.98)
+            (abs(rawDelta) / 260.0).coerceIn(0.02, 0.03)
+        } else {
+            // 3.0% to 5.0% slower (positive delta -> factor 1.03..1.05)
+            (abs(rawDelta) / 260.0).coerceIn(0.03, 0.05)
+        }
+        val paceFactor = if (isUp) (1.0 - boundedPct) else (1.0 + boundedPct)
+
+        val origPhases = resolveMacroPhases(plan)
+        val basePace = plan.request.planningPace.takeIf { it > 0.0 } ?: estimateBaseEasyPace(plan) ?: 330.0
+        val newRequest = plan.request.copy(
+            planningPace = (basePace * paceFactor).coerceIn(180.0, 900.0)
+        )
+        val futureEngineValidationPlan = generateValidationPlan(newRequest, plan) ?: return null
+
+        val paceDiffMap = LinkedHashMap<RunningStepIntent, Pair<Pair<Int, Int>, Pair<Int, Int>>>()
+        var affectedCount = 0
+
+        val updatedSessions = plan.sessions.map { session ->
+            val protected = session.date.isBefore(effectiveFromDate) ||
+                session.status == "completed" ||
+                session.linkedActivityId != null ||
+                session.id in linkedSessionIds
+            if (protected || session.discipline != "run") return@map session
+
+            val wkNum = weekIndexOf(plan.request.start, session.date) + 1
+            val phase = origPhases[wkNum]
+            val stepDownWork = !isUp && session.quality && phase in setOf(Engine15MacroPhase.BUILD, Engine15MacroPhase.PEAK)
+            val updated = adjustSessionPacesAndStepDown(
+                session = session,
+                paceFactor = paceFactor,
+                stepDownOneWorkRung = stepDownWork,
+                paceDiffCollector = paceDiffMap
+            )
+            if (updated != session) affectedCount++
+            updated
+        }
+
+        if (affectedCount == 0 || paceDiffMap.isEmpty()) return null
+        val candidatePlan = plan.copy(
+            sessions = updatedSessions,
+            explanations = plan.explanations + (if (isUp)
+                "Step 06 Pace Recalibration (+${String.format(Locale.US, "%.1f", boundedPct * 100)}%): tightened upcoming target paces after ${diagnostic.qualityExecution.verifiedHitCount} verified quality hits."
+            else
+                "Step 06 Pace Recalibration (-${String.format(Locale.US, "%.1f", boundedPct * 100)}%): eased upcoming target paces and stepped Build/Peak reps down safely.")
+        )
+
+        val gate = validateCandidatePlan(
+            originalPlan = plan,
+            candidatePlan = candidatePlan,
+            effectiveFromDate = effectiveFromDate,
+            trailing30dLongestKm = trailing30dLongestKm,
+            linkedSessionIds = linkedSessionIds,
+            futureEngineValidationPlan = futureEngineValidationPlan
+        )
+        if (!gate.passed) return null
+
+        val paceDiffs = paceDiffMap.map { (intent, bounds) ->
+            AdaptationPaceDiff(
+                intent = intent,
+                oldMinSecPerKm = bounds.first.first,
+                oldMaxSecPerKm = bounds.first.second,
+                newMinSecPerKm = bounds.second.first,
+                newMaxSecPerKm = bounds.second.second
+            )
+        }
+        val diff = buildPlanDiff(plan, candidatePlan, effectiveFromDate, affectedCount, paceDiffs, gate, emptyMap())
+        val pctLabel = String.format(Locale.US, "%.1f%%", boundedPct * 100.0)
+        return PlanAdaptationProposal(
+            proposalId = "prop-${plan.id}-${type.name.lowercase(Locale.ROOT)}-$asOfDate",
+            planId = plan.id,
+            type = type,
+            status = AdaptationProposalStatus.PENDING,
+            createdAtDate = asOfDate,
+            effectiveFromDate = effectiveFromDate,
+            expiresAtDate = asOfDate.plusDays(PROPOSAL_EXPIRY_DAYS),
+            disruptionTier = DisruptionTier.NONE,
+            disruptionFingerprint = null,
+            sourceDiagnosticDate = diagnostic.asOfDate,
+            sourceConfidence = diagnostic.overallConfidence,
+            title = if (isUp) "Tighten Training Paces ($pctLabel Faster)" else "Ease Training Paces ($pctLabel Slower)",
+            coachingRationale = if (isUp) {
+                "${diagnostic.qualityExecution.verifiedHitCount}/${diagnostic.qualityExecution.evaluatedQualityCount} recent quality sessions averaged ${abs(rawDelta).roundToInt()} s/km faster than target with controlled easy days; tighten future target paces by $pctLabel?"
+            } else {
+                "${diagnostic.qualityExecution.tooSlowCount}/${diagnostic.qualityExecution.evaluatedQualityCount} recent quality sessions missed slower by +${abs(rawDelta).roundToInt()} s/km; ease upcoming target paces by $pctLabel and step down heavy reps?"
+            },
+            diff = diff,
+            candidatePlanJson = candidatePlan.encode().toString(),
+            reasonCodes = listOf(
+                if (isUp) "PACE_RECALIBRATION_UP_BOUNDED" else "PACE_RECALIBRATION_DOWN_BOUNDED",
+                "PRE_SURFACE_INVARIANT_PASSED"
+            )
+        )
+    }
+
+    private fun buildMissedWeekProposal(
+        plan: PlanSnapshot,
+        diagnostic: AthleteDiagnosticSnapshot,
+        disruption: DisruptionContext,
+        linkedSessionIds: Set<String>,
+        trailing30dLongestKm: Double,
+        effectiveFromDate: LocalDate,
+        asOfDate: LocalDate
+    ): PlanAdaptationProposal? {
+        val origPhases = resolveMacroPhases(plan)
+        val taperStartIdx = origPhases.entries
+            .firstOrNull { it.value == Engine15MacroPhase.TAPER }
+            ?.key?.minus(1) ?: plan.request.weeks
+
+        val curElapsedWk = weekIndexOf(plan.request.start, effectiveFromDate.minusDays(1))
+        val effectiveStartWk = weekIndexOf(plan.request.start, effectiveFromDate)
+        val minimumNextWk = if (effectiveStartWk == curElapsedWk) curElapsedWk + 1 else effectiveStartWk
+        val startWeekIdx = maxOf(disruption.interruptedWeekIndex + 1, minimumNextWk)
+        if (startWeekIdx >= taperStartIdx) {
+            // Never disrupt final taper weeks when race is imminent; hold cleanly.
+            return null
+        }
+
+        val sessionsByWeek = plan.sessions.groupBy { weekIndexOf(plan.request.start, it.date) }
+        val preGapKm = sessionsByWeek[disruption.interruptedWeekIndex]
+            ?.sumOf { it.distanceKm ?: 0.0 }
+            ?.takeIf { it > 0.0 }
+            ?: plan.request.weeklyKm
+        val updatedByWeek = LinkedHashMap<Int, List<PlannedSession>>()
+        val weekNotes = LinkedHashMap<Int, String>()
+        val reEntryWeeks = LinkedHashSet<Int>()
+        val reasonCodes = LinkedHashSet<String>()
+        reasonCodes += "ZERO_MAKEUP_CRAMMING"
+
+        var futureValidationPlan: PlanSnapshot? = null
+        val isRace = Engine15MacrocyclePeriodization.isRaceGoal(plan.request.goal)
+
+        when (disruption.tier) {
+            DisruptionTier.SHORT_DISRUPTION_3_TO_5D -> {
+                reasonCodes += "SHORT_DISRUPTION_FLAT_HOLD"
+                val nextOrig = sessionsByWeek[startWeekIdx].orEmpty()
+                val nextOrigKm = nextOrig.sumOf { it.distanceKm ?: 0.0 }
+                val capKm = if (diagnostic.volumeTolerance.volumeCompletionRatio < 0.60 && nextOrigKm > preGapKm) {
+                    preGapKm
+                } else nextOrigKm
+                updatedByWeek[startWeekIdx] = scaleWeekSessionsToBudget(nextOrig, capKm)
+                weekNotes[startWeekIdx] = if (capKm < nextOrigKm) {
+                    "Held next week flat at ${formatKm(capKm)} after ${disruption.gapDays}-day disruption."
+                } else {
+                    "Resumed normal schedule without make-up volume."
+                }
+                val regRequest = plan.request.copy(
+                    weeklyKm = capKm.coerceAtLeast(10.0),
+                    longestKm = minOf(plan.request.longestKm, maxOf(8.0, trailing30dLongestKm * 1.10))
+                )
+                futureValidationPlan = generateValidationPlan(regRequest, plan) ?: return null
+            }
+
+            DisruptionTier.FULL_MISSED_WEEK_6_TO_10D -> {
+                reasonCodes += "FULL_MISSED_WEEK_BRIDGE_82PCT"
+                val bridgeKm = tenthsFloor(preGapKm * 0.82).coerceAtLeast(10.0)
+                val exposureLongCap = maxOf(8.0, tenthsFloor(trailing30dLongestKm * 1.10))
+                val bridgeOrig = sessionsByWeek[startWeekIdx].orEmpty()
+                updatedByWeek[startWeekIdx] = rebuildBridgeOrAerobicWeek(
+                    sessions = bridgeOrig,
+                    targetWeekKm = bridgeKm,
+                    longestCapKm = exposureLongCap,
+                    allowSingleTouchTempo = plan.request.qualityCount > 0,
+                    effectiveFromDate = effectiveFromDate,
+                    linkedSessionIds = linkedSessionIds
+                )
+                reEntryWeeks += startWeekIdx
+                weekNotes[startWeekIdx] = "Re-entry bridge week (${formatKm(bridgeKm)}, ~82% pre-gap) with long run <= ${formatKm(exposureLongCap)}."
+
+                val remainingCount = (plan.request.weeks - (startWeekIdx + 1)).coerceAtLeast(1)
+                val reAnchoredReq = plan.request.copy(
+                    start = plan.request.start.plusWeeks((startWeekIdx + 1).toLong()),
+                    weeks = remainingCount,
+                    weeklyKm = bridgeKm,
+                    longestKm = minOf(plan.request.longestKm, exposureLongCap),
+                    targetWeeklyKm = if (isRace && remainingCount <= 4) {
+                        plan.request.targetWeeklyKm?.let { minOf(it, bridgeKm * 1.12) }
+                    } else plan.request.targetWeeklyKm
+                )
+                val postDecision = generateValidationDecision(reAnchoredReq, plan) ?: return null
+                futureValidationPlan = postDecision.plan.copy(policyId = ENGINE15_INDEPENDENT_RUNNING_POLICY)
+
+                // Re-anchor subsequent non-taper loading weeks smoothly without compressing taper
+                val postVol = postDecision.volume
+                for (wk in (startWeekIdx + 1) until taperStartIdx) {
+                    val offset = wk - (startWeekIdx + 1)
+                    val origWkSessions = sessionsByWeek[wk].orEmpty()
+                    val origKm = origWkSessions.sumOf { it.distanceKm ?: 0.0 }
+                    val targetPostKm = postVol.weeks.getOrNull(offset)?.proposedKm ?: origKm
+                    val clampedKm = minOf(origKm, targetPostKm).coerceAtLeast(10.0)
+                    updatedByWeek[wk] = scaleWeekSessionsToBudget(origWkSessions, clampedKm)
+                    if (clampedKm < origKm - 0.1) {
+                        weekNotes[wk] = "Re-anchored peak from ${formatKm(origKm)} to ${formatKm(clampedKm)}."
+                        if (isRace) reasonCodes += "GOAL_READINESS_ADVISORY"
+                    }
+                }
+            }
+
+            DisruptionTier.EXTENDED_GAP_11D_PLUS -> {
+                reasonCodes += "EXTENDED_GAP_2WK_AEROBIC_REBUILD"
+                val exposureLongCap = maxOf(8.0, tenthsFloor(trailing30dLongestKm * 1.05))
+                val rebuildTargets = listOf(
+                    startWeekIdx to tenthsFloor(preGapKm * 0.75).coerceAtLeast(10.0),
+                    (startWeekIdx + 1) to tenthsFloor(preGapKm * 0.82).coerceAtLeast(10.0)
+                ).filter { it.first < taperStartIdx }
+
+                for ((wk, targetKm) in rebuildTargets) {
+                    val wkOrig = sessionsByWeek[wk].orEmpty()
+                    updatedByWeek[wk] = rebuildBridgeOrAerobicWeek(
+                        sessions = wkOrig,
+                        targetWeekKm = targetKm,
+                        longestCapKm = exposureLongCap,
+                        allowSingleTouchTempo = false, // Pure aerobic + strides/easy only during 2-week rebuild
+                        effectiveFromDate = effectiveFromDate,
+                        linkedSessionIds = linkedSessionIds
+                    )
+                    reEntryWeeks += wk
+                    weekNotes[wk] = "Aerobic rebuild week (${formatKm(targetKm)}, base easy + strides)."
+                }
+
+                val postRebuildStart = (rebuildTargets.lastOrNull()?.first ?: startWeekIdx) + 1
+                val anchorKm = rebuildTargets.lastOrNull()?.second ?: tenthsFloor(preGapKm * 0.80)
+                val remainingCount = (plan.request.weeks - postRebuildStart).coerceAtLeast(1)
+                val reAnchoredReq = plan.request.copy(
+                    start = plan.request.start.plusWeeks(postRebuildStart.toLong()),
+                    weeks = remainingCount,
+                    weeklyKm = anchorKm,
+                    longestKm = minOf(plan.request.longestKm, exposureLongCap),
+                    returning = true,
+                    targetWeeklyKm = if (isRace && remainingCount <= 5) {
+                        plan.request.targetWeeklyKm?.let { minOf(it, anchorKm * 1.12) }
+                    } else plan.request.targetWeeklyKm
+                )
+                val postDecision = generateValidationDecision(reAnchoredReq, plan) ?: return null
+                futureValidationPlan = postDecision.plan.copy(policyId = ENGINE15_INDEPENDENT_RUNNING_POLICY)
+
+                val postVol = postDecision.volume
+                for (wk in postRebuildStart until taperStartIdx) {
+                    val offset = wk - postRebuildStart
+                    val origWkSessions = sessionsByWeek[wk].orEmpty()
+                    val origKm = origWkSessions.sumOf { it.distanceKm ?: 0.0 }
+                    val targetPostKm = postVol.weeks.getOrNull(offset)?.proposedKm ?: origKm
+                    val clampedKm = minOf(origKm, targetPostKm).coerceAtLeast(10.0)
+                    updatedByWeek[wk] = scaleWeekSessionsToBudget(origWkSessions, clampedKm)
+                    if (clampedKm < origKm - 0.1) {
+                        weekNotes[wk] = "Re-anchored post-rebuild load to ${formatKm(clampedKm)}."
+                        if (isRace) reasonCodes += "GOAL_READINESS_ADVISORY"
+                    }
+                }
+            }
+
+            DisruptionTier.NONE -> return null
+        }
+
+        var affectedCount = 0
+        val newSessions = plan.sessions.map { orig ->
+            val wk = weekIndexOf(plan.request.start, orig.date)
+            val replaced = updatedByWeek[wk]?.find { it.id == orig.id }
+            val protected = orig.date.isBefore(effectiveFromDate) ||
+                orig.status == "completed" ||
+                orig.linkedActivityId != null ||
+                orig.id in linkedSessionIds
+            if (!protected && replaced != null && replaced != orig) {
+                affectedCount++
+                replaced
+            } else orig
+        }
+
+        val candidatePlan = plan.copy(
+            sessions = newSessions,
+            explanations = plan.explanations + "Step 06 Missed-Week Recovery (${disruption.tier}): rebuilt re-entry from ${formatKm(preGapKm)} with zero make-up cramming."
+        )
+        val gate = validateCandidatePlan(
+            originalPlan = plan,
+            candidatePlan = candidatePlan,
