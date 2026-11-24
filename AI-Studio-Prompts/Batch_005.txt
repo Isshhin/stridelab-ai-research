@@ -1,0 +1,25 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Ingestion Batch 005 / 036
+# Focus: Section C: Request Assembly, Persistence, Backup & Production Callers
+# Snapshot Commit: 28878a67fe577427a936734b981892fef03164f9
+
+Retrieve every raw GitHub URL listed below.
+For each retrieved chunk:
+1. Verify retrieval completeness (confirm all listed URLs were fetched without truncation).
+2. Report the actual chunk header (`FILE`, `SOURCE`, `COMMIT`, `PART`, `LINES`).
+3. Reassemble multi-part files strictly in PART/LINES order.
+4. Do NOT infer missing source content, do NOT extrapolate unretrieved files, and do NOT propose code changes until ingestion is complete.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/Engine15MileageOptions_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/Engine1Engines_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/EngineContracts_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/EngineContracts_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/EngineContracts_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/HybridPlanBuilder_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/LocalActivityArchive_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/LocalPlanOwnership_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ManualDisciplineStore_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ManualDisciplineStore_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/NativeMainActivity_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/NativeMainActivity_part002.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/NativeMainActivity_part003.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/NativeMainActivity_part004.txt

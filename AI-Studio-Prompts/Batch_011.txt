@@ -1,0 +1,25 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Ingestion Batch 011 / 036
+# Focus: Section D: Research & Scientific Policy Documentation
+# Snapshot Commit: 28878a67fe577427a936734b981892fef03164f9
+
+Retrieve every raw GitHub URL listed below.
+For each retrieved chunk:
+1. Verify retrieval completeness (confirm all listed URLs were fetched without truncation).
+2. Report the actual chunk header (`FILE`, `SOURCE`, `COMMIT`, `PART`, `LINES`).
+3. Reassemble multi-part files strictly in PART/LINES order.
+4. Do NOT infer missing source content, do NOT extrapolate unretrieved files, and do NOT propose code changes until ingestion is complete.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/REPOSITORY-SOURCE-REVIEW-20261030_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/App-Architecture_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Engine-1.5_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Hard-Guardrails_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Storage-and-FIT-Contracts_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/ADR-01-Engine15-Isolation-from-Freeform-and-Custom-Logging_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/ADR-02-GPS-200m-Default-Privacy-Trimming_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/ADR-03-Offline-First-Independent-Local-Ownership_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/ADR-04-Retiring-Redundant-UI-While-Preserving-Unified-Data-Layers_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Garmin-and-Activity-Import_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Guided-Workout-Player-and-Debrief_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/Progress-and-History_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/engine15-q1-quality-baseline-20261116_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/engine15-q1-quality-executed-findings-20261116_part001.txt

@@ -1,0 +1,25 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Ingestion Batch 027 / 036
+# Focus: Section E: Unit, Integration & Regression Test Suites
+# Snapshot Commit: 28878a67fe577427a936734b981892fef03164f9
+
+Retrieve every raw GitHub URL listed below.
+For each retrieved chunk:
+1. Verify retrieval completeness (confirm all listed URLs were fetched without truncation).
+2. Report the actual chunk header (`FILE`, `SOURCE`, `COMMIT`, `PART`, `LINES`).
+3. Reassemble multi-part files strictly in PART/LINES order.
+4. Do NOT infer missing source content, do NOT extrapolate unretrieved files, and do NOT propose code changes until ingestion is complete.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualityExposureTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualityFitnessAdapterTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualityOverlayComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualitySourceBindingTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualitySpacingPlannerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentQualityTemplatesTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentResearchDraftTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentResearchScenarioRunnerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentRunWeekComposerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentRunningHistoryTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentTimedQualityDistanceReconciliationTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentWeeklyEvidenceLedgerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentWeeklyMileagePlannerTest_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/tests/IndependentWeeklyProgramReviewTest_part001.txt

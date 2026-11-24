@@ -1,0 +1,25 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Ingestion Batch 002 / 036
+# Focus: Section A: Manifest, Commit Delta & Modified Engine 1.5 Source + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B + Section B
+# Snapshot Commit: 28878a67fe577427a936734b981892fef03164f9
+
+Retrieve every raw GitHub URL listed below.
+For each retrieved chunk:
+1. Verify retrieval completeness (confirm all listed URLs were fetched without truncation).
+2. Report the actual chunk header (`FILE`, `SOURCE`, `COMMIT`, `PART`, `LINES`).
+3. Reassemble multi-part files strictly in PART/LINES order.
+4. Do NOT infer missing source content, do NOT extrapolate unretrieved files, and do NOT propose code changes until ingestion is complete.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/TrainingRepository_part008.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActiveActivitySources_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityAthleteEvidence_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityDetail_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityDetailSectionAnalysis_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityDisplayConsolidation_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityEffortAnalysis_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityImportMatcher_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityIntelligence_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityPlanLink_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityRecord_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityRunComparison_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityWorkoutIntelligence_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/source/ActivityWorkoutIntelligence_part002.txt

@@ -1,0 +1,25 @@
+# StrideLab Engine 1.5 Research Snapshot V2 — Ingestion Batch 013 / 036
+# Focus: Section D: Research & Scientific Policy Documentation
+# Snapshot Commit: 28878a67fe577427a936734b981892fef03164f9
+
+Retrieve every raw GitHub URL listed below.
+For each retrieved chunk:
+1. Verify retrieval completeness (confirm all listed URLs were fetched without truncation).
+2. Report the actual chunk header (`FILE`, `SOURCE`, `COMMIT`, `PART`, `LINES`).
+3. Reassemble multi-part files strictly in PART/LINES order.
+4. Do NOT infer missing source content, do NOT extrapolate unretrieved files, and do NOT propose code changes until ingestion is complete.
+
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I5_TIMED_DISTANCE_FEASIBILITY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I6_SOURCE_LAP_PACE_CONSISTENCY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I7_INTENSITY_CALIBRATION_EVIDENCE_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I8_CALIBRATION_ARTIFACT_INTEGRITY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/I9_READONLY_BASE_PLAN_ASSEMBLY_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/M3_CAPACITY_CONTRACT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/M4_GATE_B_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/M4_STAGE_A_IMPLEMENTATION_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/M4_STAGE_B_GATE_B_PREFLIGHT_20261117_part001.txt
+https://raw.githubusercontent.com/Isshhin/stridelab-ai-research/28878a67fe577427a936734b981892fef03164f9/engine15/research/M4_STAGE_B_SHADOW_IMPLEMENTATION_20261117_part001.txt
